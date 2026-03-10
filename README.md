@@ -29,6 +29,25 @@ As defined in the project [Constitution](.specify/memory/constitution.md):
 3.  **Accessibility by Default**: Minimum touch targets (48x48dp) and support for dynamic text scaling.
 4.  **Modular Architecture**: Clear separation between the UI, business logic, and protocol implementations.
 
+## 🖥 User Interface Guide
+
+### 1. Connection Screen
+The entry point of the application.
+- **IP Address & Port**: Enter the network details of your target PLC (or local test server).
+- **Connect**: Attempts to establish a raw TCP connection. 
+- **Disconnect**: Safely closes the socket. If you navigate back from the dashboard, this is handled automatically.
+
+### 2. Dashboard: Run Mode (Default)
+Once connected, the app defaults to "Run Mode", which is the live operational state.
+- **Gauges**: Visually display incoming float values from the PLC in real-time.
+- **Sliders**: Allow you to select a value within a range. Releasing or sliding sends a float payload to the PLC.
+- **Buttons**: Send immediate boolean triggers to the PLC when pressed.
+
+### 3. Dashboard: Edit Mode
+Tap the "Edit Mode" button in the top app bar to customize the UI.
+- **Drag-and-Drop**: Touch and hold any widget to freely drag it around the screen. Its new coordinates are saved instantly to the local DataStore state.
+- **Add Widget**: A palette appears at the bottom of the screen. Tap "Add Widget" to select a new control type (Button, Slider, Gauge) and bind it to a specific PLC tag address (e.g., `Pump1_Speed`).
+
 ## 🏁 Getting Started
 
 ### Prerequisites
