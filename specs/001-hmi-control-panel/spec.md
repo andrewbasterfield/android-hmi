@@ -72,9 +72,10 @@ As an engineer, I want to easily add, move, and configure controls on the screen
 - **FR-003**: System MUST provide an "Edit Mode" to customize the dashboard.
 - **FR-004**: System MUST allow users to add, remove, and reposition Button, Slider, and Gauge controls in Edit Mode.
 - **FR-005**: System MUST allow users to bind each UI control to a specific PLC address/tag.
-- **FR-006**: System MUST persist the customized dashboard layout and connection settings locally on the device.
+- **FR-006**: System MUST persist the customized dashboard layout and the last-used connection settings (IP Address and Port) locally on the device, pre-populating them on startup.
 - **FR-007**: System MUST transmit control updates (button presses, slider changes) to the PLC when in "Run Mode".
 - **FR-008**: System MUST visually update controls (like Gauges) based on data received from the PLC in real-time.
+- **FR-010**: System MUST detect unexpected socket disconnections from the server and automatically navigate the user back to the Connection Screen, displaying an error state.
 
 *Clarifications Needed:*
 
