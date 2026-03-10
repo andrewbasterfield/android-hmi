@@ -3,6 +3,7 @@ package com.example.hmi.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hmi.data.DashboardLayout
+import com.example.hmi.data.DashboardRepository
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
 import com.example.hmi.protocol.PlcCommunicator
@@ -16,7 +17,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val plcCommunicator: PlcCommunicator
+    private val plcCommunicator: PlcCommunicator,
+    private val repository: DashboardRepository
 ) : ViewModel() {
 
     private val _dashboardLayout = MutableStateFlow(DashboardLayout())
@@ -29,14 +31,13 @@ class DashboardViewModel @Inject constructor(
     val isEditMode: StateFlow<Boolean> = _isEditMode.asStateFlow()
 
     init {
-        // Initial mock layout
-        _dashboardLayout.value = DashboardLayout(
-            widgets = listOf(
-                WidgetConfiguration(type = WidgetType.BUTTON, x = 10f, y = 10f, tagAddress = "Pump1_Start"),
-                WidgetConfiguration(type = WidgetType.SLIDER, x = 10f, y = 100f, tagAddress = "Pump1_Speed", minValue = 0f, maxValue = 100f),
-                WidgetConfiguration(type = WidgetType.GAUGE, x = 10f, y = 200f, tagAddress = "Tank_Level", minValue = 0f, maxValue = 100f)
-            )
-        )
+        viewModelScope.launch {
+            repository.dashboardLayoutFlow.collect { layout ->
+                // If it's a completely empty layout (first run), we could seed it, 
+                // but let's just use whatever is loaded (or the default empty).
+                _dashboardLayout.value = layout
+            }
+        }
     }
 
     fun observeTag(tagAddress: String) {
@@ -80,13 +81,17 @@ class DashboardViewModel @Inject constructor(
         if (index != -1) {
             val widget = currentWidgets[index]
             currentWidgets[index] = widget.copy(x = newX, y = newY)
-            _dashboardLayout.value = _dashboardLayout.value.copy(widgets = currentWidgets)
+            val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
+            _dashboardLayout.value = newLayout
+            viewModelScope.launch { repository.saveLayout(newLayout) }
         }
     }
     
     fun addWidget(widget: WidgetConfiguration) {
         val currentWidgets = _dashboardLayout.value.widgets.toMutableList()
         currentWidgets.add(widget)
-        _dashboardLayout.value = _dashboardLayout.value.copy(widgets = currentWidgets)
+        val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
+        _dashboardLayout.value = newLayout
+        viewModelScope.launch { repository.saveLayout(newLayout) }
     }
 }

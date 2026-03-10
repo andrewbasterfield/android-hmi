@@ -23,8 +23,17 @@ class ConnectionViewModel @Inject constructor(
     val connectionProfile = repository.connectionProfileFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = PlcConnectionProfile()
+        initialValue = null
     )
+    
+    private var hasAttemptedAutoConnect = false
+
+    fun attemptAutoConnect(profile: PlcConnectionProfile) {
+        if (!hasAttemptedAutoConnect) {
+            hasAttemptedAutoConnect = true
+            connect(profile.ipAddress, profile.port)
+        }
+    }
 
     fun connect(ipAddress: String, port: Int) {
         viewModelScope.launch {

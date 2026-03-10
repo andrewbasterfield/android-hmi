@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -22,25 +23,35 @@ class DashboardRepository @Inject constructor(
     private val DASHBOARD_KEY = stringPreferencesKey("dashboard_layout")
     private val IP_ADDRESS_KEY = stringPreferencesKey("ip_address")
     private val PORT_KEY = intPreferencesKey("port")
+    private val gson = Gson()
 
     val dashboardLayoutFlow: Flow<DashboardLayout> = context.dataStore.data.map { preferences ->
-        val json = preferences[DASHBOARD_KEY] ?: return@map DashboardLayout()
-        // Extremely simple parsing to avoid adding Gson/Moshi for MVP prototype. 
-        // In a real app we'd use kotlinx-serialization.
-        DashboardLayout() // returning default for prototype since we just mock the persistance.
+        val json = preferences[DASHBOARD_KEY]
+        if (json.isNullOrEmpty()) {
+            DashboardLayout()
+        } else {
+            try {
+                gson.fromJson(json, DashboardLayout::class.java)
+            } catch (e: Exception) {
+                DashboardLayout()
+            }
+        }
     }
 
     suspend fun saveLayout(layout: DashboardLayout) {
         context.dataStore.edit { preferences ->
-            // In a real app: preferences[DASHBOARD_KEY] = Gson().toJson(layout)
-            preferences[DASHBOARD_KEY] = "{}"
+            preferences[DASHBOARD_KEY] = gson.toJson(layout)
         }
     }
 
-    val connectionProfileFlow: Flow<PlcConnectionProfile> = context.dataStore.data.map { preferences ->
-        val ipAddress = preferences[IP_ADDRESS_KEY] ?: "192.168.1.100"
-        val port = preferences[PORT_KEY] ?: 9999
-        PlcConnectionProfile(ipAddress = ipAddress, port = port)
+    val connectionProfileFlow: Flow<PlcConnectionProfile?> = context.dataStore.data.map { preferences ->
+        val ipAddress = preferences[IP_ADDRESS_KEY]
+        val port = preferences[PORT_KEY]
+        if (ipAddress != null && port != null) {
+            PlcConnectionProfile(ipAddress = ipAddress, port = port)
+        } else {
+            null
+        }
     }
 
     suspend fun saveConnectionProfile(profile: PlcConnectionProfile) {

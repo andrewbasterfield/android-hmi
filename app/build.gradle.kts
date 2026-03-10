@@ -62,6 +62,7 @@ dependencies {
 
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("com.google.code.gson:gson:2.10.1")
 
     // Hilt
     implementation("com.google.dagger:hilt-android:2.50")
