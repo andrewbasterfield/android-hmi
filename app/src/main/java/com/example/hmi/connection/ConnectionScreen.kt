@@ -85,18 +85,5 @@ fun ConnectionScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Text("Disconnected!", color = MaterialTheme.colorScheme.error)
         }
-        
-        if (connectionState == ConnectionState.CONNECTED) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Connected!", color = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = { viewModel.disconnect() },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text("Disconnect")
-            }
-        }
     }
 }

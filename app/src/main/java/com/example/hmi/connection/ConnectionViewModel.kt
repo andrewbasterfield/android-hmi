@@ -37,12 +37,15 @@ class ConnectionViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            var previousState = ConnectionState.DISCONNECTED
             connectionState.collect { state ->
-                // If we transition to DISCONNECTED but we didn't explicitly call disconnect() 
-                // (or if we hit an ERROR), flag it as unexpected so the UI can show the message.
-                if (state == ConnectionState.ERROR) {
+                // If we transition to ERROR or DISCONNECTED *from* a CONNECTED state,
+                // we consider it an unexpected drop.
+                if (previousState == ConnectionState.CONNECTED && 
+                   (state == ConnectionState.ERROR || state == ConnectionState.DISCONNECTED)) {
                     _wasUnexpectedDisconnect.value = true
                 }
+                previousState = state
             }
         }
     }
