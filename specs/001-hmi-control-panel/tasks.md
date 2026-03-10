@@ -82,3 +82,13 @@
 - [x] T021 Setup navigation between Connection and Dashboard screens in `app/src/main/java/com/example/hmi/MainActivity.kt`
 - [x] T022 Handle connection edge cases (drops/reconnects) in `app/src/main/java/com/example/hmi/connection/ConnectionViewModel.kt`
 - [x] T023 Polish UI for 48dp minimum touch targets and accessibility in all widgets
+
+---
+
+## Phase 7: Connection Persistence & Error Handling
+
+**Purpose**: Fulfill FR-006 and FR-010 to persist connection parameters and handle unexpected disconnects.
+
+- [ ] T024 Add connection profile persistence methods to `app/src/main/java/com/example/hmi/data/DashboardRepository.kt`
+- [ ] T025 Update `ConnectionViewModel` to load and save `PlcConnectionProfile` on init/connect in `app/src/main/java/com/example/hmi/connection/ConnectionViewModel.kt`
+- [ ] T026 Update `MainActivity.kt` NavHost to observe `ConnectionState` globally and force navigation to "connection" on `ERROR` or unexpected `DISCONNECTED` states
