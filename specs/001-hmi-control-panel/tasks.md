@@ -89,6 +89,6 @@
 
 **Purpose**: Fulfill FR-006 and FR-010 to persist connection parameters and handle unexpected disconnects.
 
-- [ ] T024 Add connection profile persistence methods to `app/src/main/java/com/example/hmi/data/DashboardRepository.kt`
-- [ ] T025 Update `ConnectionViewModel` to load and save `PlcConnectionProfile` on init/connect in `app/src/main/java/com/example/hmi/connection/ConnectionViewModel.kt`
-- [ ] T026 Update `MainActivity.kt` NavHost to observe `ConnectionState` globally and force navigation to "connection" on `ERROR` or unexpected `DISCONNECTED` states
+- [x] T024 Add connection profile persistence methods to `app/src/main/java/com/example/hmi/data/DashboardRepository.kt`
+- [x] T025 Update `ConnectionViewModel` to load and save `PlcConnectionProfile` on init/connect in `app/src/main/java/com/example/hmi/connection/ConnectionViewModel.kt`
+- [x] T026 Update `MainActivity.kt` NavHost to observe `ConnectionState` globally and force navigation to "connection" on `ERROR` or unexpected `DISCONNECTED` states

@@ -17,9 +17,16 @@ fun ConnectionScreen(
     onConnected: () -> Unit
 ) {
     val connectionState by viewModel.connectionState.collectAsState()
+    val connectionProfile by viewModel.connectionProfile.collectAsState()
     
-    var ipAddress by remember { mutableStateOf("192.168.1.100") }
-    var port by remember { mutableStateOf("9999") }
+    var ipAddress by remember { mutableStateOf(connectionProfile.ipAddress) }
+    var port by remember { mutableStateOf(connectionProfile.port.toString()) }
+
+    // Update local state when profile loads from DataStore
+    LaunchedEffect(connectionProfile) {
+        ipAddress = connectionProfile.ipAddress
+        port = connectionProfile.port.toString()
+    }
 
     LaunchedEffect(connectionState) {
         if (connectionState == ConnectionState.CONNECTED) {

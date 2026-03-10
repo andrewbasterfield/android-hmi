@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -19,6 +20,8 @@ class DashboardRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val DASHBOARD_KEY = stringPreferencesKey("dashboard_layout")
+    private val IP_ADDRESS_KEY = stringPreferencesKey("ip_address")
+    private val PORT_KEY = intPreferencesKey("port")
 
     val dashboardLayoutFlow: Flow<DashboardLayout> = context.dataStore.data.map { preferences ->
         val json = preferences[DASHBOARD_KEY] ?: return@map DashboardLayout()
@@ -31,6 +34,19 @@ class DashboardRepository @Inject constructor(
         context.dataStore.edit { preferences ->
             // In a real app: preferences[DASHBOARD_KEY] = Gson().toJson(layout)
             preferences[DASHBOARD_KEY] = "{}"
+        }
+    }
+
+    val connectionProfileFlow: Flow<PlcConnectionProfile> = context.dataStore.data.map { preferences ->
+        val ipAddress = preferences[IP_ADDRESS_KEY] ?: "192.168.1.100"
+        val port = preferences[PORT_KEY] ?: 9999
+        PlcConnectionProfile(ipAddress = ipAddress, port = port)
+    }
+
+    suspend fun saveConnectionProfile(profile: PlcConnectionProfile) {
+        context.dataStore.edit { preferences ->
+            preferences[IP_ADDRESS_KEY] = profile.ipAddress
+            preferences[PORT_KEY] = profile.port
         }
     }
 }
