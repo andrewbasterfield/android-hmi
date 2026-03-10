@@ -26,4 +26,5 @@ Kotlin (Latest stable): Follow standard conventions
 - 001-hmi-control-panel: Added Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow/SharedFlow), Hilt
 
 <!-- MANUAL ADDITIONS START -->
+- **Workflow**: When a question is asked, provide a direct answer first. NEVER make code changes or take corrective actions based on a question unless explicitly instructed to do so in a follow-up turn.
 <!-- MANUAL ADDITIONS END -->
