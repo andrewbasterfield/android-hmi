@@ -1,0 +1,21 @@
+# Android/Kotlin
+build/
+out/
+.gradle/
+.idea/
+*.class
+*.jar
+*.iml
+*.log
+.env*
+local.properties
+
+# Universal
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+
+# Specify Framework
+.specify/tmp/
