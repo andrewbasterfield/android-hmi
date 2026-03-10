@@ -18,6 +18,7 @@ fun ConnectionScreen(
 ) {
     val connectionState by viewModel.connectionState.collectAsState()
     val connectionProfile by viewModel.connectionProfile.collectAsState()
+    val wasUnexpectedDisconnect by viewModel.wasUnexpectedDisconnect.collectAsState()
     
     var ipAddress by remember { mutableStateOf("192.168.1.100") }
     var port by remember { mutableStateOf("9999") }
@@ -80,6 +81,9 @@ fun ConnectionScreen(
         if (connectionState == ConnectionState.ERROR) {
             Spacer(modifier = Modifier.height(8.dp))
             Text("Connection Error!", color = MaterialTheme.colorScheme.error)
+        } else if (wasUnexpectedDisconnect) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Disconnected!", color = MaterialTheme.colorScheme.error)
         }
         
         if (connectionState == ConnectionState.CONNECTED) {
