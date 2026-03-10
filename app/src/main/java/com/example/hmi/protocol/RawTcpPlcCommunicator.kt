@@ -37,7 +37,7 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
         }
     }
 
-    override suspend fun disconnect() = withContext(Dispatchers.IO) {
+    override suspend fun disconnect(): Unit = withContext(Dispatchers.IO) {
         try {
             socket?.close()
         } catch (e: Exception) {
