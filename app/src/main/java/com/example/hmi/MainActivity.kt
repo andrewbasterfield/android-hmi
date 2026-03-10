@@ -36,8 +36,12 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("dashboard") {
+                            // Obtain the ConnectionViewModel scoped to the activity to trigger disconnect
+                            val connectionViewModel: com.example.hmi.connection.ConnectionViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                            
                             DashboardScreen(
                                 onNavigateBack = {
+                                    connectionViewModel.disconnect()
                                     navController.navigate("connection") {
                                         popUpTo("dashboard") { inclusive = true }
                                     }
