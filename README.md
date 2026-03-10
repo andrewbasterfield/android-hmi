@@ -39,10 +39,47 @@ As defined in the project [Constitution](.specify/memory/constitution.md):
 
 ### Running the Project
 
+#### Option A: Android Studio (Recommended)
 1.  Clone the repository.
 2.  Open the project in Android Studio.
 3.  Sync Gradle dependencies.
 4.  Run the `app` module on a physical device or emulator.
+
+#### Option B: Command Line Only
+If you prefer building without Android Studio, ensure you have **JDK 17** and a modern **Android SDK** (API 34) installed.
+
+1.  **Configure SDK Path**:
+    Create a `local.properties` file in the project root and point it to your Android SDK:
+    ```properties
+    sdk.dir=/path/to/your/android-sdk-linux
+    ```
+
+2.  **Accept Licenses**:
+    If using fresh tools, accept the Android licenses:
+    ```bash
+    # Use the sdkmanager from cmdline-tools/latest/bin/
+    yes | sdkmanager --licenses
+    ```
+
+3.  **Build the APK**:
+    Run the Gradle wrapper. If your system default Java is not 17, prefix the command with `JAVA_HOME`:
+    ```bash
+    JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64/ ./gradlew :app:assembleDebug
+    ```
+
+4.  **Install to Device**:
+    ```bash
+    adb install app/build/outputs/apk/debug/app-debug.apk
+    ```
+
+## 🛠 Troubleshooting
+
+### `jlink executable ... does not exist`
+If you see this error during a command-line build, it means you have the **JRE** installed instead of the full **JDK**. The Android build process requires tools like `jlink` and `javac`.
+- **Fix (Debian/Ubuntu)**: `sudo apt install openjdk-17-jdk`
+
+### Invalid Escape in `settings.gradle.kts`
+If you encounter script compilation errors regarding `Illegal escape: '\.'`, ensure that your package filtering regexes use double-backslashes (e.g., `"com\\.android.*"`) to properly escape the literal dot in Kotlin DSL.
 
 ### Testing Locally
 
