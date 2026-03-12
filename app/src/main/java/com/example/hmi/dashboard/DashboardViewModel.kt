@@ -75,16 +75,46 @@ class DashboardViewModel @Inject constructor(
         _isEditMode.value = !_isEditMode.value
     }
     
-    fun updateWidgetPosition(widgetId: String, newX: Float, newY: Float) {
+    fun updateWidgetPosition(widgetId: String, column: Int, row: Int) {
         val currentWidgets = _dashboardLayout.value.widgets.toMutableList()
         val index = currentWidgets.indexOfFirst { it.id == widgetId }
         if (index != -1) {
             val widget = currentWidgets[index]
-            currentWidgets[index] = widget.copy(x = newX, y = newY)
+            currentWidgets[index] = widget.copy(column = column, row = row)
             val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
             _dashboardLayout.value = newLayout
             viewModelScope.launch { repository.saveLayout(newLayout) }
         }
+    }
+
+    fun updateWidgetSize(widgetId: String, colSpan: Int, rowSpan: Int) {
+        val currentWidgets = _dashboardLayout.value.widgets.toMutableList()
+        val index = currentWidgets.indexOfFirst { it.id == widgetId }
+        if (index != -1) {
+            val widget = currentWidgets[index]
+            currentWidgets[index] = widget.copy(colSpan = colSpan, rowSpan = rowSpan)
+            val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
+            _dashboardLayout.value = newLayout
+            viewModelScope.launch { repository.saveLayout(newLayout) }
+        }
+    }
+
+    fun updateWidgetConfig(updatedWidget: WidgetConfiguration) {
+        val currentWidgets = _dashboardLayout.value.widgets.toMutableList()
+        val index = currentWidgets.indexOfFirst { it.id == updatedWidget.id }
+        if (index != -1) {
+            currentWidgets[index] = updatedWidget
+            val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
+            _dashboardLayout.value = newLayout
+            viewModelScope.launch { repository.saveLayout(newLayout) }
+        }
+    }
+
+    fun deleteWidget(widgetId: String) {
+        val currentWidgets = _dashboardLayout.value.widgets.filter { it.id != widgetId }
+        val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
+        _dashboardLayout.value = newLayout
+        viewModelScope.launch { repository.saveLayout(newLayout) }
     }
     
     fun addWidget(widget: WidgetConfiguration) {

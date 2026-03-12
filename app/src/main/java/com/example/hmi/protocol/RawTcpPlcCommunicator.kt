@@ -1,14 +1,10 @@
 package com.example.hmi.protocol
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.withContext
-import java.io.InputStream
-import java.io.OutputStream
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.net.InetSocketAddress
 import java.net.Socket
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,16 +16,22 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
     override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
     private var socket: Socket? = null
-    private var inputStream: InputStream? = null
-    private var outputStream: OutputStream? = null
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val _tagUpdates = MutableSharedFlow<Pair<String, PlcValue>>(extraBufferCapacity = 64)
 
     override suspend fun connect(ipAddress: String, port: Int): Result<Unit> = withContext(Dispatchers.IO) {
         _connectionState.value = ConnectionState.CONNECTING
         try {
-            socket = Socket(ipAddress, port)
-            inputStream = socket?.getInputStream()
-            outputStream = socket?.getOutputStream()
+            val newSocket = Socket()
+            // Set a 5-second timeout for the connection attempt
+            newSocket.connect(InetSocketAddress(ipAddress, port), 5000)
+            socket = newSocket
+            
             _connectionState.value = ConnectionState.CONNECTED
+            
+            // Start background listening loop
+            startListening(newSocket)
+            
             Result.success(Unit)
         } catch (e: Exception) {
             _connectionState.value = ConnectionState.ERROR
@@ -37,27 +39,74 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
         }
     }
 
-    override suspend fun disconnect(): Unit = withContext(Dispatchers.IO) {
+    private fun startListening(socket: Socket) {
+        scope.launch {
+            try {
+                val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
+                while (isActive && !socket.isClosed) {
+                    val line = reader.readLine() ?: break
+                    parseLine(line)
+                }
+            } catch (e: Exception) {
+                // Only set ERROR if we didn't intentionally disconnect
+                if (socket == this@RawTcpPlcCommunicator.socket) {
+                    _connectionState.value = ConnectionState.ERROR
+                }
+            } finally {
+                // Ensure we clean up if the loop ends (e.g., server closed connection)
+                if (socket == this@RawTcpPlcCommunicator.socket) {
+                    disconnect()
+                }
+            }
+        }
+    }
+
+    private suspend fun parseLine(line: String) {
         try {
-            socket?.close()
+            val parts = line.split(":", limit = 2)
+            if (parts.size == 2) {
+                val tagName = parts[0].trim()
+                val valueStr = parts[1].trim()
+                
+                val value = when {
+                    valueStr.equals("true", ignoreCase = true) -> PlcValue.BooleanValue(true)
+                    valueStr.equals("false", ignoreCase = true) -> PlcValue.BooleanValue(false)
+                    valueStr.contains(".") -> PlcValue.FloatValue(valueStr.toFloat())
+                    else -> {
+                        val intVal = valueStr.toIntOrNull()
+                        if (intVal != null) PlcValue.IntValue(intVal) 
+                        else PlcValue.FloatValue(valueStr.toFloat())
+                    }
+                }
+                
+                _tagUpdates.emit(tagName to value)
+            }
         } catch (e: Exception) {
-            // Ignore close exceptions
+            // Ignore malformed
+        }
+    }
+
+    override suspend fun disconnect(): Unit = withContext(Dispatchers.IO) {
+        val currentSocket = socket
+        socket = null // Set to null first to prevent loop from re-triggering ERROR
+        try {
+            currentSocket?.close()
+        } catch (e: Exception) {
+            // Ignore
         } finally {
-            socket = null
-            inputStream = null
-            outputStream = null
             _connectionState.value = ConnectionState.DISCONNECTED
         }
     }
 
-    override fun observeTag(tagAddress: String): Flow<PlcValue> = flow {
-        // Mock implementation for observation since this is raw TCP and no actual protocol is defined
-        // We will just emit a dummy value for now to satisfy the interface.
-        emit(PlcValue.FloatValue(0f))
+    override fun observeTag(tagAddress: String): Flow<PlcValue> {
+        return _tagUpdates
+            .filter { it.first == tagAddress }
+            .map { it.second }
     }
 
     override suspend fun writeTag(tagAddress: String, value: PlcValue): Result<Unit> = withContext(Dispatchers.IO) {
-        if (_connectionState.value != ConnectionState.CONNECTED) {
+        val currentSocket = socket
+        if (currentSocket == null || !currentSocket.isConnected) {
             return@withContext Result.failure(IllegalStateException("Not connected"))
         }
 
@@ -69,8 +118,8 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
                     is PlcValue.BooleanValue -> value.value
                 }
             }\n"
-            outputStream?.write(message.toByteArray())
-            outputStream?.flush()
+            currentSocket.getOutputStream().write(message.toByteArray())
+            currentSocket.getOutputStream().flush()
             Result.success(Unit)
         } catch (e: Exception) {
             _connectionState.value = ConnectionState.ERROR

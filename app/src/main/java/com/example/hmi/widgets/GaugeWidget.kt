@@ -2,6 +2,7 @@ package com.example.hmi.widgets
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,22 +24,33 @@ fun GaugeWidget(
         ((value - minValue) / (maxValue - minValue)).coerceIn(0f, 1f)
     } else 0f
 
+    val contentColor = LocalContentColor.current
+
+    // Added padding to prevent overlap with corner resize handle
     Column(
         modifier = modifier
-            .padding(8.dp)
-            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+            .fillMaxSize()
+            .padding(12.dp)
             .semantics { contentDescription = "Gauge for $label showing ${"%.1f".format(value)}" },
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Text(label, style = MaterialTheme.typography.labelMedium)
+        Text(
+            text = label, 
+            style = MaterialTheme.typography.labelMedium,
+            color = contentColor
+        )
         Box(contentAlignment = Alignment.Center) {
             CircularProgressIndicator(
                 progress = { progress },
-                modifier = Modifier.size(64.dp)
+                modifier = Modifier.fillMaxSize(0.8f),
+                color = contentColor,
+                trackColor = contentColor.copy(alpha = 0.2f)
             )
             Text(
                 text = "%.1f".format(value),
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                color = contentColor
             )
         }
     }

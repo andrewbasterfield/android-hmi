@@ -5,6 +5,9 @@ Auto-generated from all feature plans. Last updated: 2026-03-10
 ## Active Technologies
 - Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow), Hilt, Jetpack DataStore (003-colored-buttons)
 - Jetpack DataStore (Protobuf or Preferences) for layout persistence. (003-colored-buttons)
+- Kotlin (Latest stable) + Jetpack Compose, Hilt, Jetpack DataStore, GSON (004-ui-refinement)
+- Jetpack DataStore (Preferences) storing JSON via GSON. (004-ui-refinement)
+- Kotlin (Latest stable) + Jetpack Compose (Animation, Gestures), Kotlin Coroutines (006-smooth-grid-snapping)
 
 - Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow/SharedFlow), Hilt (001-hmi-control-panel)
 
@@ -24,10 +27,10 @@ tests/
 Kotlin (Latest stable): Follow standard conventions
 
 ## Recent Changes
-- 003-colored-buttons: Added Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow), Hilt, Jetpack DataStore
+- 006-smooth-grid-snapping: Added Kotlin (Latest stable) + Jetpack Compose (Animation, Gestures), Kotlin Coroutines
+- 004-ui-refinement: Added Kotlin (Latest stable) + Jetpack Compose, Hilt, Jetpack DataStore, GSON
+- 004-ui-refinement: Added Kotlin (Latest stable) + Jetpack Compose, Hilt, Jetpack DataStore, GSON
 
-- 001-hmi-control-panel: Added Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow/SharedFlow), Hilt
 
 <!-- MANUAL ADDITIONS START -->
-- **Workflow**: When a question is asked, provide a direct answer first. NEVER make code changes or take corrective actions based on a question unless explicitly instructed to do so in a follow-up turn.
 <!-- MANUAL ADDITIONS END -->

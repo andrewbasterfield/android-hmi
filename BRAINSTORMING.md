@@ -1,0 +1,21 @@
+# HMI Concepts & Refinements
+
+## 1. Interaction & Navigation
+- **Rename "Back" Button**: Change to **"Setup"** or **"Connection"** to better reflect its destination (PLC configuration). Add a settings icon for clarity.
+- **Smooth Snapping**:
+    - Implement **"Ghosting"**: The widget moves smoothly with the finger, while a translucent ghost box shows the predicted snap position.
+    - **Spring Animations**: Use `animateIntOffsetAsState` to make widgets "slide" into their grid cells rather than jumping.
+
+## 2. Visual Polish
+- **Dynamic Font Size**: Add a "Text Size" slider (50% - 200%) to the Edit Dialog for each widget. 
+- **Industrial Gauge Graphic**: Replace the standard `CircularProgressIndicator` with something like a simple VU bar gauge
+
+## 3. Data & Configuration
+- **JSON Import/Export**: Add a feature to view/copy the raw layout JSON and paste a new one to quickly share or backup dashboard designs.
+
+## 4. Testing & Validation
+- **Gauge Verification**: Add instrumented tests that use a "Virtual PLC" flow to drive gauge values and verify the `progress` semantic property.
+- **Grid Math**: Expand unit tests to cover edge cases like screen rotation and varying DPI densities.
+
+* Keep the screen on, like youtube or other video players?
+* Set the background canvas colour (nice if it would default to windows 95 type green)
