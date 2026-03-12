@@ -124,7 +124,7 @@ fun DashboardScreen(
                 actions = {
                     if (isEditMode) {
                         IconButton(onClick = { showDashboardSettings = true }) {
-                            Icon(Icons.Default.Settings, contentDescription = "Dashboard Appearance")
+                            Icon(Icons.Default.Palette, contentDescription = "Dashboard Appearance")
                         }
                     }
                     Button(onClick = { viewModel.toggleEditMode() }) {
@@ -260,13 +260,19 @@ fun DashboardScreen(
                                             onDragStart = { draggingOffsets[widget.id] = Offset.Zero },
                                             onDragEnd = {
                                                 scope.launch {
-                                                    // Re-calculate visual position inside the release handler to avoid stale data
                                                     val latestVisualX = animatableOffset.value.x + (draggingOffsets[widget.id]?.x ?: 0f)
                                                     val latestVisualY = animatableOffset.value.y + (draggingOffsets[widget.id]?.y ?: 0f)
                                                     
                                                     val (finalCol, finalRow) = calculateSnapCells(latestVisualX, latestVisualY, widget.colSpan, widget.rowSpan, density)
                                                     
-                                                    animatableOffset.snapTo(IntOffset(latestVisualX.roundToInt(), latestVisualY.roundToInt()))
+                                                    // FIX: Snap directly to the final grid cell pixels immediately on release.
+                                                    // This eliminates any "dead zone" where the widget is off-grid before the ViewModel updates.
+                                                    val targetPixels = IntOffset(
+                                                        with(density) { GridSystem.cellToDp(finalCol).toPx().roundToInt() },
+                                                        with(density) { GridSystem.cellToDp(finalRow).toPx().roundToInt() }
+                                                    )
+                                                    
+                                                    animatableOffset.snapTo(targetPixels)
                                                     draggingOffsets.remove(widget.id)
                                                     viewModel.updateWidgetPosition(widget.id, finalCol, finalRow)
                                                 }
@@ -288,13 +294,18 @@ fun DashboardScreen(
                             },
                             onResizeEnd = {
                                 scope.launch {
-                                    // Re-calculate visual size inside the release handler to avoid stale data
                                     val latestVisualWidth = animatableSize.value.width + (resizingOffsets[widget.id]?.x ?: 0f)
                                     val latestVisualHeight = animatableSize.value.height + (resizingOffsets[widget.id]?.y ?: 0f)
                                     
                                     val (finalColSpan, finalRowSpan) = calculateSnapSize(latestVisualWidth, latestVisualHeight, widget.column, widget.row, density)
                                     
-                                    animatableSize.snapTo(IntSize(latestVisualWidth.roundToInt(), latestVisualHeight.roundToInt()))
+                                    // FIX: Snap directly to the final grid cell size immediately on release.
+                                    val targetSize = IntSize(
+                                        with(density) { GridSystem.cellToDp(finalColSpan).toPx().roundToInt() },
+                                        with(density) { GridSystem.cellToDp(finalRowSpan).toPx().roundToInt() }
+                                    )
+                                    
+                                    animatableSize.snapTo(targetSize)
                                     resizingOffsets.remove(widget.id)
                                     viewModel.updateWidgetSize(widget.id, finalColSpan, finalRowSpan)
                                 }
