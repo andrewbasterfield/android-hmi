@@ -12,6 +12,7 @@ data class WidgetConfiguration(
     val width: Float = 100f,
     val height: Float = 100f,
     val tagAddress: String,
+    val backgroundColor: Long? = null,
     val minValue: Float? = null,
     val maxValue: Float? = null
 )

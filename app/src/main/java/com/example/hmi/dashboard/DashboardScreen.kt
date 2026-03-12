@@ -83,7 +83,8 @@ fun DashboardScreen(
                         WidgetType.BUTTON -> {
                             ButtonWidget(
                                 label = widget.tagAddress,
-                                onClick = { viewModel.onButtonPress(widget.tagAddress) }
+                                onClick = { viewModel.onButtonPress(widget.tagAddress) },
+                                backgroundColor = widget.backgroundColor
                             )
                         }
                         WidgetType.SLIDER -> {

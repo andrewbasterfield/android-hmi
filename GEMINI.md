@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2026-03-10
 
 ## Active Technologies
+- Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow), Hilt, Jetpack DataStore (003-colored-buttons)
+- Jetpack DataStore (Protobuf or Preferences) for layout persistence. (003-colored-buttons)
 
 - Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow/SharedFlow), Hilt (001-hmi-control-panel)
 
@@ -22,6 +24,7 @@ tests/
 Kotlin (Latest stable): Follow standard conventions
 
 ## Recent Changes
+- 003-colored-buttons: Added Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow), Hilt, Jetpack DataStore
 
 - 001-hmi-control-panel: Added Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow/SharedFlow), Hilt
 
