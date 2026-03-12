@@ -3,20 +3,25 @@ package com.example.hmi.dashboard
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.invisibleToUser
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -42,6 +47,7 @@ fun DashboardScreen(
     val isEditMode by viewModel.isEditMode.collectAsState()
 
     var editingWidget by remember { mutableStateOf<WidgetConfiguration?>(null) }
+    var showDashboardSettings by remember { mutableStateOf(false) }
     
     val draggingOffsets = remember { mutableStateMapOf<String, Offset>() }
     val resizingOffsets = remember { mutableStateMapOf<String, Offset>() }
@@ -74,28 +80,73 @@ fun DashboardScreen(
         )
     }
 
+    if (showDashboardSettings) {
+        DashboardSettingsDialog(
+            initialName = dashboardLayout.name,
+            initialCanvasColor = dashboardLayout.canvasColor,
+            onDismiss = { showDashboardSettings = false },
+            onConfirm = { name, color ->
+                viewModel.updateDashboardSettings(name, color)
+                showDashboardSettings = false
+            }
+        )
+    }
+
+    // Unified math for snapping to cells
+    fun calculateSnapCells(
+        visualX: Float,
+        visualY: Float,
+        colSpan: Int,
+        rowSpan: Int,
+        density: Density
+    ): Pair<Int, Int> {
+        val col = with(density) { GridSystem.dpToCell(visualX.toDp()) }.coerceIn(0, maxColumns - colSpan)
+        val row = with(density) { GridSystem.dpToCell(visualY.toDp()) }.coerceIn(0, maxRows - rowSpan)
+        return col to row
+    }
+
+    fun calculateSnapSize(
+        visualWidth: Float,
+        visualHeight: Float,
+        column: Int,
+        row: Int,
+        density: Density
+    ): Pair<Int, Int> {
+        val colSpan = with(density) { GridSystem.dpToCell(visualWidth.toDp()) }.coerceIn(1, maxColumns - column)
+        val rowSpan = with(density) { GridSystem.dpToCell(visualHeight.toDp()) }.coerceIn(1, maxRows - row)
+        return colSpan to rowSpan
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(dashboardLayout.name) },
                 actions = {
+                    if (isEditMode) {
+                        IconButton(onClick = { showDashboardSettings = true }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Dashboard Appearance")
+                        }
+                    }
                     Button(onClick = { viewModel.toggleEditMode() }) {
                         Text(if (isEditMode) "Run Mode" else "Edit Mode")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = onNavigateBack) {
-                        Icon(Icons.Default.Settings, contentDescription = null)
+                        Icon(Icons.Default.Link, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Setup")
+                        Text("Connection")
                     }
                 }
             )
         }
     ) { paddingValues ->
+        val canvasColor = dashboardLayout.canvasColor?.let { Color(it.toInt()) } ?: MaterialTheme.colorScheme.background
+        
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .background(canvasColor)
         ) {
             dashboardLayout.widgets.forEach { widget ->
                 key(widget.id) {
@@ -106,7 +157,6 @@ fun DashboardScreen(
                     val isBeingDragged = dragOffset != null
                     val isBeingResized = resizeOffset != null
 
-                    // Animatable Position
                     val animatableOffset = remember { 
                         Animatable(
                             IntOffset(
@@ -117,7 +167,6 @@ fun DashboardScreen(
                         )
                     }
 
-                    // Animatable Size
                     val animatableSize = remember {
                         Animatable(
                             IntSize(
@@ -128,26 +177,22 @@ fun DashboardScreen(
                         )
                     }
 
-                    // Position Sync
                     LaunchedEffect(widget.column, widget.row) {
-                        val target = IntOffset(
-                            with(density) { GridSystem.cellToDp(widget.column).toPx().roundToInt() },
-                            with(density) { GridSystem.cellToDp(widget.row).toPx().roundToInt() }
-                        )
                         animatableOffset.animateTo(
-                            target,
+                            IntOffset(
+                                with(density) { GridSystem.cellToDp(widget.column).toPx().roundToInt() },
+                                with(density) { GridSystem.cellToDp(widget.row).toPx().roundToInt() }
+                            ),
                             spring(GridSystem.SNAP_DAMPING, GridSystem.SNAP_STIFFNESS)
                         )
                     }
 
-                    // Size Sync
                     LaunchedEffect(widget.colSpan, widget.rowSpan) {
-                        val target = IntSize(
-                            with(density) { GridSystem.cellToDp(widget.colSpan).toPx().roundToInt() },
-                            with(density) { GridSystem.cellToDp(widget.rowSpan).toPx().roundToInt() }
-                        )
                         animatableSize.animateTo(
-                            target,
+                            IntSize(
+                                with(density) { GridSystem.cellToDp(widget.colSpan).toPx().roundToInt() },
+                                with(density) { GridSystem.cellToDp(widget.rowSpan).toPx().roundToInt() }
+                            ),
                             spring(GridSystem.SNAP_DAMPING, GridSystem.SNAP_STIFFNESS)
                         )
                     }
@@ -159,11 +204,7 @@ fun DashboardScreen(
                     val visualHeight = if (isBeingResized) animatableSize.value.height + resizeOffset!!.y else animatableSize.value.height.toFloat()
 
                     if (isBeingDragged) {
-                        val ghostColumn = GridSystem.dpToCell(with(density) { visualX.toDp() })
-                            .coerceIn(0, maxColumns - widget.colSpan)
-                        val ghostRow = GridSystem.dpToCell(with(density) { visualY.toDp() })
-                            .coerceIn(0, maxRows - widget.rowSpan)
-
+                        val (ghostCol, ghostRow) = calculateSnapCells(visualX, visualY, widget.colSpan, widget.rowSpan, density)
                         WidgetContainer(
                             backgroundColor = widget.backgroundColor,
                             alpha = 0.3f,
@@ -174,7 +215,7 @@ fun DashboardScreen(
                                 )
                                 .offset {
                                     IntOffset(
-                                        with(density) { GridSystem.cellToDp(ghostColumn).toPx() }.roundToInt(),
+                                        with(density) { GridSystem.cellToDp(ghostCol).toPx() }.roundToInt(),
                                         with(density) { GridSystem.cellToDp(ghostRow).toPx() }.roundToInt()
                                     )
                                 }
@@ -183,11 +224,7 @@ fun DashboardScreen(
                     }
 
                     if (isBeingResized) {
-                        val ghostColSpan = GridSystem.dpToCell(with(density) { visualWidth.toDp() })
-                            .coerceIn(1, maxColumns - widget.column)
-                        val ghostRowSpan = GridSystem.dpToCell(with(density) { visualHeight.toDp() })
-                            .coerceIn(1, maxRows - widget.row)
-
+                        val (ghostColSpan, ghostRowSpan) = calculateSnapSize(visualWidth, visualHeight, widget.column, widget.row, density)
                         WidgetContainer(
                             backgroundColor = widget.backgroundColor,
                             alpha = 0.3f,
@@ -223,15 +260,13 @@ fun DashboardScreen(
                                             onDragStart = { draggingOffsets[widget.id] = Offset.Zero },
                                             onDragEnd = {
                                                 scope.launch {
-                                                    val finalX = animatableOffset.value.x + (draggingOffsets[widget.id]?.x ?: 0f)
-                                                    val finalY = animatableOffset.value.y + (draggingOffsets[widget.id]?.y ?: 0f)
+                                                    // Re-calculate visual position inside the release handler to avoid stale data
+                                                    val latestVisualX = animatableOffset.value.x + (draggingOffsets[widget.id]?.x ?: 0f)
+                                                    val latestVisualY = animatableOffset.value.y + (draggingOffsets[widget.id]?.y ?: 0f)
                                                     
-                                                    val finalCol = GridSystem.dpToCell(with(density) { finalX.toDp() })
-                                                        .coerceIn(0, maxColumns - widget.colSpan)
-                                                    val finalRow = GridSystem.dpToCell(with(density) { finalY.toDp() })
-                                                        .coerceIn(0, maxRows - widget.rowSpan)
-
-                                                    animatableOffset.snapTo(IntOffset(finalX.roundToInt(), finalY.roundToInt()))
+                                                    val (finalCol, finalRow) = calculateSnapCells(latestVisualX, latestVisualY, widget.colSpan, widget.rowSpan, density)
+                                                    
+                                                    animatableOffset.snapTo(IntOffset(latestVisualX.roundToInt(), latestVisualY.roundToInt()))
                                                     draggingOffsets.remove(widget.id)
                                                     viewModel.updateWidgetPosition(widget.id, finalCol, finalRow)
                                                 }
@@ -253,15 +288,13 @@ fun DashboardScreen(
                             },
                             onResizeEnd = {
                                 scope.launch {
-                                    val fWidth = animatableSize.value.width + (resizingOffsets[widget.id]?.x ?: 0f)
-                                    val fHeight = animatableSize.value.height + (resizingOffsets[widget.id]?.y ?: 0f)
+                                    // Re-calculate visual size inside the release handler to avoid stale data
+                                    val latestVisualWidth = animatableSize.value.width + (resizingOffsets[widget.id]?.x ?: 0f)
+                                    val latestVisualHeight = animatableSize.value.height + (resizingOffsets[widget.id]?.y ?: 0f)
                                     
-                                    val finalColSpan = GridSystem.dpToCell(with(density) { fWidth.toDp() })
-                                        .coerceIn(1, maxColumns - widget.column)
-                                    val finalRowSpan = GridSystem.dpToCell(with(density) { fHeight.toDp() })
-                                        .coerceIn(1, maxRows - widget.row)
+                                    val (finalColSpan, finalRowSpan) = calculateSnapSize(latestVisualWidth, latestVisualHeight, widget.column, widget.row, density)
                                     
-                                    animatableSize.snapTo(IntSize(fWidth.roundToInt(), fHeight.roundToInt()))
+                                    animatableSize.snapTo(IntSize(latestVisualWidth.roundToInt(), latestVisualHeight.roundToInt()))
                                     resizingOffsets.remove(widget.id)
                                     viewModel.updateWidgetSize(widget.id, finalColSpan, finalRowSpan)
                                 }

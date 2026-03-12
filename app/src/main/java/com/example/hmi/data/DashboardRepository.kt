@@ -23,7 +23,18 @@ class DashboardRepository @Inject constructor(
     private val DASHBOARD_KEY = stringPreferencesKey("dashboard_layout")
     private val IP_ADDRESS_KEY = stringPreferencesKey("ip_address")
     private val PORT_KEY = intPreferencesKey("port")
+    private val KEEP_SCREEN_ON_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("keep_screen_on")
     private val gson = Gson()
+
+    val keepScreenOnFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[KEEP_SCREEN_ON_KEY] ?: true // Default to true
+    }
+
+    suspend fun saveKeepScreenOn(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[KEEP_SCREEN_ON_KEY] = enabled
+        }
+    }
 
     val dashboardLayoutFlow: Flow<DashboardLayout> = context.dataStore.data.map { preferences ->
         val json = preferences[DASHBOARD_KEY]

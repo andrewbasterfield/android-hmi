@@ -1,11 +1,13 @@
 package com.example.hmi
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -35,11 +37,25 @@ class MainActivity : ComponentActivity() {
                     // Obtain the ViewModel at the activity level to monitor global connection state
                     val connectionViewModel: com.example.hmi.connection.ConnectionViewModel = hiltViewModel()
                     val connectionState by connectionViewModel.connectionState.collectAsState()
+                    val keepScreenOnSetting by connectionViewModel.keepScreenOn.collectAsState()
                     val currentBackStackEntry by navController.currentBackStackEntryAsState()
+
+                    val isDashboard = currentBackStackEntry?.destination?.route == "dashboard"
+
+                    // Handle Keep Screen On window flag
+                    DisposableEffect(isDashboard, keepScreenOnSetting) {
+                        if (isDashboard && keepScreenOnSetting) {
+                            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        } else {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
+                        onDispose {
+                            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        }
+                    }
 
                     // Automatically return to connection screen if connection drops
                     LaunchedEffect(connectionState) {
-                        val isDashboard = currentBackStackEntry?.destination?.route == "dashboard"
                         if (isDashboard && (connectionState == ConnectionState.DISCONNECTED || connectionState == ConnectionState.ERROR)) {
                             navController.navigate("connection") {
                                 popUpTo("dashboard") { inclusive = true }

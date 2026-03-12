@@ -117,6 +117,12 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch { repository.saveLayout(newLayout) }
     }
     
+    fun updateDashboardSettings(name: String, canvasColor: Long?) {
+        val newLayout = _dashboardLayout.value.copy(name = name, canvasColor = canvasColor)
+        _dashboardLayout.value = newLayout
+        viewModelScope.launch { repository.saveLayout(newLayout) }
+    }
+
     fun addWidget(widget: WidgetConfiguration) {
         val currentWidgets = _dashboardLayout.value.widgets.toMutableList()
         currentWidgets.add(widget)

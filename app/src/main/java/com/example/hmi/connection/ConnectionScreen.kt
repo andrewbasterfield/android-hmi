@@ -67,6 +67,19 @@ fun ConnectionScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
+        val keepScreenOn by viewModel.keepScreenOn.collectAsState()
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Checkbox(
+                checked = keepScreenOn,
+                onCheckedChange = { viewModel.setKeepScreenOn(it) }
+            )
+            Text("Keep screen on while dashboard is active")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
         Button(
             onClick = {
                 val portInt = port.toIntOrNull() ?: 9999

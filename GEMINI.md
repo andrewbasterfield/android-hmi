@@ -27,8 +27,8 @@ tests/
 Kotlin (Latest stable): Follow standard conventions
 
 ## Recent Changes
+- 008-dashboard-canvas-color: Added Kotlin (Latest stable) + Jetpack Compose, Hilt, Jetpack DataStore, GSON
 - 006-smooth-grid-snapping: Added Kotlin (Latest stable) + Jetpack Compose (Animation, Gestures), Kotlin Coroutines
-- 004-ui-refinement: Added Kotlin (Latest stable) + Jetpack Compose, Hilt, Jetpack DataStore, GSON
 - 004-ui-refinement: Added Kotlin (Latest stable) + Jetpack Compose, Hilt, Jetpack DataStore, GSON
 
 

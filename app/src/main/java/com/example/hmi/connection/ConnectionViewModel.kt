@@ -28,6 +28,12 @@ class ConnectionViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = null
     )
+
+    val keepScreenOn = repository.keepScreenOnFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = true
+    )
     
     private val _hasAttemptedAutoConnect = MutableStateFlow(false)
     val hasAttemptedAutoConnect = _hasAttemptedAutoConnect.asStateFlow()
@@ -70,6 +76,12 @@ class ConnectionViewModel @Inject constructor(
         _wasUnexpectedDisconnect.value = false
         viewModelScope.launch {
             plcCommunicator.disconnect()
+        }
+    }
+
+    fun setKeepScreenOn(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.saveKeepScreenOn(enabled)
         }
     }
 }
