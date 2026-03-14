@@ -81,9 +81,9 @@ If you prefer building without Android Studio, ensure you have **JDK 17** and a 
     ```
 
 3.  **Build the APK**:
-    Run the Gradle wrapper. If your system default Java is not 17, prefix the command with `JAVA_HOME`:
+    Run the Gradle wrapper:
     ```bash
-    JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64/ ./gradlew :app:assembleDebug
+    ./gradlew :app:assembleDebug
     ```
 
 4.  **Install to Device**:

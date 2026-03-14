@@ -20,7 +20,11 @@ tests/
 
 ## Commands
 
-# Add commands for Kotlin (Latest stable)
+- **Build Project**: `./gradlew build`
+- **Assemble Debug APK**: `./gradlew :app:assembleDebug`
+- **Run Unit Tests**: `./gradlew test`
+- **Run Instrumentation Tests**: `./gradlew connectedDebugAndroidTest`
+- **Clean Project**: `./gradlew clean`
 
 ## Code Style
 
