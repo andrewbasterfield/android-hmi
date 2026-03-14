@@ -1,11 +1,13 @@
 package com.example.hmi.protocol
 
+import android.util.Log
 import kotlinx.coroutines.*
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
 import java.net.ServerSocket
 import java.net.Socket
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.random.Random
@@ -24,19 +26,30 @@ class DemoPlcServer @Inject constructor() {
     // State of tags in the demo server
     private val tagValues = mutableMapOf<String, String>()
 
+    init {
+        // Initialize with core simulated tags per spec
+        tagValues["SIM_TEMP"] = "25.5"
+        tagValues["SIM_PRESSURE"] = "101.3"
+        tagValues["SIM_STATUS"] = "false"
+        tagValues["USER_LEVEL"] = "50.0"
+    }
+
     fun start(port: Int = 9999) {
         if (isRunning) return
         isRunning = true
+        Log.d("DemoPlcServer", "Starting demo server on port $port")
         
         scope.launch {
             try {
                 serverSocket = ServerSocket(port)
+                Log.d("DemoPlcServer", "Server socket created on port $port")
                 while (isActive) {
                     val client = serverSocket?.accept() ?: break
+                    Log.d("DemoPlcServer", "Accepted connection from ${client.inetAddress}")
                     handleClient(client)
                 }
             } catch (e: Exception) {
-                // Server stopped
+                Log.e("DemoPlcServer", "Server error: ${e.message}")
             }
         }
 
@@ -56,7 +69,7 @@ class DemoPlcServer @Inject constructor() {
                 val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
                 val writer = PrintWriter(socket.getOutputStream(), true)
 
-                // Send initial state
+                // Send initial state to the new client
                 tagValues.forEach { (tag, value) ->
                     writer.println("$tag:$value")
                 }
@@ -74,7 +87,7 @@ class DemoPlcServer @Inject constructor() {
                     }
                 }
             } catch (e: Exception) {
-                // Connection closed
+                Log.d("DemoPlcServer", "Client disconnected: ${e.message}")
             } finally {
                 activeConnections.remove(socket)
                 socket.close()
@@ -94,15 +107,36 @@ class DemoPlcServer @Inject constructor() {
     }
 
     private fun simulateTagChanges() {
-        // Randomly update any tags that look like they might be sensors
-        tagValues.keys.filter { it.contains("temp", ignoreCase = true) || it.contains("level", ignoreCase = true) }
-            .forEach { tag ->
-                val current = tagValues[tag]?.toFloatOrNull() ?: 50f
-                val newVal = current + (Random.nextFloat() * 2 - 1) // Drift by +/- 1
-                val formatted = "%.2f".format(newVal)
-                tagValues[tag] = formatted
-                broadcast("$tag:$formatted")
+        // 1. Drift simulation for numeric tags
+        tagValues.keys.filter { 
+            it.contains("temp", ignoreCase = true) || 
+            it.contains("pressure", ignoreCase = true) ||
+            it.contains("level", ignoreCase = true)
+        }.forEach { tag ->
+            val current = tagValues[tag]?.toFloatOrNull() ?: 50f
+            // Adjust drift range based on tag type
+            val drift = if (tag.contains("pressure", ignoreCase = true)) {
+                Random.nextFloat() * 0.4f - 0.2f // Small pressure drift
+            } else {
+                Random.nextFloat() * 2.0f - 1.0f // Normal temp/level drift
             }
+            
+            val newVal = (current + drift).coerceIn(0f, 1000f)
+            val formatted = String.format(Locale.US, "%.2f", newVal)
+            tagValues[tag] = formatted
+            broadcast("$tag:$formatted")
+        }
+
+        // 2. Periodic toggle for status tags
+        tagValues.keys.filter { it.contains("status", ignoreCase = true) }.forEach { tag ->
+            // 10% chance to toggle every second
+            if (Random.nextFloat() < 0.1f) {
+                val current = tagValues[tag]?.toBooleanStrictOrNull() ?: false
+                val newVal = !current
+                tagValues[tag] = newVal.toString()
+                broadcast("$tag:$newVal")
+            }
+        }
     }
 
     fun stop() {

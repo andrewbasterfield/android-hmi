@@ -1,5 +1,6 @@
 package com.example.hmi.protocol
 
+import android.util.Log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import java.io.BufferedReader
@@ -21,6 +22,7 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
 
     override suspend fun connect(ipAddress: String, port: Int): Result<Unit> = withContext(Dispatchers.IO) {
         _connectionState.value = ConnectionState.CONNECTING
+        Log.d("RawTcpPlcCommunicator", "Connecting to $ipAddress:$port")
         try {
             val newSocket = Socket()
             // Set a 5-second timeout for the connection attempt
@@ -28,12 +30,14 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
             socket = newSocket
             
             _connectionState.value = ConnectionState.CONNECTED
+            Log.d("RawTcpPlcCommunicator", "Connected to $ipAddress:$port")
             
             // Start background listening loop
             startListening(newSocket)
             
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e("RawTcpPlcCommunicator", "Connection failed: ${e.message}")
             _connectionState.value = ConnectionState.ERROR
             Result.failure(e)
         }
@@ -50,11 +54,13 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
             } catch (e: Exception) {
                 // Only set ERROR if we didn't intentionally disconnect
                 if (socket == this@RawTcpPlcCommunicator.socket) {
+                    Log.e("RawTcpPlcCommunicator", "Read error: ${e.message}")
                     _connectionState.value = ConnectionState.ERROR
                 }
             } finally {
                 // Ensure we clean up if the loop ends (e.g., server closed connection)
                 if (socket == this@RawTcpPlcCommunicator.socket) {
+                    Log.d("RawTcpPlcCommunicator", "Listening loop ended")
                     disconnect()
                 }
             }
@@ -89,6 +95,7 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
     override suspend fun disconnect(): Unit = withContext(Dispatchers.IO) {
         val currentSocket = socket
         socket = null // Set to null first to prevent loop from re-triggering ERROR
+        Log.d("RawTcpPlcCommunicator", "Disconnecting")
         try {
             currentSocket?.close()
         } catch (e: Exception) {
@@ -122,6 +129,7 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
             currentSocket.getOutputStream().flush()
             Result.success(Unit)
         } catch (e: Exception) {
+            Log.e("RawTcpPlcCommunicator", "Write error: ${e.message}")
             _connectionState.value = ConnectionState.ERROR
             disconnect()
             Result.failure(e)

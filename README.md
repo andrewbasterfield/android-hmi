@@ -48,6 +48,11 @@ Tap the "Edit Mode" button in the top app bar to customize the UI.
 - **Drag-and-Drop**: Touch and hold any widget to freely drag it around the screen. Its new coordinates are saved instantly to the local DataStore state.
 - **Add Widget**: A palette appears at the bottom of the screen. Tap "Add Widget" to select a new control type (Button, Slider, Gauge) and bind it to a specific PLC tag address (e.g., `Pump1_Speed`).
 
+### 4. Demo Mode (New)
+For instant testing without any external dependencies:
+- **Connect to Local Demo Server**: Tap this button on the Connection Screen to launch a built-in simulation at `127.0.0.1:9999`.
+- **Simulated Tags**: Use `SIM_TEMP`, `SIM_PRESSURE`, or `SIM_STATUS` in your widget configurations to see live, fluctuating data immediately.
+
 ## 🏁 Getting Started
 
 ### Prerequisites

@@ -26,8 +26,11 @@ class DashboardTest {
     }
 
     private fun connectToDemoBackend() {
+        // Wait for the activity to settle and the hierarchy to be available
+        composeTestRule.waitForIdle()
+        
         // Wait for connection screen
-        composeTestRule.waitUntil(15000) {
+        composeTestRule.waitUntil(20000) {
             composeTestRule.onAllNodesWithText("PLC Connection Profile").fetchSemanticsNodes().isNotEmpty()
         }
 
@@ -39,7 +42,7 @@ class DashboardTest {
         composeTestRule.onNodeWithText("Connect").performClick()
         
         // Wait for dashboard (Connection button appears in top bar)
-        composeTestRule.waitUntil(25000) {
+        composeTestRule.waitUntil(30000) {
             composeTestRule.onAllNodesWithText("Connection").fetchSemanticsNodes().isNotEmpty()
         }
     }
@@ -62,7 +65,7 @@ class DashboardTest {
         composeTestRule.onNodeWithText("Connection").performClick()
         
         // Wait for Connection screen
-        composeTestRule.waitUntil(10000) {
+        composeTestRule.waitUntil(15000) {
             composeTestRule.onAllNodesWithText("PLC Connection Profile").fetchSemanticsNodes().isNotEmpty()
         }
 

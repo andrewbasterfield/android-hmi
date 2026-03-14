@@ -72,6 +72,16 @@ class ConnectionViewModel @Inject constructor(
         }
     }
 
+    fun connectToDemoServer() {
+        _wasUnexpectedDisconnect.value = false
+        viewModelScope.launch {
+            // We don't necessarily want to overwrite the "last known" external IP 
+            // when just playing with the demo server, but the spec says "Seamless switch".
+            // For now, we connect directly without persisting to DataStore to preserve the real PLC settings.
+            plcCommunicator.connect(DEMO_SERVER_IP, DEMO_SERVER_PORT)
+        }
+    }
+
     fun disconnect() {
         _wasUnexpectedDisconnect.value = false
         viewModelScope.launch {
@@ -83,5 +93,10 @@ class ConnectionViewModel @Inject constructor(
         viewModelScope.launch {
             repository.saveKeepScreenOn(enabled)
         }
+    }
+
+    companion object {
+        const val DEMO_SERVER_IP = "127.0.0.1"
+        const val DEMO_SERVER_PORT = 9999
     }
 }

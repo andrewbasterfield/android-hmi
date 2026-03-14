@@ -8,6 +8,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-10
 - Kotlin (Latest stable) + Jetpack Compose, Hilt, Jetpack DataStore, GSON (004-ui-refinement)
 - Jetpack DataStore (Preferences) storing JSON via GSON. (004-ui-refinement)
 - Kotlin (Latest stable) + Jetpack Compose (Animation, Gestures), Kotlin Coroutines (006-smooth-grid-snapping)
+- Kotlin (Latest stable) + Kotlin Coroutines, Jetpack Compose, Hilt (009-builtin-demo-server)
+- N/A (Server state is in-memory for the demo session) (009-builtin-demo-server)
 
 - Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow/SharedFlow), Hilt (001-hmi-control-panel)
 
@@ -31,9 +33,9 @@ tests/
 Kotlin (Latest stable): Follow standard conventions
 
 ## Recent Changes
+- 009-builtin-demo-server: Added Kotlin (Latest stable) + Kotlin Coroutines, Jetpack Compose, Hilt
 - 008-dashboard-canvas-color: Added Kotlin (Latest stable) + Jetpack Compose, Hilt, Jetpack DataStore, GSON
 - 006-smooth-grid-snapping: Added Kotlin (Latest stable) + Jetpack Compose (Animation, Gestures), Kotlin Coroutines
-- 004-ui-refinement: Added Kotlin (Latest stable) + Jetpack Compose, Hilt, Jetpack DataStore, GSON
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -91,6 +91,18 @@ fun ConnectionScreen(
             Text(if (connectionState == ConnectionState.CONNECTING) "Connecting..." else "Connect")
         }
 
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedButton(
+            onClick = {
+                viewModel.connectToDemoServer()
+            },
+            enabled = connectionState != ConnectionState.CONNECTING && connectionState != ConnectionState.CONNECTED,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Connect to Local Demo Server")
+        }
+
         if (connectionState == ConnectionState.ERROR) {
             Spacer(modifier = Modifier.height(8.dp))
             Text("Connection Error!", color = MaterialTheme.colorScheme.error)
