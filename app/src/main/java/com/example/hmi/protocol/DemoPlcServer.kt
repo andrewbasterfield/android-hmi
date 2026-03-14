@@ -43,7 +43,7 @@ class DemoPlcServer @Inject constructor() {
             try {
                 serverSocket = ServerSocket(port)
                 Log.d("DemoPlcServer", "Server socket created on port $port")
-                while (isActive) {
+                while (isRunning && isActive) {
                     val client = serverSocket?.accept() ?: break
                     Log.d("DemoPlcServer", "Accepted connection from ${client.inetAddress}")
                     handleClient(client)
@@ -55,7 +55,7 @@ class DemoPlcServer @Inject constructor() {
 
         // Start a background job to periodically update "simulated" tags
         scope.launch {
-            while (isActive) {
+            while (isRunning && isActive) {
                 delay(1000)
                 simulateTagChanges()
             }
@@ -106,12 +106,43 @@ class DemoPlcServer @Inject constructor() {
         }
     }
 
+    private var simulationStep = 0L
+
     private fun simulateTagChanges() {
-        // 1. Drift simulation for numeric tags
+        simulationStep++
+        
+        // 1. Special handling for SIM_TEMP to ensure it hits all ranges for demo
+        val tempTag = "SIM_TEMP"
+        // Cycle from 20 to 100 degrees over 60 steps (1 minute)
+        val phase = (simulationStep % 60) / 60f
+        val tempVal = 20f + (80f * (0.5f + 0.5f * kotlin.math.sin(phase * 2.0 * kotlin.math.PI).toFloat()))
+        val formattedTemp = String.format(Locale.US, "%.2f", tempVal)
+        tagValues[tempTag] = formattedTemp
+        broadcast("$tempTag:$formattedTemp")
+
+        // Update colors based on the new sine-wave value
+        val colorHex = when {
+            tempVal < 40f -> "#0000FF" // Blue
+            tempVal < 70f -> "#00FF00" // Green
+            tempVal < 90f -> "#FFA500" // Orange
+            else -> "#FF0000" // Red
+        }
+        broadcast("$tempTag.color:$colorHex")
+        
+        val stateLabel = when {
+            tempVal < 40f -> "Cold"
+            tempVal < 70f -> "Optimal"
+            tempVal < 90f -> "Warning"
+            else -> "CRITICAL"
+        }
+        broadcast("$tempTag.label:Temp ($stateLabel)")
+
+        // 2. Drift simulation for other numeric tags
         tagValues.keys.filter { 
+            it != tempTag && (
             it.contains("temp", ignoreCase = true) || 
             it.contains("pressure", ignoreCase = true) ||
-            it.contains("level", ignoreCase = true)
+            it.contains("level", ignoreCase = true))
         }.forEach { tag ->
             val current = tagValues[tag]?.toFloatOrNull() ?: 50f
             // Adjust drift range based on tag type
@@ -127,7 +158,7 @@ class DemoPlcServer @Inject constructor() {
             broadcast("$tag:$formatted")
         }
 
-        // 2. Periodic toggle for status tags
+        // 3. Periodic toggle for status tags
         tagValues.keys.filter { it.contains("status", ignoreCase = true) }.forEach { tag ->
             // 10% chance to toggle every second
             if (Random.nextFloat() < 0.1f) {
@@ -144,5 +175,13 @@ class DemoPlcServer @Inject constructor() {
         serverSocket?.close()
         activeConnections.forEach { it.close() }
         activeConnections.clear()
+    }
+
+    /**
+     * Manually broadcasts a message to all connected clients.
+     * Useful for testing protocol-driven UI updates.
+     */
+    fun sendRawMessage(message: String) {
+        broadcast(message)
     }
 }

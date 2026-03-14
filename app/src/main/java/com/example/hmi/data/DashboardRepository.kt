@@ -17,7 +17,7 @@ import javax.inject.Singleton
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "dashboard_prefs")
 
 @Singleton
-class DashboardRepository @Inject constructor(
+open class DashboardRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val DASHBOARD_KEY = stringPreferencesKey("dashboard_layout")
@@ -36,7 +36,7 @@ class DashboardRepository @Inject constructor(
         }
     }
 
-    val dashboardLayoutFlow: Flow<DashboardLayout> = context.dataStore.data.map { preferences ->
+    open val dashboardLayoutFlow: Flow<DashboardLayout> = context.dataStore.data.map { preferences ->
         val json = preferences[DASHBOARD_KEY]
         if (json.isNullOrEmpty()) {
             DashboardLayout()
@@ -49,7 +49,7 @@ class DashboardRepository @Inject constructor(
         }
     }
 
-    suspend fun saveLayout(layout: DashboardLayout) {
+    open suspend fun saveLayout(layout: DashboardLayout) {
         context.dataStore.edit { preferences ->
             preferences[DASHBOARD_KEY] = gson.toJson(layout)
         }

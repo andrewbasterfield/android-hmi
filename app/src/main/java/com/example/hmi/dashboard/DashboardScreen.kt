@@ -44,6 +44,7 @@ fun DashboardScreen(
 ) {
     val dashboardLayout by viewModel.dashboardLayout.collectAsState()
     val tagValues by viewModel.tagValues.collectAsState()
+    val sessionOverrides by viewModel.sessionOverrides.collectAsState()
     val isEditMode by viewModel.isEditMode.collectAsState()
 
     var editingWidget by remember { mutableStateOf<WidgetConfiguration?>(null) }
@@ -123,10 +124,13 @@ fun DashboardScreen(
                 title = { Text(dashboardLayout.name) },
                 actions = {
                     if (isEditMode) {
-                        IconButton(onClick = { showDashboardSettings = true }) {
-                            Icon(Icons.Default.Palette, contentDescription = "Dashboard Appearance")
+                        Button(onClick = { showDashboardSettings = true }) {
+                            Icon(Icons.Default.Settings, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Dashboard Settings")
                         }
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Button(onClick = { viewModel.toggleEditMode() }) {
                         Text(if (isEditMode) "Run Mode" else "Edit Mode")
                     }
@@ -152,6 +156,13 @@ fun DashboardScreen(
                 key(widget.id) {
                     val currentValue = tagValues[widget.tagAddress] ?: 0f
                     
+                    // Resolve transient overrides
+                    val tagOverrides = sessionOverrides[widget.tagAddress]
+                    val resolvedLabel = tagOverrides?.get("label") ?: widget.customLabel ?: widget.tagAddress
+                    val resolvedColorLong = tagOverrides?.get("color")?.let { 
+                        com.example.hmi.widgets.ColorUtils.parseHexColor(it) 
+                    } ?: widget.backgroundColor
+
                     val dragOffset = draggingOffsets[widget.id]
                     val resizeOffset = resizingOffsets[widget.id]
                     val isBeingDragged = dragOffset != null
@@ -287,7 +298,7 @@ fun DashboardScreen(
                             )
                     ) {
                         WidgetContainer(
-                            backgroundColor = widget.backgroundColor,
+                            backgroundColor = resolvedColorLong,
                             isEditMode = isEditMode,
                             onResize = { amount ->
                                 resizingOffsets[widget.id] = (resizingOffsets[widget.id] ?: Offset.Zero) + amount
@@ -315,15 +326,15 @@ fun DashboardScreen(
                             when (widget.type) {
                                 WidgetType.BUTTON -> {
                                     ButtonWidget(
-                                        label = widget.tagAddress,
+                                        label = resolvedLabel,
                                         onClick = { viewModel.onButtonPress(widget.tagAddress) },
-                                        backgroundColor = widget.backgroundColor,
+                                        backgroundColor = resolvedColorLong,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }
                                 WidgetType.SLIDER -> {
                                     SliderWidget(
-                                        label = widget.tagAddress,
+                                        label = resolvedLabel,
                                         value = currentValue,
                                         onValueChange = { viewModel.onSliderChange(widget.tagAddress, it) },
                                         valueRange = (widget.minValue ?: 0f)..(widget.maxValue ?: 100f),
@@ -332,7 +343,7 @@ fun DashboardScreen(
                                 }
                                 WidgetType.GAUGE -> {
                                     GaugeWidget(
-                                        label = widget.tagAddress,
+                                        label = resolvedLabel,
                                         value = currentValue,
                                         minValue = widget.minValue ?: 0f,
                                         maxValue = widget.maxValue ?: 100f,

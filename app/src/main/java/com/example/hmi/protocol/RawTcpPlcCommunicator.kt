@@ -18,7 +18,10 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
 
     private var socket: Socket? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val _tagUpdates = MutableSharedFlow<Pair<String, PlcValue>>(extraBufferCapacity = 64)
+    private val _tagUpdates = MutableSharedFlow<Pair<String, PlcValue>>(
+        replay = 16,
+        extraBufferCapacity = 64
+    )
 
     override suspend fun connect(ipAddress: String, port: Int): Result<Unit> = withContext(Dispatchers.IO) {
         _connectionState.value = ConnectionState.CONNECTING
@@ -67,25 +70,34 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
         }
     }
 
-    private suspend fun parseLine(line: String) {
+    internal suspend fun parseLine(line: String) {
         try {
             val parts = line.split(":", limit = 2)
             if (parts.size == 2) {
-                val tagName = parts[0].trim()
+                val fullTagName = parts[0].trim()
                 val valueStr = parts[1].trim()
                 
-                val value = when {
-                    valueStr.equals("true", ignoreCase = true) -> PlcValue.BooleanValue(true)
-                    valueStr.equals("false", ignoreCase = true) -> PlcValue.BooleanValue(false)
-                    valueStr.contains(".") -> PlcValue.FloatValue(valueStr.toFloat())
-                    else -> {
-                        val intVal = valueStr.toIntOrNull()
-                        if (intVal != null) PlcValue.IntValue(intVal) 
-                        else PlcValue.FloatValue(valueStr.toFloat())
+                // Check for attribute suffix (e.g., TAG.color)
+                val dotIndex = fullTagName.lastIndexOf('.')
+                if (dotIndex != -1) {
+                    val tagName = fullTagName.substring(0, dotIndex)
+                    val attribute = fullTagName.substring(dotIndex + 1)
+                    // Emit as a specialized string update for attributes
+                    _tagUpdates.emit("$tagName.$attribute" to PlcValue.StringValue(valueStr))
+                } else {
+                    // Standard value update
+                    val value = when {
+                        valueStr.equals("true", ignoreCase = true) -> PlcValue.BooleanValue(true)
+                        valueStr.equals("false", ignoreCase = true) -> PlcValue.BooleanValue(false)
+                        valueStr.contains(".") -> PlcValue.FloatValue(valueStr.toFloat())
+                        else -> {
+                            val intVal = valueStr.toIntOrNull()
+                            if (intVal != null) PlcValue.IntValue(intVal) 
+                            else PlcValue.FloatValue(valueStr.toFloat())
+                        }
                     }
+                    _tagUpdates.emit(fullTagName to value)
                 }
-                
-                _tagUpdates.emit(tagName to value)
             }
         } catch (e: Exception) {
             // Ignore malformed
@@ -105,10 +117,25 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
         }
     }
 
+    override val attributeUpdates: Flow<Triple<String, String, String>> = _tagUpdates
+        .filter { it.first.contains('.') }
+        .map { (fullKey, value) ->
+            val dotIndex = fullKey.lastIndexOf('.')
+            val tag = fullKey.substring(0, dotIndex)
+            val attr = fullKey.substring(dotIndex + 1)
+            Triple(tag, attr, (value as? PlcValue.StringValue)?.value ?: "")
+        }
+
     override fun observeTag(tagAddress: String): Flow<PlcValue> {
         return _tagUpdates
             .filter { it.first == tagAddress }
             .map { it.second }
+    }
+
+    override fun observeAttribute(tagAddress: String, attribute: String): Flow<String> {
+        return _tagUpdates
+            .filter { it.first == "$tagAddress.$attribute" }
+            .map { (it.second as? PlcValue.StringValue)?.value ?: "" }
     }
 
     override suspend fun writeTag(tagAddress: String, value: PlcValue): Result<Unit> = withContext(Dispatchers.IO) {
@@ -123,6 +150,7 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
                     is PlcValue.IntValue -> value.value
                     is PlcValue.FloatValue -> value.value
                     is PlcValue.BooleanValue -> value.value
+                    is PlcValue.StringValue -> value.value
                 }
             }\n"
             currentSocket.getOutputStream().write(message.toByteArray())

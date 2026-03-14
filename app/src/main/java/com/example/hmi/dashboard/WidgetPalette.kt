@@ -72,6 +72,7 @@ fun WidgetConfigDialog(
 ) {
     var selectedType by remember { mutableStateOf(initialWidget?.type ?: WidgetType.BUTTON) }
     var tagAddress by remember { mutableStateOf(initialWidget?.tagAddress ?: "") }
+    var customLabel by remember { mutableStateOf(initialWidget?.customLabel ?: "") }
     var selectedColor by remember { mutableStateOf(initialWidget?.backgroundColor) }
     var colSpan by remember { mutableStateOf(initialWidget?.colSpan?.toString() ?: "1") }
     var rowSpan by remember { mutableStateOf(initialWidget?.rowSpan?.toString() ?: "1") }
@@ -101,6 +102,16 @@ fun WidgetConfigDialog(
                     value = tagAddress,
                     onValueChange = { tagAddress = it },
                     label = { Text("Tag Address") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = customLabel,
+                    onValueChange = { customLabel = it },
+                    label = { Text("Custom Label (Optional)") },
+                    placeholder = { Text(tagAddress.ifEmpty { "Enter label" }) },
                     modifier = Modifier.fillMaxWidth()
                 )
                 
@@ -157,6 +168,7 @@ fun WidgetConfigDialog(
                     onConfirm(
                         (initialWidget ?: WidgetConfiguration(type = selectedType, tagAddress = tagAddress)).copy(
                             tagAddress = tagAddress,
+                            customLabel = customLabel.ifBlank { null },
                             backgroundColor = selectedColor,
                             colSpan = colSpan.toIntOrNull() ?: 1,
                             rowSpan = rowSpan.toIntOrNull() ?: 1,

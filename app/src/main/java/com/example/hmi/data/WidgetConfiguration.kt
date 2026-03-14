@@ -12,6 +12,7 @@ data class WidgetConfiguration(
     val colSpan: Int = 1,
     val rowSpan: Int = 1,
     val tagAddress: String,
+    val customLabel: String? = null,
     val backgroundColor: Long? = null,
     val minValue: Float? = null,
     val maxValue: Float? = null

@@ -29,6 +29,16 @@ interface PlcCommunicator {
      * @param tagAddress The address string (e.g., "40001" for Modbus, "ns=2;s=MyTag" for OPC UA)
      */
     fun observeTag(tagAddress: String): Flow<PlcValue>
+
+    /**
+     * A flow of all attribute updates received (TagAddress, AttributeName, Value).
+     */
+    val attributeUpdates: Flow<Triple<String, String, String>>
+
+    /**
+     * Reads updates for a specific attribute of a tag (e.g., "label", "color").
+     */
+    fun observeAttribute(tagAddress: String, attribute: String): Flow<String>
     
     /**
      * Writes a value to a specific tag or memory address.
@@ -45,4 +55,5 @@ sealed class PlcValue {
     data class IntValue(val value: Int) : PlcValue()
     data class FloatValue(val value: Float) : PlcValue()
     data class BooleanValue(val value: Boolean) : PlcValue()
+    data class StringValue(val value: String) : PlcValue()
 }

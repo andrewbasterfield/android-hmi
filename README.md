@@ -52,6 +52,10 @@ Tap the "Edit Mode" button in the top app bar to customize the UI.
 For instant testing without any external dependencies:
 - **Connect to Local Demo Server**: Tap this button on the Connection Screen to launch a built-in simulation at `127.0.0.1:9999`.
 - **Simulated Tags**: Use `SIM_TEMP`, `SIM_PRESSURE`, or `SIM_STATUS` in your widget configurations to see live, fluctuating data immediately.
+- **Dynamic Attributes (New)**: Update widget appearance remotely via the protocol using `TAG.ATTR:VALUE`:
+    - `MOTOR_01.label:Main Pump` (Updates display name)
+    - `MOTOR_01.color:#FF0000` (Updates background color to red)
+- **JSON Import/Export (New)**: Backup or share layouts via raw JSON in Dashboard Settings.
 
 ## 🏁 Getting Started
 
