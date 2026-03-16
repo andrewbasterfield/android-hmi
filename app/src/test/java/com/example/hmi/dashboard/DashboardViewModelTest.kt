@@ -64,7 +64,7 @@ class DashboardViewModelTest {
             }
         }
 
-        viewModel = DashboardViewModel(plcCommunicator, repository)
+        viewModel = DashboardViewModel(plcCommunicator, repository, testDispatcher)
     }
 
     @After

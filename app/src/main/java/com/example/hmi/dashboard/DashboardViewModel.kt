@@ -6,13 +6,13 @@ import com.example.hmi.data.DashboardLayout
 import com.example.hmi.data.DashboardRepository
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
+import com.example.hmi.di.IoDispatcher
 import com.example.hmi.protocol.PlcCommunicator
 import com.example.hmi.protocol.PlcValue
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -24,10 +24,9 @@ import javax.inject.Inject
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val plcCommunicator: PlcCommunicator,
-    private val repository: DashboardRepository
+    private val repository: DashboardRepository,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
-
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 
     private val _dashboardLayout = MutableStateFlow(DashboardLayout())
     val dashboardLayout: StateFlow<DashboardLayout> = _dashboardLayout.asStateFlow()
