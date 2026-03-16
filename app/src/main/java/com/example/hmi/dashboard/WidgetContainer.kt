@@ -38,7 +38,7 @@ fun WidgetContainer(
     content: @Composable () -> Unit
 ) {
     // FIX: Default to theme's Primary color instead of Surface to match Buttons and ColorPicker preview
-    val baseBg = backgroundColor?.let { Color(it.toInt()) } ?: MaterialTheme.colorScheme.primary
+    val baseBg = backgroundColor?.let { Color(it.toULong()) } ?: MaterialTheme.colorScheme.primary
     val bg = baseBg.copy(alpha = alpha)
     val contentColor = ColorUtils.getContrastColor(baseBg).copy(alpha = alpha)
     val borderColor = contentColor.copy(alpha = 0.3f * alpha)

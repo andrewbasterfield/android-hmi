@@ -17,13 +17,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.hmi.data.ColorPalette
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
+import com.example.hmi.ui.theme.HmiPalette
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +77,7 @@ fun WidgetConfigDialog(
     var selectedColor by remember { mutableStateOf(initialWidget?.backgroundColor) }
     var colSpan by remember { mutableStateOf(initialWidget?.colSpan?.toString() ?: "1") }
     var rowSpan by remember { mutableStateOf(initialWidget?.rowSpan?.toString() ?: "1") }
+    var fontSizeMultiplier by remember { mutableFloatStateOf(initialWidget?.fontSizeMultiplier ?: 1.0f) }
     var minValue by remember { mutableStateOf(initialWidget?.minValue?.toString() ?: "0") }
     var maxValue by remember { mutableStateOf(initialWidget?.maxValue?.toString() ?: "100") }
 
@@ -133,6 +135,15 @@ fun WidgetConfigDialog(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Font Size: ${"%.1f".format(fontSizeMultiplier)}x", style = MaterialTheme.typography.labelMedium)
+                Slider(
+                    value = fontSizeMultiplier,
+                    onValueChange = { fontSizeMultiplier = it },
+                    valueRange = 0.5f..2.5f,
+                    steps = 20
+                )
+
                 if (selectedType == WidgetType.SLIDER || selectedType == WidgetType.GAUGE) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -170,6 +181,7 @@ fun WidgetConfigDialog(
                             tagAddress = tagAddress,
                             customLabel = customLabel.ifBlank { null },
                             backgroundColor = selectedColor,
+                            fontSizeMultiplier = fontSizeMultiplier,
                             colSpan = colSpan.toIntOrNull() ?: 1,
                             rowSpan = rowSpan.toIntOrNull() ?: 1,
                             minValue = minValue.toFloatOrNull(),
@@ -202,17 +214,21 @@ fun ColorPicker(
     selectedColor: Long?,
     onColorSelected: (Long?) -> Unit
 ) {
+    val colorList = remember {
+        HmiPalette.WidgetBackgrounds.map { it.value.toLong() }
+    }
+
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 4.dp)
     ) {
-        items(ColorPalette.Items) { (name, value) ->
+        items(colorList) { value ->
             val isSelected = selectedColor == value
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(if (value != null) Color(value.toInt()) else MaterialTheme.colorScheme.primary)
+                    .background(Color(value.toULong()))
                     .border(
                         width = if (isSelected) 3.dp else 1.dp,
                         color = if (isSelected) MaterialTheme.colorScheme.outline else Color.LightGray,
@@ -220,7 +236,7 @@ fun ColorPicker(
                     )
                     .clickable { onColorSelected(value) }
                     .semantics {
-                        contentDescription = "Select $name color"
+                        contentDescription = "Select color"
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -228,11 +244,7 @@ fun ColorPicker(
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = null,
-                        tint = if (value != null) {
-                            com.example.hmi.widgets.ColorUtils.getContrastColor(Color(value.toInt()))
-                        } else {
-                            MaterialTheme.colorScheme.onPrimary
-                        }
+                        tint = Color.Black
                     )
                 }
             }

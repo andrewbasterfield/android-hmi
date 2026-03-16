@@ -46,9 +46,19 @@ Once connected, the app defaults to "Run Mode", which is the live operational st
 ### 3. Dashboard: Edit Mode
 Tap the "Edit Mode" button in the top app bar to customize the UI.
 - **Drag-and-Drop**: Touch and hold any widget to freely drag it around the screen. Its new coordinates are saved instantly to the local DataStore state.
-- **Add Widget**: A palette appears at the bottom of the screen. Tap "Add Widget" to select a new control type (Button, Slider, Gauge) and bind it to a specific PLC tag address (e.g., `Pump1_Speed`).
+- **Add Widget**: A palette appears at the bottom of the screen. Tap "Add Widget" to select a new control type (Button, Slider, Gauge).
+- **Customization**:
+    - **Labels**: Override the tag address with a human-readable name.
+    - **Background Color**: Choose from a high-contrast curated palette (Black text is enforced for legibility).
+    - **Font Scaling**: Adjust text size per widget (0.5x to 2.5x) using the "Font Size" slider.
 
-### 4. Demo Mode (New)
+### 4. Dark Mode & Cockpit UI
+The application is optimized for high-clarity industrial environments:
+- **Pure Black Background**: Default for all dashboards to ensure high contrast and power saving.
+- **Cockpit-Style Typography**: Uses optimized Roboto weights and spacing for maximum readability.
+- **Automatic Migration**: Existing layouts are automatically migrated to the new dark theme on first run.
+
+### 5. Demo Mode
 For instant testing without any external dependencies:
 - **Connect to Local Demo Server**: Tap this button on the Connection Screen to launch a built-in simulation at `127.0.0.1:9999`.
 - **Simulated Tags**: Use `SIM_TEMP`, `SIM_PRESSURE`, or `SIM_STATUS` in your widget configurations to see live, fluctuating data immediately.

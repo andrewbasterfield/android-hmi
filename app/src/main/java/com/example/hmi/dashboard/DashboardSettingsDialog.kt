@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.hmi.ui.theme.HmiPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -33,7 +34,7 @@ fun DashboardSettingsDialog(
     onConfirm: (String, Long?) -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
-    var selectedColor by remember { mutableStateOf(initialCanvasColor) }
+    var selectedColor by remember { mutableStateOf<Long?>(initialCanvasColor ?: 0xFF000000uL.toLong()) }
     var showJsonTransfer by remember { mutableStateOf(false) }
 
     if (showJsonTransfer) {

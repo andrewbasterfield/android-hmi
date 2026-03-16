@@ -13,6 +13,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-10
 - Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines, Hilt, Jetpack DataStore (010-widget-dynamic-attributes)
 - Jetpack DataStore (persistent configuration), In-memory StateFlow (transient session overrides) (010-widget-dynamic-attributes)
 - Kotlin (Latest stable) + Jetpack Compose, GSON, Hilt, Jetpack DataStore (011-layout-json-transfer)
+- Kotlin 1.9+ + Jetpack Compose, Hilt, Jetpack DataStore, GSON (012-dark-mode-ui-refinement)
+- Jetpack DataStore (Preferences with JSON serialization) (012-dark-mode-ui-refinement)
 
 - Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow/SharedFlow), Hilt (001-hmi-control-panel)
 
@@ -36,9 +38,9 @@ tests/
 Kotlin (Latest stable): Follow standard conventions
 
 ## Recent Changes
+- 012-dark-mode-ui-refinement: Added Kotlin 1.9+ + Jetpack Compose, Hilt, Jetpack DataStore, GSON
 - 011-layout-json-transfer: Added Kotlin (Latest stable) + Jetpack Compose, GSON, Hilt, Jetpack DataStore
 - 010-widget-dynamic-attributes: Added Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines, Hilt, Jetpack DataStore
-- 009-builtin-demo-server: Added Kotlin (Latest stable) + Kotlin Coroutines, Jetpack Compose, Hilt
 
 
 <!-- MANUAL ADDITIONS START -->

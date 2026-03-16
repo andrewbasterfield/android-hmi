@@ -49,8 +49,12 @@ class DashboardViewModel @Inject constructor(
     init {
         viewModelScope.launch(ioDispatcher) {
             repository.dashboardLayoutFlow.collect { layout ->
-                // If it's a completely empty layout (first run), we could seed it, 
-                // but let's just use whatever is loaded (or the default empty).
+                if (!layout.isDarkThemeMigrated) {
+                    val migrated = migrateToDarkMode(layout)
+                    repository.saveLayout(migrated)
+                    // The flow will emit again with the migrated layout
+                    return@collect
+                }
                 _dashboardLayout.value = layout
             }
         }
@@ -158,6 +162,14 @@ class DashboardViewModel @Inject constructor(
         val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
         _dashboardLayout.value = newLayout
         viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+    }
+
+    private fun migrateToDarkMode(layout: DashboardLayout): DashboardLayout {
+        return layout.copy(
+            canvasColor = 0xFF000000uL.toLong(),
+            isDarkThemeMigrated = true,
+            widgets = layout.widgets.map { it.copy(fontSizeMultiplier = 1.0f) }
+        )
     }
 
     fun exportLayoutToJson(): String {

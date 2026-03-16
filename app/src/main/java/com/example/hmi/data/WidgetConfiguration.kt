@@ -14,6 +14,7 @@ data class WidgetConfiguration(
     val tagAddress: String,
     val customLabel: String? = null,
     val backgroundColor: Long? = null,
+    val fontSizeMultiplier: Float = 1.0f,
     val minValue: Float? = null,
     val maxValue: Float? = null
 )

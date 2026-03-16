@@ -144,7 +144,7 @@ fun DashboardScreen(
             )
         }
     ) { paddingValues ->
-        val canvasColor = dashboardLayout.canvasColor?.let { Color(it.toInt()) } ?: MaterialTheme.colorScheme.background
+        val canvasColor = dashboardLayout.canvasColor?.let { Color(it.toULong()) } ?: MaterialTheme.colorScheme.background
         
         Box(
             modifier = Modifier
@@ -329,6 +329,7 @@ fun DashboardScreen(
                                         label = resolvedLabel,
                                         onClick = { viewModel.onButtonPress(widget.tagAddress) },
                                         backgroundColor = resolvedColorLong,
+                                        fontSizeMultiplier = widget.fontSizeMultiplier,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }
@@ -338,6 +339,7 @@ fun DashboardScreen(
                                         value = currentValue,
                                         onValueChange = { viewModel.onSliderChange(widget.tagAddress, it) },
                                         valueRange = (widget.minValue ?: 0f)..(widget.maxValue ?: 100f),
+                                        fontSizeMultiplier = widget.fontSizeMultiplier,
                                         modifier = Modifier.fillMaxSize().padding(8.dp)
                                     )
                                 }
@@ -347,6 +349,7 @@ fun DashboardScreen(
                                         value = currentValue,
                                         minValue = widget.minValue ?: 0f,
                                         maxValue = widget.maxValue ?: 100f,
+                                        fontSizeMultiplier = widget.fontSizeMultiplier,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }

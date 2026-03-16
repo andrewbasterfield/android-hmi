@@ -20,6 +20,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.hmi.connection.ConnectionScreen
 import com.example.hmi.dashboard.DashboardScreen
 import com.example.hmi.protocol.ConnectionState
+import com.example.hmi.ui.theme.HmiTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -27,7 +28,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
+            HmiTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
