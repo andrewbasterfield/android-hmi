@@ -24,7 +24,28 @@ open class DashboardRepository @Inject constructor(
     private val IP_ADDRESS_KEY = stringPreferencesKey("ip_address")
     private val PORT_KEY = intPreferencesKey("port")
     private val KEEP_SCREEN_ON_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("keep_screen_on")
+    private val RECENT_COLORS_KEY = stringPreferencesKey("recent_colors")
     private val gson = Gson()
+
+    val recentColorsFlow: Flow<List<Long>> = context.dataStore.data.map { preferences ->
+        val json = preferences[RECENT_COLORS_KEY]
+        if (json.isNullOrEmpty()) {
+            emptyList()
+        } else {
+            try {
+                val type = object : com.google.gson.reflect.TypeToken<List<Long>>() {}.type
+                gson.fromJson(json, type)
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
+    }
+
+    suspend fun saveRecentColors(colors: List<Long>) {
+        context.dataStore.edit { preferences ->
+            preferences[RECENT_COLORS_KEY] = gson.toJson(colors)
+        }
+    }
 
     val keepScreenOnFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[KEEP_SCREEN_ON_KEY] ?: true // Default to true

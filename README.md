@@ -49,12 +49,13 @@ Tap the "Edit Mode" button in the top app bar to customize the UI.
 - **Add Widget**: A palette appears at the bottom of the screen. Tap "Add Widget" to select a new control type (Button, Slider, Gauge).
 - **Customization**:
     - **Labels**: Override the tag address with a human-readable name.
-    - **Background Color**: Choose from a high-contrast curated palette (Black text is enforced for legibility).
+    - **Background Color**: Choose from a high-contrast curated palette, or use the **Custom Color Picker** (Hex entry, visual spectrum, and recent colors). Text color automatically toggles between Black and White to ensure WCAG-compliant contrast.
     - **Font Scaling**: Adjust text size per widget (0.5x to 2.5x) using the "Font Size" slider.
 
 ### 4. Dark Mode & Cockpit UI
 The application is optimized for high-clarity industrial environments:
 - **Pure Black Background**: Default for all dashboards to ensure high contrast and power saving.
+- **Custom Color Picker**: Advanced tabbed interface for brand matching and safety colors.
 - **Cockpit-Style Typography**: Uses optimized Roboto weights and spacing for maximum readability.
 - **Automatic Migration**: Existing layouts are automatically migrated to the new dark theme on first run.
 

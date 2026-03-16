@@ -52,6 +52,7 @@ class ThemeMigrationTest {
             )
         )
         whenever(repository.dashboardLayoutFlow).thenReturn(flowOf(legacyLayout))
+        whenever(repository.recentColorsFlow).thenReturn(flowOf(emptyList()))
 
         // Act: Initialize the ViewModel
         val viewModel = DashboardViewModel(plcCommunicator, repository, testDispatcher)

@@ -1,32 +1,21 @@
 package com.example.hmi.dashboard
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
-import com.example.hmi.ui.theme.HmiPalette
+import com.example.hmi.ui.components.HmiColorPicker
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WidgetPalette(
     onAddWidget: (WidgetConfiguration) -> Unit,
@@ -67,6 +56,7 @@ fun WidgetPalette(
 @Composable
 fun WidgetConfigDialog(
     initialWidget: WidgetConfiguration? = null,
+    viewModel: DashboardViewModel = hiltViewModel(),
     onDismiss: () -> Unit,
     onConfirm: (WidgetConfiguration) -> Unit,
     onDelete: (() -> Unit)? = null
@@ -80,6 +70,7 @@ fun WidgetConfigDialog(
     var fontSizeMultiplier by remember { mutableFloatStateOf(initialWidget?.fontSizeMultiplier ?: 1.0f) }
     var minValue by remember { mutableStateOf(initialWidget?.minValue?.toString() ?: "0") }
     var maxValue by remember { mutableStateOf(initialWidget?.maxValue?.toString() ?: "100") }
+    val recentColors by viewModel.recentColors.collectAsState()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -167,9 +158,13 @@ fun WidgetConfigDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Background Color", style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                ColorPicker(
+                HmiColorPicker(
                     selectedColor = selectedColor,
-                    onColorSelected = { selectedColor = it }
+                    onColorSelected = { 
+                        selectedColor = it 
+                        if (it != null) viewModel.saveRecentColor(it)
+                    },
+                    recentColors = recentColors
                 )
             }
         },
@@ -207,47 +202,4 @@ fun WidgetConfigDialog(
             }
         }
     )
-}
-
-@Composable
-fun ColorPicker(
-    selectedColor: Long?,
-    onColorSelected: (Long?) -> Unit
-) {
-    val colorList = remember {
-        HmiPalette.WidgetBackgrounds.map { it.value.toLong() }
-    }
-
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp)
-    ) {
-        items(colorList) { value ->
-            val isSelected = selectedColor == value
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Color(value.toULong()))
-                    .border(
-                        width = if (isSelected) 3.dp else 1.dp,
-                        color = if (isSelected) MaterialTheme.colorScheme.outline else Color.LightGray,
-                        shape = CircleShape
-                    )
-                    .clickable { onColorSelected(value) }
-                    .semantics {
-                        contentDescription = "Select color"
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        tint = Color.Black
-                    )
-                }
-            }
-        }
-    }
 }

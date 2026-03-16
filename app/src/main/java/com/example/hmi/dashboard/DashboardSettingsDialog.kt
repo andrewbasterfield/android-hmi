@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.hmi.ui.components.HmiColorPicker
 import com.example.hmi.ui.theme.HmiPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -36,6 +37,7 @@ fun DashboardSettingsDialog(
     var name by remember { mutableStateOf(initialName) }
     var selectedColor by remember { mutableStateOf<Long?>(initialCanvasColor ?: 0xFF000000uL.toLong()) }
     var showJsonTransfer by remember { mutableStateOf(false) }
+    val recentColors by viewModel.recentColors.collectAsState()
 
     if (showJsonTransfer) {
         JsonTransferDialog(
@@ -64,9 +66,13 @@ fun DashboardSettingsDialog(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Canvas Background Color", style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                ColorPicker(
+                HmiColorPicker(
                     selectedColor = selectedColor,
-                    onColorSelected = { selectedColor = it }
+                    onColorSelected = { 
+                        selectedColor = it 
+                        if (it != null) viewModel.saveRecentColor(it)
+                    },
+                    recentColors = recentColors
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))

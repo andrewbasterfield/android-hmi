@@ -44,9 +44,18 @@ class DashboardViewModel @Inject constructor(
     private val _importResult = MutableSharedFlow<Result<Unit>>(replay = 0)
     val importResult: SharedFlow<Result<Unit>> = _importResult
 
+    private val _recentColors = MutableStateFlow<List<Long>>(emptyList())
+    val recentColors: StateFlow<List<Long>> = _recentColors.asStateFlow()
+
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
     init {
+        viewModelScope.launch(ioDispatcher) {
+            repository.recentColorsFlow.collect { colors ->
+                _recentColors.value = colors
+            }
+        }
+
         viewModelScope.launch(ioDispatcher) {
             repository.dashboardLayoutFlow.collect { layout ->
                 if (!layout.isDarkThemeMigrated) {
@@ -162,6 +171,17 @@ class DashboardViewModel @Inject constructor(
         val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
         _dashboardLayout.value = newLayout
         viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+    }
+
+    fun saveRecentColor(color: Long) {
+        val current = _recentColors.value.toMutableList()
+        current.remove(color)
+        current.add(0, color)
+        val updated = current.take(8)
+        _recentColors.value = updated
+        viewModelScope.launch(ioDispatcher) {
+            repository.saveRecentColors(updated)
+        }
     }
 
     private fun migrateToDarkMode(layout: DashboardLayout): DashboardLayout {

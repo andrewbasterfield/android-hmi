@@ -3,6 +3,7 @@ package com.example.hmi.widgets
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,7 +26,7 @@ fun GaugeWidget(
         ((value - minValue) / (maxValue - minValue)).coerceIn(0f, 1f)
     } else 0f
 
-    val contentColor = Color.Black
+    val contentColor = LocalContentColor.current
 
     // Added padding to prevent overlap with corner resize handle
     Column(

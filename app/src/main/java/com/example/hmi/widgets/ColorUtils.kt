@@ -36,10 +36,27 @@ object ColorUtils {
      * to ensure maximum readability (WCAG 2.1 compliance).
      */
     fun getContrastColor(backgroundColor: Color): Color {
-        return if (backgroundColor.luminance() > 0.5f) {
-            Color.Black
-        } else {
+        return if (isDark(backgroundColor)) {
             Color.White
+        } else {
+            Color.Black
         }
+    }
+
+    /**
+     * Returns true if the color is considered "dark" (luminance < 0.5).
+     */
+    fun isDark(color: Color): Boolean {
+        return color.luminance() < 0.5f
+    }
+
+    /**
+     * Formats a color value as a 6-digit hex string (e.g., "FF0000").
+     */
+    fun formatHexColor(color: Color): String {
+        val r = (color.red * 255).toInt()
+        val g = (color.green * 255).toInt()
+        val b = (color.blue * 255).toInt()
+        return String.format("%02X%02X%02X", r, g, b)
     }
 }

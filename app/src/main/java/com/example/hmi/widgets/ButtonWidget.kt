@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -33,15 +34,15 @@ fun ButtonWidget(
         colors = if (bg != null) {
             ButtonDefaults.buttonColors(
                 containerColor = bg,
-                contentColor = Color.Black
+                contentColor = LocalContentColor.current
             )
         } else {
-            ButtonDefaults.buttonColors(contentColor = Color.Black)
+            ButtonDefaults.buttonColors(contentColor = LocalContentColor.current)
         }
     ) {
         Text(
             text = label, 
-            color = Color.Black,
+            color = LocalContentColor.current,
             fontSize = MaterialTheme.typography.bodyLarge.fontSize * fontSizeMultiplier
         )
     }

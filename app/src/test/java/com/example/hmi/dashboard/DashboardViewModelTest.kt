@@ -54,6 +54,7 @@ class DashboardViewModelTest {
         
         repository = mock<DashboardRepository> {
             on { dashboardLayoutFlow } doReturn layoutFlow
+            on { recentColorsFlow } doReturn MutableStateFlow(emptyList())
         }
         
         // Mock saveLayout to update our flow

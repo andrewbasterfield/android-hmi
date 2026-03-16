@@ -1,13 +1,12 @@
 package com.example.hmi.dashboard
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
-import androidx.compose.ui.test.performClick
 import com.example.hmi.TestActivity
-import com.example.hmi.data.ColorPalette
+import com.example.hmi.ui.components.HmiColorPicker
+import com.example.hmi.ui.theme.HmiPalette
+import com.example.hmi.widgets.ColorUtils
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Assert.assertEquals
@@ -24,52 +23,51 @@ class ColorPickerTest {
     val composeTestRule = createAndroidComposeRule<TestActivity>()
 
     @Test
-    fun colorPicker_displaysAllColors() {
+    fun colorPicker_displaysAllPaletteColors() {
         composeTestRule.setContent {
-            ColorPicker(
+            HmiColorPicker(
                 selectedColor = null,
                 onColorSelected = {}
             )
         }
 
-        ColorPalette.Items.forEach { (name, _) ->
-            composeTestRule.onNodeWithContentDescription("Select $name color").assertIsDisplayed()
+        HmiPalette.WidgetBackgrounds.forEach { color ->
+            val hex = ColorUtils.formatHexColor(color)
+            composeTestRule.onNodeWithContentDescription("Select color $hex").assertIsDisplayed()
         }
     }
 
     @Test
     fun colorPicker_selectsColorOnClick() {
-        var selectedColor: Long? = 123L // Initial dummy value
+        var selectedColor: Long? = null
         
         composeTestRule.setContent {
-            ColorPicker(
+            HmiColorPicker(
                 selectedColor = selectedColor,
                 onColorSelected = { selectedColor = it }
             )
         }
 
-        // Click on "Red" swatch
-        composeTestRule.onNodeWithContentDescription("Select Red color")
+        val firstColor = HmiPalette.WidgetBackgrounds[0]
+        val hex = ColorUtils.formatHexColor(firstColor)
+        
+        composeTestRule.onNodeWithContentDescription("Select color $hex")
             .performClick()
 
-        // Verify selection callback
-        val redValue = ColorPalette.Red.toArgb().toLong()
-        assertEquals(redValue, selectedColor)
+        assertEquals(firstColor.value.toLong(), selectedColor)
     }
 
     @Test
-    fun colorPicker_showsCheckmarkOnSelectedColor() {
-        val redValue = ColorPalette.Red.toArgb().toLong()
-
+    fun colorPicker_showsTabs() {
         composeTestRule.setContent {
-            ColorPicker(
-                selectedColor = redValue,
+            HmiColorPicker(
+                selectedColor = null,
                 onColorSelected = {}
             )
         }
 
-        // In the implementation, the checkmark is inside the box but doesn't have 
-        // its own description. We just ensure the node is displayed.
-        composeTestRule.onNodeWithContentDescription("Select Red color").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Palette").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Spectrum").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Hex").assertIsDisplayed()
     }
 }

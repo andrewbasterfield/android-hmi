@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -23,7 +24,7 @@ fun SliderWidget(
     modifier: Modifier = Modifier,
     fontSizeMultiplier: Float = 1.0f
 ) {
-    val contentColor = Color.Black
+    val contentColor = LocalContentColor.current
     
     // Added padding to ensure slider doesn't overlap corner resize handle
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
