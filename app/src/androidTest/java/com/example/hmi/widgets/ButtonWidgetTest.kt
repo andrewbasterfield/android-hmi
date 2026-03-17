@@ -1,7 +1,6 @@
 package com.example.hmi.widgets
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -35,7 +34,8 @@ class ButtonWidgetTest {
 
     @Test
     fun buttonWidget_rendersWithCustomColor() {
-        val customColor = ColorPalette.Red.toArgb().toLong()
+        // Use internal value for custom color to match ButtonWidget expectation
+        val customColor = ColorPalette.Red.value.toLong()
 
         composeTestRule.setContent {
             ButtonWidget(

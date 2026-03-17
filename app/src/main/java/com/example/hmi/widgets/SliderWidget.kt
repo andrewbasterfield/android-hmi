@@ -22,16 +22,23 @@ fun SliderWidget(
     onValueChange: (Float) -> Unit,
     valueRange: ClosedFloatingPointRange<Float>,
     modifier: Modifier = Modifier,
-    fontSizeMultiplier: Float = 1.0f
+    backgroundColor: Long? = null,
+    fontSizeMultiplier: Float = 1.0f,
+    textColorOverride: String? = null
 ) {
-    val contentColor = LocalContentColor.current
+    val bg = backgroundColor?.let { ColorUtils.toColor(it) }
+    val contentColor = when (textColorOverride) {
+        "BLACK" -> Color.Black
+        "WHITE" -> Color.White
+        else -> bg?.let { ColorUtils.getIndustrialContrastColor(it) } ?: LocalContentColor.current
+    }
     
     // Added padding to ensure slider doesn't overlap corner resize handle
     Column(modifier = modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
         Text(
             text = "$label: ${"%.2f".format(value)}",
             color = contentColor,
-            fontSize = MaterialTheme.typography.bodyLarge.fontSize * fontSizeMultiplier
+            fontSize = (MaterialTheme.typography.bodyLarge.fontSize * 2) * fontSizeMultiplier
         )
         Slider(
             value = value,

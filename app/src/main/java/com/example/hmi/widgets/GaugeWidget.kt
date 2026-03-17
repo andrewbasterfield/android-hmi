@@ -20,13 +20,20 @@ fun GaugeWidget(
     minValue: Float,
     maxValue: Float,
     modifier: Modifier = Modifier,
-    fontSizeMultiplier: Float = 1.0f
+    backgroundColor: Long? = null,
+    fontSizeMultiplier: Float = 1.0f,
+    textColorOverride: String? = null
 ) {
     val progress = if (maxValue > minValue) {
         ((value - minValue) / (maxValue - minValue)).coerceIn(0f, 1f)
     } else 0f
 
-    val contentColor = LocalContentColor.current
+    val bg = backgroundColor?.let { ColorUtils.toColor(it) }
+    val contentColor = when (textColorOverride) {
+        "BLACK" -> Color.Black
+        "WHITE" -> Color.White
+        else -> bg?.let { ColorUtils.getIndustrialContrastColor(it) } ?: LocalContentColor.current
+    }
 
     // Added padding to prevent overlap with corner resize handle
     Column(
@@ -41,7 +48,7 @@ fun GaugeWidget(
             text = label, 
             style = MaterialTheme.typography.labelMedium,
             color = contentColor,
-            fontSize = MaterialTheme.typography.labelMedium.fontSize * fontSizeMultiplier
+            fontSize = (MaterialTheme.typography.labelMedium.fontSize * 2) * fontSizeMultiplier
         )
         Box(contentAlignment = Alignment.Center) {
             CircularProgressIndicator(
@@ -54,7 +61,7 @@ fun GaugeWidget(
                 text = "%.1f".format(value),
                 style = MaterialTheme.typography.bodySmall,
                 color = contentColor,
-                fontSize = MaterialTheme.typography.bodySmall.fontSize * fontSizeMultiplier
+                fontSize = (MaterialTheme.typography.bodySmall.fontSize * 2) * fontSizeMultiplier
             )
         }
     }

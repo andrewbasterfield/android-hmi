@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.hmi.ui.components.HmiColorPicker
 import com.example.hmi.ui.theme.HmiPalette
+import com.example.hmi.ui.theme.IndustrialShape
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -35,9 +36,8 @@ fun DashboardSettingsDialog(
     onConfirm: (String, Long?) -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
-    var selectedColor by remember { mutableStateOf<Long?>(initialCanvasColor ?: 0xFF000000uL.toLong()) }
+    var selectedColor by remember { mutableStateOf<Long?>(initialCanvasColor ?: HmiPalette.Black.value.toLong()) }
     var showJsonTransfer by remember { mutableStateOf(false) }
-    val recentColors by viewModel.recentColors.collectAsState()
 
     if (showJsonTransfer) {
         JsonTransferDialog(
@@ -50,6 +50,7 @@ fun DashboardSettingsDialog(
         onDismissRequest = onDismiss,
         title = { Text("Dashboard Settings") },
         modifier = Modifier.fillMaxWidth(0.95f),
+        shape = IndustrialShape.Standard, // US1: 8dp rounded corners
         text = {
             Column(
                 modifier = Modifier
@@ -70,9 +71,7 @@ fun DashboardSettingsDialog(
                     selectedColor = selectedColor,
                     onColorSelected = { 
                         selectedColor = it 
-                        if (it != null) viewModel.saveRecentColor(it)
-                    },
-                    recentColors = recentColors
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -81,9 +80,10 @@ fun DashboardSettingsDialog(
                 
                 OutlinedButton(
                     onClick = { showJsonTransfer = true },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), // A11Y-001
+                    shape = IndustrialShape.Standard
                 ) {
-                    Icon(Icons.Default.ImportExport, contentDescription = null)
+                    Icon(Icons.Default.ImportExport, contentDescription = "JSON Transfer") // A11Y-002
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("JSON Transfer (Import/Export)")
                 }
@@ -136,6 +136,7 @@ fun JsonTransferDialog(
         onDismissRequest = onDismiss,
         title = { Text("JSON Transfer") },
         modifier = Modifier.fillMaxWidth(0.95f),
+        shape = IndustrialShape.Standard, // US1: 8dp rounded corners
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
@@ -169,9 +170,10 @@ fun JsonTransferDialog(
                             clipboardManager.setText(AnnotatedString(viewModel.exportLayoutToJson()))
                             Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
                         },
-                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp), // A11Y-001
+                        shape = IndustrialShape.Standard
                     ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = null)
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy to clipboard") // A11Y-002
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Copy")
                     }
@@ -180,9 +182,10 @@ fun JsonTransferDialog(
                         onClick = {
                             viewModel.importLayoutFromJson(jsonText)
                         },
-                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp), // A11Y-001
+                        shape = IndustrialShape.Standard
                     ) {
-                        Icon(Icons.Default.FileDownload, contentDescription = null)
+                        Icon(Icons.Default.FileDownload, contentDescription = "Import from JSON") // A11Y-002
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Import")
                     }

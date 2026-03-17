@@ -9,25 +9,33 @@ import androidx.compose.ui.graphics.luminance
 object ColorUtils {
     /**
      * Parses a hex color string (e.g., "#FF0000" or "FF0000") into a Long.
-     * Supports both RRGGBB and AARRGGBB formats.
+     * Returns the internal Compose Color value (64-bit ULong) as a Long.
      */
     fun parseHexColor(hex: String): Long? {
         return try {
             val cleaned = hex.removePrefix("#")
-            val colorLong = when (cleaned.length) {
-                6 -> {
-                    // RRGGBB -> AARRGGBB (fully opaque)
-                    ("FF" + cleaned).toLong(16)
-                }
-                8 -> {
-                    // AARRGGBB
-                    cleaned.toLong(16)
-                }
+            val argb = when (cleaned.length) {
+                6 -> ("FF" + cleaned).toLong(16).toInt()
+                8 -> cleaned.toLong(16).toInt()
                 else -> return null
             }
-            colorLong
+            // Standardize on internal Compose Color representation for consistency
+            Color(argb).value.toLong()
         } catch (e: Exception) {
             null
+        }
+    }
+
+    /**
+     * Safely converts a Long (which could be an ARGB Int or an internal ULong) to a Color.
+     */
+    fun toColor(value: Long): Color {
+        // Internal ULong representation for sRGB always has bits 62 or 63 set.
+        // A safe heuristic for this project is checking if it's within standard 32-bit ARGB range.
+        return if (value > 0 && value <= 0xFFFFFFFFL) {
+            Color(value.toInt())
+        } else {
+            Color(value.toULong())
         }
     }
 
@@ -40,6 +48,24 @@ object ColorUtils {
             Color.White
         } else {
             Color.Black
+        }
+    }
+
+    /**
+     * Determines the contrast color for the "Modern Industrial" aesthetic.
+     * Prioritizes Black text (#000000) for vibrant colors, but switches to White text (#FFFFFF)
+     * if the 4.5:1 contrast ratio (WCAG AA) cannot be met.
+     */
+    fun getIndustrialContrastColor(backgroundColor: Color): Color {
+        val bgLuminance = backgroundColor.luminance()
+        
+        // Calculate contrast ratio for Black text: (bgL + 0.05) / (0.0 + 0.05)
+        val blackContrast = (bgLuminance + 0.05f) / 0.05f
+        
+        return if (blackContrast >= 4.5f) {
+            Color.Black
+        } else {
+            Color.White
         }
     }
 

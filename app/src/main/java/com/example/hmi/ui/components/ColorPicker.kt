@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.*
@@ -27,7 +26,6 @@ import com.example.hmi.widgets.ColorUtils
 
 enum class PickerTab(val label: String, val icon: ImageVector) {
     Palette("Palette", Icons.Default.Palette),
-    Spectrum("Spectrum", Icons.Default.ColorLens),
     Hex("Hex", Icons.Default.TextFields)
 }
 
@@ -35,7 +33,6 @@ enum class PickerTab(val label: String, val icon: ImageVector) {
 fun HmiColorPicker(
     selectedColor: Long?,
     onColorSelected: (Long?) -> Unit,
-    recentColors: List<Long> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     var activeTab by remember { mutableStateOf(PickerTab.Palette) }
@@ -53,7 +50,7 @@ fun HmiColorPicker(
             }
         }
 
-        Box(modifier = Modifier.height(200.dp).fillMaxWidth()) {
+        Box(modifier = Modifier.height(120.dp).fillMaxWidth()) {
             when (activeTab) {
                 PickerTab.Palette -> {
                     PaletteView(
@@ -64,21 +61,9 @@ fun HmiColorPicker(
                         }
                     )
                 }
-                PickerTab.Spectrum -> {
-                    SpectrumPicker(
-                        selectedColor = currentSelection?.let { Color(it.toULong()) } ?: Color.White,
-                        onColorSelected = { color ->
-                            val longVal = color.value.toLong()
-                            if (longVal != currentSelection) {
-                                currentSelection = longVal
-                                onColorSelected(longVal)
-                            }
-                        }
-                    )
-                }
                 PickerTab.Hex -> {
                     HexEntryField(
-                        initialColor = currentSelection?.let { Color(it.toULong()) } ?: Color.Transparent,
+                        initialColor = currentSelection?.let { ColorUtils.toColor(it) } ?: Color.Transparent,
                         onColorChanged = { color ->
                             val longVal = color?.value?.toLong()
                             if (longVal != currentSelection) {
@@ -90,35 +75,6 @@ fun HmiColorPicker(
                 }
             }
         }
-
-        if (recentColors.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                "Recent Colors",
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            RecentColorsRow(
-                colors = recentColors,
-                selectedColor = currentSelection,
-                onColorSelected = {
-                    currentSelection = it
-                    onColorSelected(it)
-                }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(
-            onClick = {
-                currentSelection = null
-                onColorSelected(null)
-            },
-            modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp),
-            colors = ButtonDefaults.filledTonalButtonColors()
-        ) {
-            Text("Reset to Default")
-        }
     }
 }
 
@@ -127,7 +83,8 @@ fun PaletteView(
     selectedColor: Long?,
     onColorSelected: (Long?) -> Unit
 ) {
-    val colors = remember { HmiPalette.WidgetBackgrounds.map { it.value.toLong() } }
+    // Include null (Default) as the first item in the palette
+    val colors = remember { listOf(null) + HmiPalette.WidgetBackgrounds.map { it.value.toLong() } }
     
     LazyRow(
         modifier = Modifier.fillMaxSize(),
@@ -146,35 +103,13 @@ fun PaletteView(
 }
 
 @Composable
-fun RecentColorsRow(
-    colors: List<Long>,
-    selectedColor: Long?,
-    onColorSelected: (Long?) -> Unit
-) {
-    LazyRow(
-        modifier = Modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(colors) { colorLong ->
-            ColorItem(
-                colorLong = colorLong,
-                isSelected = selectedColor == colorLong,
-                onClick = { onColorSelected(colorLong) },
-                size = 32.dp
-            )
-        }
-    }
-}
-
-@Composable
 fun ColorItem(
-    colorLong: Long,
+    colorLong: Long?,
     isSelected: Boolean,
     onClick: () -> Unit,
     size: androidx.compose.ui.unit.Dp = 48.dp
 ) {
-    val color = Color(colorLong.toULong())
+    val color = colorLong?.let { ColorUtils.toColor(it) } ?: Color.Transparent
     Box(
         modifier = Modifier
             .size(size)
@@ -186,14 +121,26 @@ fun ColorItem(
                 shape = CircleShape
             )
             .clickable { onClick() }
-            .semantics { contentDescription = "Select color ${ColorUtils.formatHexColor(color)}" },
+            .semantics { 
+                contentDescription = colorLong?.let { 
+                    "Select color ${ColorUtils.formatHexColor(ColorUtils.toColor(it))}" 
+                } ?: "Reset to default color"
+            },
         contentAlignment = Alignment.Center
     ) {
-        if (isSelected) {
+        if (colorLong == null) {
+            // Visual for "Default" / "None"
+            Icon(
+                imageVector = Icons.Default.Palette,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.size(size / 2)
+            )
+        } else if (isSelected) {
             Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = if (com.example.hmi.widgets.ColorUtils.isDark(Color(colorLong.toULong()))) Color.White else Color.Black,
+                tint = if (ColorUtils.isDark(color)) Color.White else Color.Black,
                 modifier = Modifier.size(size / 2)
             )
         }

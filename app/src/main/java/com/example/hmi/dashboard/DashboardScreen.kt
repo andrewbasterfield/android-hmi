@@ -218,6 +218,8 @@ fun DashboardScreen(
                         val (ghostCol, ghostRow) = calculateSnapCells(visualX, visualY, widget.colSpan, widget.rowSpan, density)
                         WidgetContainer(
                             backgroundColor = widget.backgroundColor,
+                            colSpan = widget.colSpan,
+                            rowSpan = widget.rowSpan,
                             alpha = 0.3f,
                             modifier = Modifier
                                 .size(
@@ -238,6 +240,8 @@ fun DashboardScreen(
                         val (ghostColSpan, ghostRowSpan) = calculateSnapSize(visualWidth, visualHeight, widget.column, widget.row, density)
                         WidgetContainer(
                             backgroundColor = widget.backgroundColor,
+                            colSpan = ghostColSpan,
+                            rowSpan = ghostRowSpan,
                             alpha = 0.3f,
                             modifier = Modifier
                                 .size(
@@ -299,7 +303,10 @@ fun DashboardScreen(
                     ) {
                         WidgetContainer(
                             backgroundColor = resolvedColorLong,
+                            colSpan = widget.colSpan,
+                            rowSpan = widget.rowSpan,
                             isEditMode = isEditMode,
+                            textColorOverride = widget.textColorOverride,
                             onResize = { amount ->
                                 resizingOffsets[widget.id] = (resizingOffsets[widget.id] ?: Offset.Zero) + amount
                             },
@@ -330,6 +337,7 @@ fun DashboardScreen(
                                         onClick = { viewModel.onButtonPress(widget.tagAddress) },
                                         backgroundColor = resolvedColorLong,
                                         fontSizeMultiplier = widget.fontSizeMultiplier,
+                                        textColorOverride = widget.textColorOverride,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }
@@ -339,7 +347,9 @@ fun DashboardScreen(
                                         value = currentValue,
                                         onValueChange = { viewModel.onSliderChange(widget.tagAddress, it) },
                                         valueRange = (widget.minValue ?: 0f)..(widget.maxValue ?: 100f),
+                                        backgroundColor = resolvedColorLong,
                                         fontSizeMultiplier = widget.fontSizeMultiplier,
+                                        textColorOverride = widget.textColorOverride,
                                         modifier = Modifier.fillMaxSize().padding(8.dp)
                                     )
                                 }
@@ -349,7 +359,9 @@ fun DashboardScreen(
                                         value = currentValue,
                                         minValue = widget.minValue ?: 0f,
                                         maxValue = widget.maxValue ?: 100f,
+                                        backgroundColor = resolvedColorLong,
                                         fontSizeMultiplier = widget.fontSizeMultiplier,
+                                        textColorOverride = widget.textColorOverride,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }

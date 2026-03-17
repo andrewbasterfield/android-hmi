@@ -111,8 +111,8 @@ fun HexEntryField(
             ) {
                 if (previewColor != Color.Transparent) {
                     Text(
-                        text = if (ColorUtils.isDark(previewColor)) "ABC" else "abc",
-                        color = ColorUtils.getContrastColor(previewColor),
+                        text = "ABC",
+                        color = ColorUtils.getIndustrialContrastColor(previewColor),
                         style = MaterialTheme.typography.labelSmall
                     )
                 }

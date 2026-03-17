@@ -2,19 +2,17 @@ package com.example.hmi.dashboard
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
 import com.example.hmi.ui.components.HmiColorPicker
+import com.example.hmi.ui.theme.IndustrialShape
 
 @Composable
 fun WidgetPalette(
@@ -37,6 +35,7 @@ fun WidgetPalette(
         modifier = modifier
             .fillMaxWidth()
             .padding(16.dp),
+        shape = IndustrialShape.Standard, // US1: 8dp rounded corners
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -45,7 +44,11 @@ fun WidgetPalette(
                 .padding(8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Button(onClick = { showDialog = true }) {
+            Button(
+                onClick = { showDialog = true },
+                modifier = Modifier.heightIn(min = 48.dp), // A11Y-001
+                shape = IndustrialShape.Standard
+            ) {
                 Text("Add Widget")
             }
         }
@@ -68,15 +71,40 @@ fun WidgetConfigDialog(
     var colSpan by remember { mutableStateOf(initialWidget?.colSpan?.toString() ?: "1") }
     var rowSpan by remember { mutableStateOf(initialWidget?.rowSpan?.toString() ?: "1") }
     var fontSizeMultiplier by remember { mutableFloatStateOf(initialWidget?.fontSizeMultiplier ?: 1.0f) }
+    var textColorOverride by remember { mutableStateOf(initialWidget?.textColorOverride) }
     var minValue by remember { mutableStateOf(initialWidget?.minValue?.toString() ?: "0") }
     var maxValue by remember { mutableStateOf(initialWidget?.maxValue?.toString() ?: "100") }
-    val recentColors by viewModel.recentColors.collectAsState()
+
+    // Adaptive default size logic: Calculate required columns based on text length and font size
+    val calculatedColSpan = remember(tagAddress, customLabel, fontSizeMultiplier) {
+        val text = customLabel.ifBlank { tagAddress }
+        if (text.isEmpty()) 1
+        else {
+            // Heuristic: ~0.6 chars per sp width, 80dp cell size
+            // Base font size is 18sp (doubled to 36sp in the widget layout)
+            val baseFontSize = 18f 
+            val charWidthSp = (baseFontSize * 2) * 0.6f * fontSizeMultiplier
+            val totalWidthSp = text.length * charWidthSp
+            // sp to dp is roughly 1:1 on standard density, use as safe minimum
+            val requiredCells = (totalWidthSp / 80f).toInt().coerceAtLeast(1)
+            // Limit to reasonable dashboard width (e.g. 8 cells)
+            requiredCells.coerceAtMost(8)
+        }
+    }
+
+    // Auto-apply calculated size for NEW widgets or if current size is 1
+    LaunchedEffect(calculatedColSpan) {
+        if (initialWidget == null || colSpan == "1") {
+            colSpan = calculatedColSpan.toString()
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (initialWidget == null) "Add Widget" else "Edit Widget") },
+        shape = IndustrialShape.Standard, // US1: 8dp rounded corners
         text = {
-            Column {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 if (initialWidget == null) {
                     Text("Type", style = MaterialTheme.typography.labelMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -131,9 +159,26 @@ fun WidgetConfigDialog(
                 Slider(
                     value = fontSizeMultiplier,
                     onValueChange = { fontSizeMultiplier = it },
-                    valueRange = 0.5f..2.5f,
+                    valueRange = 0.0f..2.0f,
                     steps = 20
                 )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Text Color", style = MaterialTheme.typography.labelMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                val options = listOf("Auto" to null, "Black" to "BLACK", "White" to "WHITE")
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    options.forEachIndexed { index, (label, value) ->
+                        SegmentedButton(
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                            onClick = { textColorOverride = value },
+                            selected = textColorOverride == value
+                        ) {
+                            Text(label)
+                        }
+                    }
+                }
 
                 if (selectedType == WidgetType.SLIDER || selectedType == WidgetType.GAUGE) {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -162,9 +207,7 @@ fun WidgetConfigDialog(
                     selectedColor = selectedColor,
                     onColorSelected = { 
                         selectedColor = it 
-                        if (it != null) viewModel.saveRecentColor(it)
-                    },
-                    recentColors = recentColors
+                    }
                 )
             }
         },
@@ -177,26 +220,35 @@ fun WidgetConfigDialog(
                             customLabel = customLabel.ifBlank { null },
                             backgroundColor = selectedColor,
                             fontSizeMultiplier = fontSizeMultiplier,
+                            textColorOverride = textColorOverride,
                             colSpan = colSpan.toIntOrNull() ?: 1,
                             rowSpan = rowSpan.toIntOrNull() ?: 1,
                             minValue = minValue.toFloatOrNull(),
                             maxValue = maxValue.toFloatOrNull()
                         )
                     )
-                }
+                },
+                modifier = Modifier.heightIn(min = 48.dp) // A11Y-001
             ) {
                 Text("Save")
             }
         },
         dismissButton = {
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 if (onDelete != null) {
-                    IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    TextButton(
+                        onClick = onDelete,
+                        modifier = Modifier.heightIn(min = 48.dp), // A11Y-001
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) {
+                        Text("Delete")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                TextButton(onClick = onDismiss) {
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.heightIn(min = 48.dp) // A11Y-001
+                ) {
                     Text("Cancel")
                 }
             }

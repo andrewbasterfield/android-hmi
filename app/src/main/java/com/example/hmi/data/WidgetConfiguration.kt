@@ -15,6 +15,7 @@ data class WidgetConfiguration(
     val customLabel: String? = null,
     val backgroundColor: Long? = null,
     val fontSizeMultiplier: Float = 1.0f,
+    val textColorOverride: String? = null, // "BLACK", "WHITE", or null (AUTO)
     val minValue: Float? = null,
     val maxValue: Float? = null
 )

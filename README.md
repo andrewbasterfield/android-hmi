@@ -52,9 +52,13 @@ Tap the "Edit Mode" button in the top app bar to customize the UI.
     - **Background Color**: Choose from a high-contrast curated palette, or use the **Custom Color Picker** (Hex entry, visual spectrum, and recent colors). Text color automatically toggles between Black and White to ensure WCAG-compliant contrast.
     - **Font Scaling**: Adjust text size per widget (0.5x to 2.5x) using the "Font Size" slider.
 
-### 4. Dark Mode & Cockpit UI
+### 4. Modern Industrial UI & Cockpit Style
 The application is optimized for high-clarity industrial environments:
+- **Adaptive Rounded corners**: Widgets and dialogs feature 8dp rounded corners (scaled to 4dp for 1x1 widgets) to distinguish interactive zones.
 - **Pure Black Background**: Default for all dashboards to ensure high contrast and power saving.
+- **Black Text Mandate**: All vibrant and light widget backgrounds use Black (#000000) text by default for a physical, tactile feel.
+- **Hybrid Contrast**: System automatically switches to White text for dark backgrounds (L < 0.2) to maintain WCAG-compliant 4.5:1 contrast.
+- **Subtle Borders**: 1dp borders align with rounded corner paths to ensure widget visibility on the black canvas.
 - **Custom Color Picker**: Advanced tabbed interface for brand matching and safety colors.
 - **Cockpit-Style Typography**: Uses optimized Roboto weights and spacing for maximum readability.
 - **Automatic Migration**: Existing layouts are automatically migrated to the new dark theme on first run.

@@ -1,18 +1,15 @@
 package com.example.hmi.widgets
 
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import com.example.hmi.widgets.ColorUtils
+import androidx.compose.ui.unit.dp
+import com.example.hmi.ui.theme.IndustrialShape
 
 @Composable
 fun ButtonWidget(
@@ -20,30 +17,37 @@ fun ButtonWidget(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     backgroundColor: Long? = null,
-    fontSizeMultiplier: Float = 1.0f
+    fontSizeMultiplier: Float = 1.0f,
+    textColorOverride: String? = null
 ) {
-    val bg = backgroundColor?.let { Color(it.toULong()) }
-    val contentColor = bg?.let { ColorUtils.getContrastColor(it) } ?: Color.Unspecified
+    val bg = backgroundColor?.let { ColorUtils.toColor(it) }
+    // US2: Industrial Hybrid Contrast, respecting manual override
+    val contentColor = when (textColorOverride) {
+        "BLACK" -> Color.Black
+        "WHITE" -> Color.White
+        else -> bg?.let { ColorUtils.getIndustrialContrastColor(it) } ?: LocalContentColor.current
+    }
 
     Button(
         onClick = onClick, 
         modifier = modifier
             .fillMaxSize()
+            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp) // A11Y-001
             .semantics { contentDescription = "Button for $label" },
-        shape = RectangleShape, // Button fills the square container
+        shape = IndustrialShape.Standard, // US1: 8dp rounded corners for buttons
         colors = if (bg != null) {
             ButtonDefaults.buttonColors(
                 containerColor = bg,
-                contentColor = LocalContentColor.current
+                contentColor = contentColor
             )
         } else {
-            ButtonDefaults.buttonColors(contentColor = LocalContentColor.current)
+            ButtonDefaults.buttonColors(contentColor = contentColor)
         }
     ) {
         Text(
             text = label, 
-            color = LocalContentColor.current,
-            fontSize = MaterialTheme.typography.bodyLarge.fontSize * fontSizeMultiplier
+            color = contentColor,
+            fontSize = (MaterialTheme.typography.bodyLarge.fontSize * 2) * fontSizeMultiplier
         )
     }
 }

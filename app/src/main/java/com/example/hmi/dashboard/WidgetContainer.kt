@@ -13,6 +13,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
@@ -20,36 +21,54 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.example.hmi.ui.theme.WidgetShapes
 import com.example.hmi.widgets.ColorUtils
 
 /**
  * A uniform container for all HMI widgets.
- * Provides square edges, a contrasting border, and background color support.
+ * Provides adaptive rounded edges, a contrasting border, and hybrid contrast support.
  */
 @Composable
 fun WidgetContainer(
     backgroundColor: Long?,
     modifier: Modifier = Modifier,
+    colSpan: Int = 1,
+    rowSpan: Int = 1,
     isEditMode: Boolean = false,
     alpha: Float = 1f,
+    textColorOverride: String? = null,
     onResize: (Offset) -> Unit = {},
     onResizeEnd: () -> Unit = {},
     onEditClick: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
     // FIX: Default to theme's Primary color instead of Surface to match Buttons and ColorPicker preview
-    val baseBg = backgroundColor?.let { Color(it.toULong()) } ?: MaterialTheme.colorScheme.primary
+    val baseBg = backgroundColor?.let { ColorUtils.toColor(it) } ?: MaterialTheme.colorScheme.primary
     val bg = baseBg.copy(alpha = alpha)
-    val contentColor = ColorUtils.getContrastColor(baseBg).copy(alpha = alpha)
-    val borderColor = contentColor.copy(alpha = 0.3f * alpha)
+
+    // US2: Use Industrial Hybrid Contrast logic, respecting manual override if present
+    val baseContentColor = when (textColorOverride) {
+        "BLACK" -> Color.Black
+        "WHITE" -> Color.White
+        else -> ColorUtils.getIndustrialContrastColor(baseBg)
+    }
+    val contentColor = baseContentColor.copy(alpha = alpha)
+
+    // FR-006: Subtle 1dp border (15% white)
+    val borderColor = Color.White.copy(alpha = 0.15f * alpha)
+
+    // US1: Adaptive Rounded Corners
+    val shape = WidgetShapes.getShapeForSize(colSpan, rowSpan)
 
     // Using a Box here to allow the ResizeHandle to overlap the edges without being clipped
     Box(modifier = modifier) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(shape), // Ensure content is clipped to rounded corners
             color = bg,
             border = BorderStroke(1.dp, borderColor),
-            shape = RectangleShape
+            shape = shape // US3: Border follows the rounded path
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {
                 Box(modifier = Modifier.fillMaxSize()) {

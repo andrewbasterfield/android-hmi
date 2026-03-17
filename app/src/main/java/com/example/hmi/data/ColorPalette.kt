@@ -1,7 +1,6 @@
 package com.example.hmi.data
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 
 /**
  * Industrial-standard colors available in the HMI.
@@ -19,19 +18,19 @@ object ColorPalette {
     val White = Color(0xFFFFFFFF)
 
     /**
-     * List of colors available for selection, mapped to their ARGB Long values.
+     * List of colors available for selection, mapped to their 64-bit internal ULong values.
      * "Default" is represented as null to use theme-standard colors.
      */
     val Items = listOf(
-        "White" to White.toArgb().toLong(),
+        "White" to White.value.toLong(),
         "Default" to null,
-        "Red" to Red.toArgb().toLong(),
-        "Green" to Green.toArgb().toLong(),
-        "Blue" to Blue.toArgb().toLong(),
-        "Cyan" to Cyan.toArgb().toLong(),
-        "Magenta" to Magenta.toArgb().toLong(),
-        "Yellow" to Yellow.toArgb().toLong(),
-        "Gray" to Gray.toArgb().toLong(),
-        "Black" to Black.toArgb().toLong()
+        "Red" to Red.value.toLong(),
+        "Green" to Green.value.toLong(),
+        "Blue" to Blue.value.toLong(),
+        "Cyan" to Cyan.value.toLong(),
+        "Magenta" to Magenta.value.toLong(),
+        "Yellow" to Yellow.value.toLong(),
+        "Gray" to Gray.value.toLong(),
+        "Black" to Black.value.toLong()
     )
 }
