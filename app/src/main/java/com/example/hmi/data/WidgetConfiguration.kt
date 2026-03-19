@@ -17,5 +17,6 @@ data class WidgetConfiguration(
     val fontSizeMultiplier: Float = 1.0f,
     val textColorOverride: String? = null, // "BLACK", "WHITE", or null (AUTO)
     val minValue: Float? = null,
-    val maxValue: Float? = null
+    val maxValue: Float? = null,
+    val colorZones: List<GaugeZone> = emptyList()
 )

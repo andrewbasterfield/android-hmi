@@ -100,6 +100,9 @@
 - **A11Y-001**: All interactive elements MUST have minimum touch targets of 48x48dp.
 - **A11Y-002**: Meaningful images and icons MUST include content descriptions for screen readers.
 - **A11Y-003**: UI MUST support dynamic text scaling and adapt to device font sizes without breaking layouts.
+- **UI-001**: UI MUST follow the "Clarity by Design" principle, ensuring high contrast and readability.
+- **UI-002**: UI MUST prioritize essential data and use progressive disclosure to maintain low cognitive load.
+- **UI-003**: UI MUST exclude non-functional decorative elements or gimmicks.
 
 ### Key Entities *(include if feature involves data)*
 

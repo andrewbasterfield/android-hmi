@@ -7,5 +7,6 @@ data class DashboardLayout(
     val name: String = "Default Layout",
     val canvasColor: Long? = 0xFF000000uL.toLong(),
     val widgets: List<WidgetConfiguration> = emptyList(),
-    val isDarkThemeMigrated: Boolean = false
+    val isDarkThemeMigrated: Boolean = false,
+    val hapticFeedbackEnabled: Boolean = true
 )

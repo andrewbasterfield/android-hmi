@@ -93,7 +93,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T014 [US1] Implement [UseCase] for business logic (depends on T012, T013)
 - [ ] T015 [US1] Implement [ViewModel] with state management in `feature/[feature_name]/src/main/java/.../[ViewModel].kt`
 - [ ] T016 [US1] Create Jetpack Compose UI in `feature/[feature_name]/src/main/java/.../[Screen].kt`
-- [ ] T017 [US1] Verify Accessibility (content descriptions, touch targets) for new UI components
+- [ ] T017 [US1] Verify Accessibility & UI Standards (touch targets, content descriptions, clarity, cognitive load, no gimmicks) for new UI components
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 

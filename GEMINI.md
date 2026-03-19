@@ -38,6 +38,7 @@ tests/
 Kotlin (Latest stable): Follow standard conventions
 
 ## Recent Changes
+- 015-ui-animations-gauge-improvement: Implemented 3D tactile button feedback (Scale + Elevation + Offset), intelligent "Reverse-Video" color swap logic, aviation-style 270° Canvas gauges with dynamic color zones, and "Nice Number" scale tick algorithm. Added layout-level haptic feedback toggle. Updated project Constitution to v1.1.0.
 - 014-modern-industrial-ui: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 013-custom-color-picker: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 012-dark-mode-ui-refinement: Added Kotlin 1.9+ + Jetpack Compose, Hilt, Jetpack DataStore, GSON

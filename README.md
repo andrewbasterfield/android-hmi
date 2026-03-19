@@ -2,6 +2,25 @@
 
 An industrial HMI (Human-Machine Interface) and SCADA application built for Android, designed to interface with PLCs over TCP/IP. This app allows engineers to create highly customizable control panels with intuitive drag-and-drop tools and real-time monitoring capabilities.
 
+## 🧠 HMI Design Philosophy: The Industrial Cockpit
+
+This project is built on the belief that a machine operator is essentially a **pilot for the factory floor**. We apply **Aviation Glass Cockpit (EFIS)** principles to industrial HMI design to ensure maximum situational awareness under stress.
+
+### 1. Functional Minimalism (The Dark Cockpit)
+Inspired by modern aircraft, we use a **Pure Black (#000000) canvas**. This reduces eye strain, saves power on AMOLED panels, and ensures that critical data (Green/Yellow/Red) stands out without visual noise from the UI chrome.
+
+### 2. Spatial Consistency (Dials vs. Tapes)
+Pilots don't just read numbers; they recognize the **angle of a needle**. Our **270° Circular Gauges** provide instant spatial context, allowing operators to assess system health at a glance without needing to parse precise digits.
+
+### 3. High-Contrast "Cockpit" Typography
+We utilize optimized **Roboto weights and spacing** (Cockpit Style) to ensure data is legible even on vibrating mounting arms or in poor lighting conditions.
+
+### 4. Tactile Digital Feedback
+In a high-vibration environment, visual-only feedback isn't enough. Our **3D Press Animations (Scale + Elevation)** and **Configurable Haptics** provide the digital equivalent of a physical "clicky" cockpit switch, eliminating operator uncertainty.
+
+### 5. Standardized Color Logic
+We strictly adhere to the universal **Green (Safe) / Amber (Caution) / Red (Warning)** color logic. By allowing flexible **Color Zones** on gauges, we map complex sensor data directly to these familiar mental models.
+
 ## 🚀 Key Features
 
 - **Customizable Dashboards**: Switch between "Run Mode" for operation and "Edit Mode" for configuration.
@@ -27,7 +46,10 @@ As defined in the project [Constitution](.specify/memory/constitution.md):
 1.  **Compose-First**: All UI is built using modern declarative toolkits.
 2.  **Unidirectional Data Flow**: State flows down, events flow up—ensuring predictable UI behavior.
 3.  **Accessibility by Default**: Minimum touch targets (48x48dp) and support for dynamic text scaling.
-4.  **Modular Architecture**: Clear separation between the UI, business logic, and protocol implementations.
+4.  **Clarity by Design**: Ambiguous-free UI, readable at a glance.
+5.  **Low Cognitive Load**: Information prioritization and progressive disclosure.
+6.  **No Gimmicks**: Every element and animation serves a functional purpose.
+7.  **Modular Architecture**: Clear separation between the UI, business logic, and protocol implementations.
 
 ## 🖥 User Interface Guide
 

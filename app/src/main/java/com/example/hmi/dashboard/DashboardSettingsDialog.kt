@@ -31,12 +31,14 @@ import kotlinx.coroutines.withContext
 fun DashboardSettingsDialog(
     initialName: String,
     initialCanvasColor: Long?,
+    initialHapticEnabled: Boolean,
     viewModel: DashboardViewModel = hiltViewModel(),
     onDismiss: () -> Unit,
-    onConfirm: (String, Long?) -> Unit
+    onConfirm: (String, Long?, Boolean) -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
     var selectedColor by remember { mutableStateOf<Long?>(initialCanvasColor ?: HmiPalette.Black.value.toLong()) }
+    var hapticEnabled by remember { mutableStateOf(initialHapticEnabled) }
     var showJsonTransfer by remember { mutableStateOf(false) }
 
     if (showJsonTransfer) {
@@ -75,6 +77,19 @@ fun DashboardSettingsDialog(
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Enable Haptic Feedback", style = MaterialTheme.typography.bodyLarge)
+                    Switch(
+                        checked = hapticEnabled,
+                        onCheckedChange = { hapticEnabled = it }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider()
                 Spacer(modifier = Modifier.height(16.dp))
                 
@@ -92,7 +107,7 @@ fun DashboardSettingsDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onConfirm(name, selectedColor)
+                    onConfirm(name, selectedColor, hapticEnabled)
                 }
             ) {
                 Text("Save Settings")

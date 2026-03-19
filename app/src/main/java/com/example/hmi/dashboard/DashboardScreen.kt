@@ -85,9 +85,10 @@ fun DashboardScreen(
         DashboardSettingsDialog(
             initialName = dashboardLayout.name,
             initialCanvasColor = dashboardLayout.canvasColor,
+            initialHapticEnabled = dashboardLayout.hapticFeedbackEnabled,
             onDismiss = { showDashboardSettings = false },
-            onConfirm = { name, color ->
-                viewModel.updateDashboardSettings(name, color)
+            onConfirm = { name, color, hapticEnabled ->
+                viewModel.updateDashboardSettings(name, color, hapticEnabled)
                 showDashboardSettings = false
             }
         )
@@ -338,6 +339,7 @@ fun DashboardScreen(
                                         backgroundColor = resolvedColorLong,
                                         fontSizeMultiplier = widget.fontSizeMultiplier,
                                         textColorOverride = widget.textColorOverride,
+                                        hapticFeedbackEnabled = dashboardLayout.hapticFeedbackEnabled,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }
@@ -362,6 +364,7 @@ fun DashboardScreen(
                                         backgroundColor = resolvedColorLong,
                                         fontSizeMultiplier = widget.fontSizeMultiplier,
                                         textColorOverride = widget.textColorOverride,
+                                        colorZones = widget.colorZones,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }

@@ -49,13 +49,16 @@ class DashboardViewModel @Inject constructor(
     init {
         viewModelScope.launch(ioDispatcher) {
             repository.dashboardLayoutFlow.collect { layout ->
-                if (!layout.isDarkThemeMigrated) {
-                    val migrated = migrateToDarkMode(layout)
+                // Safety check: GSON can leave non-nullable fields as null if missing in JSON
+                val safeLayout = ensureNonNullFields(layout)
+                
+                if (!safeLayout.isDarkThemeMigrated) {
+                    val migrated = migrateToDarkMode(safeLayout)
                     repository.saveLayout(migrated)
                     // The flow will emit again with the migrated layout
                     return@collect
                 }
-                _dashboardLayout.value = layout
+                _dashboardLayout.value = safeLayout
             }
         }
 
@@ -68,6 +71,22 @@ class DashboardViewModel @Inject constructor(
                 _sessionOverrides.value = current
             }
         }
+    }
+
+    private fun ensureNonNullFields(layout: DashboardLayout?): DashboardLayout {
+        if (layout == null) return DashboardLayout()
+        return layout.copy(
+            id = layout.id ?: "",
+            name = layout.name ?: "Unnamed Layout",
+            hapticFeedbackEnabled = layout.hapticFeedbackEnabled, // Primitive boolean will be false if null in JSON
+            widgets = (layout.widgets ?: emptyList()).map { widget ->
+                widget.copy(
+                    id = widget.id ?: java.util.UUID.randomUUID().toString(),
+                    tagAddress = widget.tagAddress ?: "",
+                    colorZones = widget.colorZones ?: emptyList()
+                )
+            }
+        )
     }
 
     fun observeTag(tagAddress: String) {
@@ -150,8 +169,12 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
     }
     
-    fun updateDashboardSettings(name: String, canvasColor: Long?) {
-        val newLayout = _dashboardLayout.value.copy(name = name, canvasColor = canvasColor)
+    fun updateDashboardSettings(name: String, canvasColor: Long?, hapticFeedbackEnabled: Boolean) {
+        val newLayout = _dashboardLayout.value.copy(
+            name = name, 
+            canvasColor = canvasColor,
+            hapticFeedbackEnabled = hapticFeedbackEnabled
+        )
         _dashboardLayout.value = newLayout
         viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
     }
@@ -180,12 +203,14 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             try {
                 val newLayout = gson.fromJson(json, DashboardLayout::class.java)
-                if (newLayout == null || newLayout.name.isBlank()) {
+                if (newLayout == null || (newLayout.name?.isBlank() != false)) {
                     _importResult.emit(Result.failure(Exception("Invalid layout or name cannot be blank")))
                     return@launch
                 }
-                _dashboardLayout.value = newLayout
-                repository.saveLayout(newLayout)
+                
+                val safeLayout = ensureNonNullFields(newLayout)
+                _dashboardLayout.value = safeLayout
+                repository.saveLayout(safeLayout)
                 _importResult.emit(Result.success(Unit))
             } catch (e: Exception) {
                 _importResult.emit(Result.failure(Exception("Invalid JSON format: ${e.localizedMessage}")))

@@ -35,6 +35,9 @@
 - [ ] **Unidirectional Data Flow**: Is state managed in ViewModels with events flowing up?
 - [ ] **Test-First**: Are testing strategies (Unit, UI, Screenshot) explicitly defined?
 - [ ] **Accessibility**: Are accessibility requirements included (touch targets, dynamic text, content descriptions)?
+- [ ] **Clarity by Design**: Does the UI provide high contrast and clear typography?
+- [ ] **Low Cognitive Load**: Is information prioritized with progressive disclosure?
+- [ ] **No Gimmicks**: Are all UI elements and animations functional rather than decorative?
 - [ ] **Modular Architecture**: Which module(s) will this feature live in or create?
 
 ## Project Structure

@@ -1,17 +1,26 @@
 package com.example.hmi.dashboard
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.hmi.data.GaugeZone
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
 import com.example.hmi.ui.components.HmiColorPicker
 import com.example.hmi.ui.theme.IndustrialShape
+import com.example.hmi.widgets.ColorUtils
 
 @Composable
 fun WidgetPalette(
@@ -72,6 +81,10 @@ fun WidgetConfigDialog(
     var textColorOverride by remember { mutableStateOf(initialWidget?.textColorOverride) }
     var minValue by remember { mutableStateOf(initialWidget?.minValue?.toString() ?: "0") }
     var maxValue by remember { mutableStateOf(initialWidget?.maxValue?.toString() ?: "100") }
+    
+    val colorZones = remember { mutableStateListOf<GaugeZone>().apply { 
+        addAll(initialWidget?.colorZones ?: emptyList()) 
+    } }
 
     // Adaptive default size logic: Calculate required columns based on text length and font size
     val calculatedColSpan = remember(tagAddress, customLabel, fontSizeMultiplier) {
@@ -101,8 +114,13 @@ fun WidgetConfigDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (initialWidget == null) "Add Widget" else "Edit Widget") },
         shape = IndustrialShape.Standard, // US1: 8dp rounded corners
+        modifier = Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.9f),
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 if (initialWidget == null) {
                     Text("Type", style = MaterialTheme.typography.labelMedium)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -198,6 +216,72 @@ fun WidgetConfigDialog(
                     }
                 }
 
+                if (selectedType == WidgetType.GAUGE) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Gauge Color Zones", style = MaterialTheme.typography.titleSmall)
+                    
+                    colorZones.forEachIndexed { index, zone ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            shape = IndustrialShape.Small,
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = zone.startValue.toString(),
+                                        onValueChange = { val v = it.toFloatOrNull() ?: 0f; colorZones[index] = zone.copy(startValue = v) },
+                                        label = { Text("Start") },
+                                        modifier = Modifier.weight(1f),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                    )
+                                    OutlinedTextField(
+                                        value = zone.endValue.toString(),
+                                        onValueChange = { val v = it.toFloatOrNull() ?: 0f; colorZones[index] = zone.copy(endValue = v) },
+                                        label = { Text("End") },
+                                        modifier = Modifier.weight(1f),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                    )
+                                    IconButton(onClick = { colorZones.removeAt(index) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Remove Zone", tint = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(ColorUtils.toColor(zone.color), shape = IndustrialShape.Small)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Zone Color", style = MaterialTheme.typography.labelSmall)
+                                }
+                                HmiColorPicker(
+                                    selectedColor = zone.color,
+                                    onColorSelected = { colorZones[index] = zone.copy(color = it ?: 0xFF00FF00uL.toLong()) }
+                                )
+                            }
+                        }
+                    }
+                    
+                    OutlinedButton(
+                        onClick = { colorZones.add(GaugeZone(0f, 100f, 0xFF00FF00uL.toLong())) },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        shape = IndustrialShape.Standard
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add Color Zone")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                HorizontalDivider()
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Background Color", style = MaterialTheme.typography.labelMedium)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -222,7 +306,8 @@ fun WidgetConfigDialog(
                             colSpan = colSpan.toIntOrNull() ?: 1,
                             rowSpan = rowSpan.toIntOrNull() ?: 1,
                             minValue = minValue.toFloatOrNull(),
-                            maxValue = maxValue.toFloatOrNull()
+                            maxValue = maxValue.toFloatOrNull(),
+                            colorZones = colorZones.toList()
                         )
                     )
                 },
