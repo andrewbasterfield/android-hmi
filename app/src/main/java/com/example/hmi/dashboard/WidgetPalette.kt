@@ -8,7 +8,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
 import com.example.hmi.ui.components.HmiColorPicker
@@ -59,7 +58,6 @@ fun WidgetPalette(
 @Composable
 fun WidgetConfigDialog(
     initialWidget: WidgetConfiguration? = null,
-    viewModel: DashboardViewModel = hiltViewModel(),
     onDismiss: () -> Unit,
     onConfirm: (WidgetConfiguration) -> Unit,
     onDelete: (() -> Unit)? = null
@@ -86,7 +84,7 @@ fun WidgetConfigDialog(
             val charWidthSp = (baseFontSize * 2) * 0.6f * fontSizeMultiplier
             val totalWidthSp = text.length * charWidthSp
             // sp to dp is roughly 1:1 on standard density, use as safe minimum
-            val requiredCells = (totalWidthSp / 80f).toInt().coerceAtLeast(1)
+            val requiredCells = kotlin.math.ceil(totalWidthSp / 80f).toInt().coerceAtLeast(1)
             // Limit to reasonable dashboard width (e.g. 8 cells)
             requiredCells.coerceAtMost(8)
         }

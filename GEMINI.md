@@ -38,9 +38,9 @@ tests/
 Kotlin (Latest stable): Follow standard conventions
 
 ## Recent Changes
+- 014-modern-industrial-ui: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 013-custom-color-picker: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 012-dark-mode-ui-refinement: Added Kotlin 1.9+ + Jetpack Compose, Hilt, Jetpack DataStore, GSON
-- 011-layout-json-transfer: Added Kotlin (Latest stable) + Jetpack Compose, GSON, Hilt, Jetpack DataStore
 
 
 <!-- MANUAL ADDITIONS START -->

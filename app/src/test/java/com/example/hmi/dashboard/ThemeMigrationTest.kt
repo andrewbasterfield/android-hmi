@@ -54,8 +54,8 @@ class ThemeMigrationTest {
         whenever(repository.dashboardLayoutFlow).thenReturn(flowOf(legacyLayout))
         whenever(repository.recentColorsFlow).thenReturn(flowOf(emptyList()))
 
-        // Act: Initialize the ViewModel
-        val viewModel = DashboardViewModel(plcCommunicator, repository, testDispatcher)
+        // Act: Initialize the ViewModel to trigger migration logic
+        DashboardViewModel(plcCommunicator, repository, testDispatcher)
         
         // Let the init block run
         testDispatcher.scheduler.advanceUntilIdle()
@@ -73,17 +73,16 @@ class ThemeMigrationTest {
 
     @Test
     fun `HmiPalette contrast verification`() {
-        // Verification that each color in the palette has >= 4.5:1 contrast against black text.
+        // Verification that each color in the palette has >= 4.5:1 contrast against EITHER black or white text.
+        // This supports the "HybridContrast" logic where dark backgrounds use white text.
         // Formula: (L1 + 0.05) / (L2 + 0.05) where L1 is the relative luminance of the lighter color.
-        // Luminance of black (#000000) is 0.0.
-        // So we need (L_palette + 0.05) / 0.05 >= 4.5
-        // -> L_palette + 0.05 >= 0.225
-        // -> L_palette >= 0.175
         
         HmiPalette.WidgetBackgrounds.forEach { color ->
             val luminance = calculateLuminance(color.red, color.green, color.blue)
-            val contrast = (luminance + 0.05) / 0.05
-            assertTrue("Color ${color.value} has insufficient contrast: $contrast", contrast >= 4.5)
+            val contrastBlack = (luminance + 0.05) / 0.05
+            val contrastWhite = (1.0 + 0.05) / (luminance + 0.05)
+            val bestContrast = maxOf(contrastBlack, contrastWhite)
+            assertTrue("Color ${color.value} has insufficient contrast against both black ($contrastBlack) and white ($contrastWhite)", bestContrast >= 4.5)
         }
     }
 
