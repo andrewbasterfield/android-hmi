@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.hmi.data.GaugeZone
@@ -21,6 +22,7 @@ import com.example.hmi.data.WidgetType
 import com.example.hmi.ui.components.HmiColorPicker
 import com.example.hmi.ui.theme.IndustrialShape
 import com.example.hmi.widgets.ColorUtils
+import com.example.hmi.widgets.ScaleUtils
 
 @Composable
 fun WidgetPalette(
@@ -81,10 +83,24 @@ fun WidgetConfigDialog(
     var textColorOverride by remember { mutableStateOf(initialWidget?.textColorOverride) }
     var minValue by remember { mutableStateOf(initialWidget?.minValue?.toString() ?: "0") }
     var maxValue by remember { mutableStateOf(initialWidget?.maxValue?.toString() ?: "100") }
+    var targetTicks by remember { mutableFloatStateOf(initialWidget?.targetTicks?.toFloat() ?: 6f) }
     
     val colorZones = remember { mutableStateListOf<GaugeZone>().apply { 
         addAll(initialWidget?.colorZones ?: emptyList()) 
     } }
+
+    // Scale Assistance logic (FR-006)
+    val scaleOutcome = remember(minValue, maxValue, targetTicks) {
+        val min = minValue.toFloatOrNull() ?: 0f
+        val max = maxValue.toFloatOrNull() ?: 100f
+        val range = max - min
+        if (range <= 0) "Invalid Range"
+        else {
+            val step = ScaleUtils.calculateNiceStep(range, targetTicks.toInt())
+            val ticks = ScaleUtils.generateTicks(min, max, step)
+            "Outcome: ~${ticks.size} Ticks (Steps of $step)"
+        }
+    }
 
     // Adaptive default size logic: Calculate required columns based on text length and font size
     val calculatedColSpan = remember(tagAddress, customLabel, fontSizeMultiplier) {
@@ -92,13 +108,10 @@ fun WidgetConfigDialog(
         if (text.isEmpty()) 1
         else {
             // Heuristic: ~0.6 chars per sp width, 80dp cell size
-            // Base font size is 18sp (doubled to 36sp in the widget layout)
             val baseFontSize = 18f 
             val charWidthSp = (baseFontSize * 2) * 0.6f * fontSizeMultiplier
             val totalWidthSp = text.length * charWidthSp
-            // sp to dp is roughly 1:1 on standard density, use as safe minimum
             val requiredCells = kotlin.math.ceil(totalWidthSp / 80f).toInt().coerceAtLeast(1)
-            // Limit to reasonable dashboard width (e.g. 8 cells)
             requiredCells.coerceAtMost(8)
         }
     }
@@ -114,7 +127,7 @@ fun WidgetConfigDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (initialWidget == null) "Add Widget" else "Edit Widget") },
         shape = IndustrialShape.Standard, // US1: 8dp rounded corners
-        modifier = Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.9f),
+        modifier = Modifier.fillMaxWidth(0.95f),
         text = {
             Column(
                 modifier = Modifier
@@ -175,7 +188,7 @@ fun WidgetConfigDialog(
                 Slider(
                     value = fontSizeMultiplier,
                     onValueChange = { fontSizeMultiplier = it },
-                    valueRange = 0.0f..2.0f,
+                    valueRange = 0.5f..2.5f,
                     steps = 20
                 )
 
@@ -217,6 +230,21 @@ fun WidgetConfigDialog(
                 }
 
                 if (selectedType == WidgetType.GAUGE) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Tick Density: ${targetTicks.toInt()}", style = MaterialTheme.typography.labelMedium)
+                    Slider(
+                        value = targetTicks,
+                        onValueChange = { targetTicks = it },
+                        valueRange = 2f..20f,
+                        steps = 18
+                    )
+                    Text(
+                        text = scaleOutcome,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary,
+                        fontWeight = FontWeight.Bold
+                    )
+
                     Spacer(modifier = Modifier.height(24.dp))
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(16.dp))
@@ -307,6 +335,7 @@ fun WidgetConfigDialog(
                             rowSpan = rowSpan.toIntOrNull() ?: 1,
                             minValue = minValue.toFloatOrNull(),
                             maxValue = maxValue.toFloatOrNull(),
+                            targetTicks = targetTicks.toInt(),
                             colorZones = colorZones.toList()
                         )
                     )

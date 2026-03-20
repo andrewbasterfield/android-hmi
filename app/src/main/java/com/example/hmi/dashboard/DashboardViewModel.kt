@@ -1,7 +1,9 @@
 package com.example.hmi.dashboard
 
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hmi.core.ui.theme.Void
 import com.example.hmi.data.DashboardLayout
 import com.example.hmi.data.DashboardRepository
 import com.example.hmi.data.WidgetConfiguration
@@ -9,6 +11,7 @@ import com.example.hmi.data.WidgetType
 import com.example.hmi.di.IoDispatcher
 import com.example.hmi.protocol.PlcCommunicator
 import com.example.hmi.protocol.PlcValue
+import com.example.hmi.widgets.ColorUtils
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -37,7 +40,6 @@ class DashboardViewModel @Inject constructor(
     private val _isEditMode = MutableStateFlow(false)
     val isEditMode: StateFlow<Boolean> = _isEditMode.asStateFlow()
 
-    // TagAddress -> AttributeName -> Value (transient session overrides)
     private val _sessionOverrides = MutableStateFlow<Map<String, Map<String, String>>>(emptyMap())
     val sessionOverrides: StateFlow<Map<String, Map<String, String>>> = _sessionOverrides.asStateFlow()
 
@@ -49,13 +51,11 @@ class DashboardViewModel @Inject constructor(
     init {
         viewModelScope.launch(ioDispatcher) {
             repository.dashboardLayoutFlow.collect { layout ->
-                // Safety check: GSON can leave non-nullable fields as null if missing in JSON
                 val safeLayout = ensureNonNullFields(layout)
                 
-                if (!safeLayout.isDarkThemeMigrated) {
-                    val migrated = migrateToDarkMode(safeLayout)
+                if (!safeLayout.isKineticCockpitMigrated) {
+                    val migrated = migrateToKineticCockpit(safeLayout)
                     repository.saveLayout(migrated)
-                    // The flow will emit again with the migrated layout
                     return@collect
                 }
                 _dashboardLayout.value = safeLayout
@@ -78,12 +78,33 @@ class DashboardViewModel @Inject constructor(
         return layout.copy(
             id = layout.id ?: "",
             name = layout.name ?: "Unnamed Layout",
-            hapticFeedbackEnabled = layout.hapticFeedbackEnabled, // Primitive boolean will be false if null in JSON
             widgets = (layout.widgets ?: emptyList()).map { widget ->
                 widget.copy(
                     id = widget.id ?: java.util.UUID.randomUUID().toString(),
                     tagAddress = widget.tagAddress ?: "",
+                    targetTicks = widget.targetTicks,
                     colorZones = widget.colorZones ?: emptyList()
+                )
+            }
+        )
+    }
+
+    /**
+     * FR-011: Automatically migrate existing layouts to the "Void" background
+     * and sanitize colors to high-contrast Kinetic tokens.
+     */
+    private fun migrateToKineticCockpit(layout: DashboardLayout): DashboardLayout {
+        return layout.copy(
+            canvasColor = Void.value.toLong(),
+            isKineticCockpitMigrated = true,
+            isDarkThemeMigrated = true,
+            widgets = layout.widgets.map { widget ->
+                val legacyColor = widget.backgroundColor?.let { ColorUtils.toColor(it) } ?: Color.Gray
+                val sanitized = ColorUtils.sanitizeColor(legacyColor)
+                widget.copy(
+                    backgroundColor = sanitized.value.toLong(),
+                    // FR-013: Ensure typography scale doesn't start below baseline
+                    fontSizeMultiplier = if (widget.fontSizeMultiplier < 1.0f) 1.0f else widget.fontSizeMultiplier
                 )
             }
         )
@@ -102,9 +123,7 @@ class DashboardViewModel @Inject constructor(
                     is PlcValue.BooleanValue -> {
                         _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, if (value.value) 1f else 0f) }
                     }
-                    is PlcValue.StringValue -> {
-                        // Ignore string values for numeric tags
-                    }
+                    is PlcValue.StringValue -> {}
                 }
             }
         }
@@ -185,14 +204,6 @@ class DashboardViewModel @Inject constructor(
         val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
         _dashboardLayout.value = newLayout
         viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
-    }
-
-    private fun migrateToDarkMode(layout: DashboardLayout): DashboardLayout {
-        return layout.copy(
-            canvasColor = 0xFF000000uL.toLong(),
-            isDarkThemeMigrated = true,
-            widgets = layout.widgets.map { it.copy(fontSizeMultiplier = 1.0f) }
-        )
     }
 
     fun exportLayoutToJson(): String {

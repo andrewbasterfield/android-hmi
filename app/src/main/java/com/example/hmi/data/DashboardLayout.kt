@@ -8,5 +8,6 @@ data class DashboardLayout(
     val canvasColor: Long? = 0xFF000000uL.toLong(),
     val widgets: List<WidgetConfiguration> = emptyList(),
     val isDarkThemeMigrated: Boolean = false,
+    val isKineticCockpitMigrated: Boolean = false,
     val hapticFeedbackEnabled: Boolean = true
 )

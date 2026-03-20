@@ -15,6 +15,14 @@ Auto-generated from all feature plans. Last updated: 2026-03-10
 - Kotlin (Latest stable) + Jetpack Compose, GSON, Hilt, Jetpack DataStore (011-layout-json-transfer)
 - Kotlin 1.9+ + Jetpack Compose, Hilt, Jetpack DataStore, GSON (012-dark-mode-ui-refinement)
 - Jetpack DataStore (Preferences with JSON serialization) (012-dark-mode-ui-refinement)
+- Kotlin 1.9+ + Jetpack Compose (UI), Hilt (DI), Kotlin Coroutines (Async), Space Grotesk & Inter Fonts (016-stitch-design-system)
+- Jetpack DataStore (for persisting UI preferences like haptic feedback or layout overrides) (016-stitch-design-system)
+- Kotlin 1.9+ + Jetpack Compose, Hilt, :core:ui (existing), :protocol (live data) (017-dashboard-design-integration)
+- Jetpack DataStore (existing layout persistence) (017-dashboard-design-integration)
+- Kotlin 1.9.22 + Jetpack Compose, Hilt, Kotlin Coroutines (StateFlow), :core:ui (Design Tokens), :protocol (PLC Data) (017-dashboard-design-integration)
+- Kotlin 1.9+ + Jetpack Compose, Hilt, :core:ui, :protocol (Live PLC Data) (017-dashboard-design-integration)
+- Jetpack DataStore (JSON via GSON) (018-gauge-tick-config)
+- Jetpack DataStore (Preferences storing JSON via GSON) (018-gauge-tick-config)
 
 - Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow/SharedFlow), Hilt (001-hmi-control-panel)
 
@@ -38,10 +46,9 @@ tests/
 Kotlin (Latest stable): Follow standard conventions
 
 ## Recent Changes
-- 015-ui-animations-gauge-improvement: Implemented 3D tactile button feedback (Scale + Elevation + Offset), intelligent "Reverse-Video" color swap logic, aviation-style 270° Canvas gauges with dynamic color zones, and "Nice Number" scale tick algorithm. Added layout-level haptic feedback toggle. Updated project Constitution to v1.1.0.
-- 014-modern-industrial-ui: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 013-custom-color-picker: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
-- 012-dark-mode-ui-refinement: Added Kotlin 1.9+ + Jetpack Compose, Hilt, Jetpack DataStore, GSON
+- 018-gauge-tick-config: Added Kotlin 1.9+ + Jetpack Compose, Hilt, Jetpack DataStore, GSON
+- 018-gauge-tick-config: Added Kotlin 1.9+ + Jetpack Compose, Hilt, Jetpack DataStore
+- 017-dashboard-design-integration: Added Kotlin 1.9+ + Jetpack Compose, Hilt, :core:ui, :protocol (Live PLC Data)
 
 
 <!-- MANUAL ADDITIONS START -->

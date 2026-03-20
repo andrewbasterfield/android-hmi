@@ -2,24 +2,20 @@
 
 An industrial HMI (Human-Machine Interface) and SCADA application built for Android, designed to interface with PLCs over TCP/IP. This app allows engineers to create highly customizable control panels with intuitive drag-and-drop tools and real-time monitoring capabilities.
 
-## 🧠 HMI Design Philosophy: The Industrial Cockpit
+### 🛠️ Functional Ruggedization Verification
 
-This project is built on the belief that a machine operator is essentially a **pilot for the factory floor**. We apply **Aviation Glass Cockpit (EFIS)** principles to industrial HMI design to ensure maximum situational awareness under stress.
+To verify the **Kinetic Cockpit** integration on physical hardware:
 
-### 1. Functional Minimalism (The Dark Cockpit)
-Inspired by modern aircraft, we use a **Pure Black (#000000) canvas**. This reduces eye strain, saves power on AMOLED panels, and ensures that critical data (Green/Yellow/Red) stands out without visual noise from the UI chrome.
-
-### 2. Spatial Consistency (Dials vs. Tapes)
-Pilots don't just read numbers; they recognize the **angle of a needle**. Our **270° Circular Gauges** provide instant spatial context, allowing operators to assess system health at a glance without needing to parse precise digits.
-
-### 3. High-Contrast "Cockpit" Typography
-We utilize optimized **Roboto weights and spacing** (Cockpit Style) to ensure data is legible even on vibrating mounting arms or in poor lighting conditions.
-
-### 4. Tactile Digital Feedback
-In a high-vibration environment, visual-only feedback isn't enough. Our **3D Press Animations (Scale + Elevation)** and **Configurable Haptics** provide the digital equivalent of a physical "clicky" cockpit switch, eliminating operator uncertainty.
-
-### 5. Standardized Color Logic
-We strictly adhere to the universal **Green (Safe) / Amber (Caution) / Red (Warning)** color logic. By allowing flexible **Color Zones** on gauges, we map complex sensor data directly to these familiar mental models.
+1. **Rugged Aesthetic**: Ensure all dashboard widgets have `0dp` corners and a `2px` thick border using the `Outline` token.
+2. **Live Utility**: Verify that numerical readouts in Gauges and Sliders use **Tabular (Monospaced)** figures to prevent layout jitter during live updates.
+3. **Tactile Feedback**:
+    - Press any button and verify the **"Inverse Video"** state swap (Color/Black).
+    - Confirm haptic feedback triggers on press (if enabled in settings).
+4. **Emergency Signaling**:
+    - Force a `CRITICAL` tag value (e.g., SIM_FUEL < 10%).
+    - Verify the header status icon changes to an Error symbol.
+    - Confirm the **Emergency HUD** pulses the screen periphery in Red (#93000A) at 2Hz.
+5. **Accessibility**: Confirm that every widget has a high-contrast status icon, providing situational awareness independent of color.
 
 ## 🚀 Key Features
 
@@ -159,13 +155,12 @@ In the app, connect to your machine's local IP address on port `9999`.
 
 ## 📁 Project Structure
 
-- `app/src/main/java/com/example/hmi/`
-    - `connection/`: PLC connection profiles and connection screen.
-    - `dashboard/`: Dashboard rendering, Edit Mode, and widget management.
-    - `widgets/`: Reusable Compose components (Buttons, Sliders, Gauges).
-    - `protocol/`: The `PlcCommunicator` abstraction and implementations.
-    - `data/`: Repositories and local persistence (DataStore).
-- `specs/001-hmi-control-panel/`: Detailed feature specifications, implementation plans, and data models.
+The project follows a modular structure to ensure build performance and clean boundaries:
+- `:app`: Application entry point and navigation.
+- `:core:ui`: The **Kinetic Cockpit** design system, theme tokens, and tactile industrial components (Buttons, Inputs, Cards).
+- `:feature:diagnostics`: Mission-critical telemetry monitoring and peripheral emergency HUD signaling.
+- `:data`: Repositories and local persistence (DataStore).
+- `:protocol`: PLC communication abstractions and implementations.
 
 ## 📄 Documentation
 

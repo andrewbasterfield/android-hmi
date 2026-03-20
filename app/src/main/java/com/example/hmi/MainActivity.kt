@@ -18,9 +18,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.hmi.connection.ConnectionScreen
+import com.example.hmi.core.ui.theme.StitchTheme
 import com.example.hmi.dashboard.DashboardScreen
 import com.example.hmi.protocol.ConnectionState
-import com.example.hmi.ui.theme.HmiTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -28,7 +28,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            HmiTheme {
+            StitchTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -79,7 +79,6 @@ class MainActivity : ComponentActivity() {
                             DashboardScreen(
                                 onNavigateBack = {
                                     connectionViewModel.disconnect()
-                                    // Navigation handled by the LaunchedEffect above upon disconnect
                                 }
                             )
                         }

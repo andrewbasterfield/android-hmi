@@ -1,7 +1,8 @@
 package com.example.hmi.widgets
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -17,11 +18,13 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.hmi.core.ui.theme.StitchTheme
 import com.example.hmi.data.GaugeZone
 import kotlin.math.cos
 import kotlin.math.sin
@@ -35,40 +38,40 @@ fun GaugeWidget(
     modifier: Modifier = Modifier,
     backgroundColor: Long? = null,
     fontSizeMultiplier: Float = 1.0f,
-    textColorOverride: String? = null,
+    targetTicks: Int = 6,
     colorZones: List<GaugeZone> = emptyList()
 ) {
-    // Interpolate value for smooth 60fps movement
+    // BUG-011 Parked: Using fastest available spring for zero-lag response.
+    // Phantom needles are acknowledged as a display-persistence limitation for now.
     val animatedValue by animateFloatAsState(
         targetValue = value,
-        animationSpec = tween(durationMillis = 300),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessHigh 
+        ),
         label = "gaugeValue"
     )
 
-    val bg = backgroundColor?.let { ColorUtils.toColor(it) }
-    val contentColor = when (textColorOverride) {
-        "BLACK" -> Color.Black
-        "WHITE" -> Color.White
-        else -> bg?.let { ColorUtils.getIndustrialContrastColor(it) } ?: LocalContentColor.current
-    }
-
-    // 270° Arc from 135° to 405°
+    val contentColor = LocalContentColor.current
     val startAngle = 135f
     val sweepAngle = 270f
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(12.dp)
+            .padding(8.dp)
             .semantics { contentDescription = "Gauge for $label showing ${"%.1f".format(value)}" },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = label, 
-            style = MaterialTheme.typography.labelMedium,
-            color = contentColor,
-            fontSize = (MaterialTheme.typography.labelMedium.fontSize * 2) * fontSizeMultiplier
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 36.sp * fontSizeMultiplier,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            ),
+            color = contentColor.copy(alpha = 0.8f)
         )
         
         Box(
@@ -81,7 +84,7 @@ fun GaugeWidget(
                 val innerRadius = radius * 0.8f
                 val strokeWidth = 4.dp.toPx()
 
-                // Draw background track
+                // 1. Draw background track
                 drawArc(
                     color = contentColor.copy(alpha = 0.1f),
                     startAngle = startAngle,
@@ -89,10 +92,10 @@ fun GaugeWidget(
                     useCenter = false,
                     topLeft = Offset(center.x - radius, center.y - radius),
                     size = Size(radius * 2, radius * 2),
-                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
                 )
 
-                // Draw color zones
+                // 2. Draw color zones
                 colorZones.forEach { zone ->
                     val zoneStartValue = zone.startValue.coerceIn(minValue, maxValue)
                     val zoneEndValue = zone.endValue.coerceIn(minValue, maxValue)
@@ -113,8 +116,8 @@ fun GaugeWidget(
                     }
                 }
 
-                // Draw ticks and labels
-                val step = ScaleUtils.calculateNiceStep(maxValue - minValue)
+                // 3. Draw ticks
+                val step = ScaleUtils.calculateNiceStep(maxValue - minValue, targetTicks)
                 val ticks = ScaleUtils.generateTicks(minValue, maxValue, step)
                 
                 ticks.forEach { tickValue ->
@@ -132,52 +135,33 @@ fun GaugeWidget(
                         end = Offset(outerX, outerY),
                         strokeWidth = 2.dp.toPx()
                     )
-
-                    // Draw tick label
-                    val labelRadius = innerRadius - 15.dp.toPx()
-                    val labelX = center.x + labelRadius * cos(angleRad).toFloat()
-                    val labelY = center.y + labelRadius * sin(angleRad).toFloat()
-                    
-                    drawContext.canvas.nativeCanvas.drawText(
-                        if (tickValue % 1f == 0f) tickValue.toInt().toString() else "%.1f".format(tickValue),
-                        labelX,
-                        labelY + 5.dp.toPx(),
-                        android.graphics.Paint().apply {
-                            color = android.graphics.Color.argb(
-                                (contentColor.alpha * 255).toInt(),
-                                (contentColor.red * 255).toInt(),
-                                (contentColor.green * 255).toInt(),
-                                (contentColor.blue * 255).toInt()
-                            )
-                            textAlign = android.graphics.Paint.Align.CENTER
-                            textSize = 10.sp.toPx() * fontSizeMultiplier
-                        }
-                    )
                 }
 
-                // Draw needle
+                // 4. Draw Needle
                 val needleAngle = startAngle + (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * sweepAngle
                 rotate(degrees = needleAngle, pivot = center) {
                     val needlePath = Path().apply {
                         moveTo(center.x + radius * 0.9f, center.y)
-                        lineTo(center.x, center.y - 6.dp.toPx()) // Fatter (was 4dp)
-                        lineTo(center.x - 12.dp.toPx(), center.y) // Slightly longer back (was 10dp)
-                        lineTo(center.x, center.y + 6.dp.toPx()) // Fatter (was 4dp)
+                        lineTo(center.x, center.y - 4.dp.toPx())
+                        lineTo(center.x - 8.dp.toPx(), center.y)
+                        lineTo(center.x, center.y + 4.dp.toPx())
                         close()
                     }
                     drawPath(path = needlePath, color = contentColor)
                 }
 
-                // Draw center hub
-                drawCircle(color = contentColor, radius = 8.dp.toPx(), center = center) // Fatter hub (was 6dp)
+                drawCircle(color = contentColor, radius = 6.dp.toPx(), center = center)
             }
         }
 
         Text(
             text = "%.1f".format(value),
-            style = MaterialTheme.typography.labelMedium, // Match label style
-            color = contentColor,
-            fontSize = (MaterialTheme.typography.labelMedium.fontSize * 2) * fontSizeMultiplier // Match label size
+            style = MaterialTheme.typography.displaySmall.copy(
+                fontFamily = FontFamily.Monospace,
+                fontSize = 64.sp * fontSizeMultiplier,
+                fontWeight = FontWeight.Black
+            ),
+            color = contentColor
         )
     }
 }

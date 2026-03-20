@@ -27,6 +27,9 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.hmi.core.ui.components.EmergencyHUD
+import com.example.hmi.core.ui.theme.HealthStatus
+import com.example.hmi.core.ui.theme.StitchTheme
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
 import com.example.hmi.widgets.ButtonWidget
@@ -63,6 +66,24 @@ fun DashboardScreen(
     LaunchedEffect(dashboardLayout.widgets) {
         dashboardLayout.widgets.forEach { widget ->
             viewModel.observeTag(widget.tagAddress)
+        }
+    }
+
+    // Determine Global Health Status for EmergencyHUD (FR-007)
+    val globalStatus by remember(tagValues, dashboardLayout.widgets) {
+        derivedStateOf {
+            val widgetStatuses = dashboardLayout.widgets.map { widget ->
+                val currentValue = tagValues[widget.tagAddress] ?: 0f
+                val zone = widget.colorZones.find { currentValue in it.startValue..it.endValue }
+                when (zone?.label) {
+                    "CRITICAL" -> HealthStatus.CRITICAL
+                    "CAUTION" -> HealthStatus.CAUTION
+                    else -> HealthStatus.NORMAL
+                }
+            }
+            if (widgetStatuses.any { it == HealthStatus.CRITICAL }) HealthStatus.CRITICAL
+            else if (widgetStatuses.any { it == HealthStatus.CAUTION }) HealthStatus.CAUTION
+            else HealthStatus.NORMAL
         }
     }
 
@@ -119,158 +140,159 @@ fun DashboardScreen(
         return colSpan to rowSpan
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(dashboardLayout.name) },
-                actions = {
-                    if (isEditMode) {
-                        Button(onClick = { showDashboardSettings = true }) {
-                            Icon(Icons.Default.Settings, contentDescription = null)
+    EmergencyHUD(status = globalStatus) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(dashboardLayout.name) },
+                    actions = {
+                        if (isEditMode) {
+                            Button(onClick = { showDashboardSettings = true }) {
+                                Icon(Icons.Default.Settings, contentDescription = null)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Dashboard Settings")
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(onClick = { viewModel.toggleEditMode() }) {
+                            Text(if (isEditMode) "Run Mode" else "Edit Mode")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(onClick = onNavigateBack) {
+                            Icon(Icons.Default.Link, contentDescription = null)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Dashboard Settings")
+                            Text("Connection")
                         }
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { viewModel.toggleEditMode() }) {
-                        Text(if (isEditMode) "Run Mode" else "Edit Mode")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = onNavigateBack) {
-                        Icon(Icons.Default.Link, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Connection")
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
-        val canvasColor = dashboardLayout.canvasColor?.let { Color(it.toULong()) } ?: MaterialTheme.colorScheme.background
-        
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .background(canvasColor)
-        ) {
-            dashboardLayout.widgets.forEach { widget ->
-                key(widget.id) {
-                    val currentValue = tagValues[widget.tagAddress] ?: 0f
-                    
-                    // Resolve transient overrides
-                    val tagOverrides = sessionOverrides[widget.tagAddress]
-                    val resolvedLabel = tagOverrides?.get("label") ?: widget.customLabel ?: widget.tagAddress
-                    val resolvedColorLong = tagOverrides?.get("color")?.let { 
-                        com.example.hmi.widgets.ColorUtils.parseHexColor(it) 
-                    } ?: widget.backgroundColor
+                )
+            }
+        ) { paddingValues ->
+            val canvasColor = dashboardLayout.canvasColor?.let { Color(it.toULong()) } ?: MaterialTheme.colorScheme.background
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(canvasColor)
+            ) {
+                dashboardLayout.widgets.forEach { widget ->
+                    key(widget.id) {
+                        val currentValue = tagValues[widget.tagAddress] ?: 0f
+                        
+                        // Resolve transient overrides
+                        val tagOverrides = sessionOverrides[widget.tagAddress]
+                        val resolvedLabel = tagOverrides?.get("label") ?: widget.customLabel ?: widget.tagAddress
+                        val resolvedColorLong = tagOverrides?.get("color")?.let { 
+                            com.example.hmi.widgets.ColorUtils.parseHexColor(it) 
+                        } ?: widget.backgroundColor
 
-                    val dragOffset = draggingOffsets[widget.id]
-                    val resizeOffset = resizingOffsets[widget.id]
-                    val isBeingDragged = dragOffset != null
-                    val isBeingResized = resizeOffset != null
+                        val dragOffset = draggingOffsets[widget.id]
+                        val resizeOffset = resizingOffsets[widget.id]
+                        val isBeingDragged = dragOffset != null
+                        val isBeingResized = resizeOffset != null
 
-                    val animatableOffset = remember { 
-                        Animatable(
-                            IntOffset(
-                                with(density) { GridSystem.cellToDp(widget.column).toPx().roundToInt() },
-                                with(density) { GridSystem.cellToDp(widget.row).toPx().roundToInt() }
-                            ),
-                            IntOffset.VectorConverter
-                        )
-                    }
-
-                    val animatableSize = remember {
-                        Animatable(
-                            IntSize(
-                                with(density) { GridSystem.cellToDp(widget.colSpan).toPx().roundToInt() },
-                                with(density) { GridSystem.cellToDp(widget.rowSpan).toPx().roundToInt() }
-                            ),
-                            IntSize.VectorConverter
-                        )
-                    }
-
-                    LaunchedEffect(widget.column, widget.row) {
-                        animatableOffset.animateTo(
-                            IntOffset(
-                                with(density) { GridSystem.cellToDp(widget.column).toPx().roundToInt() },
-                                with(density) { GridSystem.cellToDp(widget.row).toPx().roundToInt() }
-                            ),
-                            spring(GridSystem.SNAP_DAMPING, GridSystem.SNAP_STIFFNESS)
-                        )
-                    }
-
-                    LaunchedEffect(widget.colSpan, widget.rowSpan) {
-                        animatableSize.animateTo(
-                            IntSize(
-                                with(density) { GridSystem.cellToDp(widget.colSpan).toPx().roundToInt() },
-                                with(density) { GridSystem.cellToDp(widget.rowSpan).toPx().roundToInt() }
-                            ),
-                            spring(GridSystem.SNAP_DAMPING, GridSystem.SNAP_STIFFNESS)
-                        )
-                    }
-
-                    val visualX = if (isBeingDragged) animatableOffset.value.x + dragOffset!!.x else animatableOffset.value.x.toFloat()
-                    val visualY = if (isBeingDragged) animatableOffset.value.y + dragOffset!!.y else animatableOffset.value.y.toFloat()
-
-                    val visualWidth = if (isBeingResized) animatableSize.value.width + resizeOffset!!.x else animatableSize.value.width.toFloat()
-                    val visualHeight = if (isBeingResized) animatableSize.value.height + resizeOffset!!.y else animatableSize.value.height.toFloat()
-
-                    if (isBeingDragged) {
-                        val (ghostCol, ghostRow) = calculateSnapCells(visualX, visualY, widget.colSpan, widget.rowSpan, density)
-                        WidgetContainer(
-                            backgroundColor = widget.backgroundColor,
-                            colSpan = widget.colSpan,
-                            rowSpan = widget.rowSpan,
-                            alpha = 0.3f,
-                            modifier = Modifier
-                                .size(
-                                    width = GridSystem.cellToDp(widget.colSpan),
-                                    height = GridSystem.cellToDp(widget.rowSpan)
-                                )
-                                .offset {
-                                    IntOffset(
-                                        with(density) { GridSystem.cellToDp(ghostCol).toPx() }.roundToInt(),
-                                        with(density) { GridSystem.cellToDp(ghostRow).toPx() }.roundToInt()
-                                    )
-                                }
-                                .semantics { invisibleToUser() }
-                        ) {}
-                    }
-
-                    if (isBeingResized) {
-                        val (ghostColSpan, ghostRowSpan) = calculateSnapSize(visualWidth, visualHeight, widget.column, widget.row, density)
-                        WidgetContainer(
-                            backgroundColor = widget.backgroundColor,
-                            colSpan = ghostColSpan,
-                            rowSpan = ghostRowSpan,
-                            alpha = 0.3f,
-                            modifier = Modifier
-                                .size(
-                                    width = GridSystem.cellToDp(ghostColSpan),
-                                    height = GridSystem.cellToDp(ghostRowSpan)
-                                )
-                                .offset {
-                                    IntOffset(
-                                        with(density) { GridSystem.cellToDp(widget.column).toPx() }.roundToInt(),
-                                        with(density) { GridSystem.cellToDp(widget.row).toPx() }.roundToInt()
-                                    )
-                                }
-                                .semantics { invisibleToUser() }
-                        ) {}
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(
-                                width = with(density) { visualWidth.toDp() },
-                                height = with(density) { visualHeight.toDp() }
+                        val animatableOffset = remember { 
+                            Animatable(
+                                IntOffset(
+                                    with(density) { GridSystem.cellToDp(widget.column).toPx().roundToInt() },
+                                    with(density) { GridSystem.cellToDp(widget.row).toPx().roundToInt() }
+                                ),
+                                IntOffset.VectorConverter
                             )
-                            .offset {
-                                IntOffset(visualX.roundToInt(), visualY.roundToInt())
-                            }
-                            .zIndex(if (isBeingDragged || isBeingResized) 1f else 0f)
-                            .then(
-                                if (isEditMode) {
+                        }
+
+                        val animatableSize = remember {
+                            Animatable(
+                                IntSize(
+                                    with(density) { GridSystem.cellToDp(widget.colSpan).toPx().roundToInt() },
+                                    with(density) { GridSystem.cellToDp(widget.rowSpan).toPx().roundToInt() }
+                                ),
+                                IntSize.VectorConverter
+                            )
+                        }
+
+                        LaunchedEffect(widget.column, widget.row) {
+                            animatableOffset.animateTo(
+                                IntOffset(
+                                    with(density) { GridSystem.cellToDp(widget.column).toPx().roundToInt() },
+                                    with(density) { GridSystem.cellToDp(widget.row).toPx().roundToInt() }
+                                ),
+                                spring(GridSystem.SNAP_DAMPING, GridSystem.SNAP_STIFFNESS)
+                            )
+                        }
+
+                        LaunchedEffect(widget.colSpan, widget.rowSpan) {
+                            animatableSize.animateTo(
+                                IntSize(
+                                    with(density) { GridSystem.cellToDp(widget.colSpan).toPx().roundToInt() },
+                                    with(density) { GridSystem.cellToDp(widget.rowSpan).toPx().roundToInt() }
+                                ),
+                                spring(GridSystem.SNAP_DAMPING, GridSystem.SNAP_STIFFNESS)
+                            )
+                        }
+
+                        val visualX = if (isBeingDragged) animatableOffset.value.x + dragOffset!!.x else animatableOffset.value.x.toFloat()
+                        val visualY = if (isBeingDragged) animatableOffset.value.y + dragOffset!!.y else animatableOffset.value.y.toFloat()
+
+                        val visualWidth = if (isBeingResized) animatableSize.value.width + resizeOffset!!.x else animatableSize.value.width.toFloat()
+                        val visualHeight = if (isBeingResized) animatableSize.value.height + resizeOffset!!.y else animatableSize.value.height.toFloat()
+
+                        if (isBeingDragged) {
+                            val (ghostCol, ghostRow) = calculateSnapCells(visualX, visualY, widget.colSpan, widget.rowSpan, density)
+                            WidgetContainer(
+                                backgroundColor = widget.backgroundColor,
+                                alpha = 0.3f,
+                                modifier = Modifier
+                                    .size(
+                                        width = GridSystem.cellToDp(widget.colSpan),
+                                        height = GridSystem.cellToDp(widget.rowSpan)
+                                    )
+                                    .offset {
+                                        IntOffset(
+                                            with(density) { GridSystem.cellToDp(ghostCol).toPx() }.roundToInt(),
+                                            with(density) { GridSystem.cellToDp(ghostRow).toPx() }.roundToInt()
+                                        )
+                                    }
+                                    .semantics { invisibleToUser() }
+                            ) {}
+                        }
+
+                        if (isBeingResized) {
+                            val (ghostColSpan, ghostRowSpan) = calculateSnapSize(visualWidth, visualHeight, widget.column, widget.row, density)
+                            WidgetContainer(
+                                backgroundColor = widget.backgroundColor,
+                                alpha = 0.3f,
+                                modifier = Modifier
+                                    .size(
+                                        width = GridSystem.cellToDp(ghostColSpan),
+                                        height = GridSystem.cellToDp(ghostRowSpan)
+                                    )
+                                    .offset {
+                                        IntOffset(
+                                            with(density) { GridSystem.cellToDp(widget.column).toPx().roundToInt() },
+                                            with(density) { GridSystem.cellToDp(widget.row).toPx().roundToInt() }
+                                        )
+                                    }
+                                    .semantics { invisibleToUser() }
+                            ) {}
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(
+                                    width = with(density) { visualWidth.toDp() },
+                                    height = with(density) { visualHeight.toDp() }
+                                )
+                                .offset {
+                                    IntOffset(visualX.roundToInt(), visualY.roundToInt())
+                                }
+                                .zIndex(if (isBeingDragged || isBeingResized) 1f else 0f)
+                        ) {
+                            WidgetContainer(
+                                backgroundColor = resolvedColorLong,
+                                isEditMode = isEditMode,
+                                textColorOverride = widget.textColorOverride,
+                                moveModifier = if (isEditMode) {
                                     Modifier.pointerInput(widget.id) {
                                         detectDragGestures(
                                             onDragStart = { draggingOffsets[widget.id] = Offset.Zero },
@@ -281,8 +303,6 @@ fun DashboardScreen(
                                                     
                                                     val (finalCol, finalRow) = calculateSnapCells(latestVisualX, latestVisualY, widget.colSpan, widget.rowSpan, density)
                                                     
-                                                    // FIX: Snap directly to the final grid cell pixels immediately on release.
-                                                    // This eliminates any "dead zone" where the widget is off-grid before the ViewModel updates.
                                                     val targetPixels = IntOffset(
                                                         with(density) { GridSystem.cellToDp(finalCol).toPx().roundToInt() },
                                                         with(density) { GridSystem.cellToDp(finalRow).toPx().roundToInt() }
@@ -299,86 +319,77 @@ fun DashboardScreen(
                                             draggingOffsets[widget.id] = (draggingOffsets[widget.id] ?: Offset.Zero) + amount
                                         }
                                     }
-                                } else Modifier
-                            )
-                    ) {
-                        WidgetContainer(
-                            backgroundColor = resolvedColorLong,
-                            colSpan = widget.colSpan,
-                            rowSpan = widget.rowSpan,
-                            isEditMode = isEditMode,
-                            textColorOverride = widget.textColorOverride,
-                            onResize = { amount ->
-                                resizingOffsets[widget.id] = (resizingOffsets[widget.id] ?: Offset.Zero) + amount
-                            },
-                            onResizeEnd = {
-                                scope.launch {
-                                    val latestVisualWidth = animatableSize.value.width + (resizingOffsets[widget.id]?.x ?: 0f)
-                                    val latestVisualHeight = animatableSize.value.height + (resizingOffsets[widget.id]?.y ?: 0f)
-                                    
-                                    val (finalColSpan, finalRowSpan) = calculateSnapSize(latestVisualWidth, latestVisualHeight, widget.column, widget.row, density)
-                                    
-                                    // FIX: Snap directly to the final grid cell size immediately on release.
-                                    val targetSize = IntSize(
-                                        with(density) { GridSystem.cellToDp(finalColSpan).toPx().roundToInt() },
-                                        with(density) { GridSystem.cellToDp(finalRowSpan).toPx().roundToInt() }
-                                    )
-                                    
-                                    animatableSize.snapTo(targetSize)
-                                    resizingOffsets.remove(widget.id)
-                                    viewModel.updateWidgetSize(widget.id, finalColSpan, finalRowSpan)
-                                }
-                            },
-                            onEditClick = { editingWidget = widget }
-                        ) {
-                            when (widget.type) {
-                                WidgetType.BUTTON -> {
-                                    ButtonWidget(
-                                        label = resolvedLabel,
-                                        onClick = { viewModel.onButtonPress(widget.tagAddress) },
-                                        backgroundColor = resolvedColorLong,
-                                        fontSizeMultiplier = widget.fontSizeMultiplier,
-                                        textColorOverride = widget.textColorOverride,
-                                        hapticFeedbackEnabled = dashboardLayout.hapticFeedbackEnabled,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                }
-                                WidgetType.SLIDER -> {
-                                    SliderWidget(
-                                        label = resolvedLabel,
-                                        value = currentValue,
-                                        onValueChange = { viewModel.onSliderChange(widget.tagAddress, it) },
-                                        valueRange = (widget.minValue ?: 0f)..(widget.maxValue ?: 100f),
-                                        backgroundColor = resolvedColorLong,
-                                        fontSizeMultiplier = widget.fontSizeMultiplier,
-                                        textColorOverride = widget.textColorOverride,
-                                        modifier = Modifier.fillMaxSize().padding(8.dp)
-                                    )
-                                }
-                                WidgetType.GAUGE -> {
-                                    GaugeWidget(
-                                        label = resolvedLabel,
-                                        value = currentValue,
-                                        minValue = widget.minValue ?: 0f,
-                                        maxValue = widget.maxValue ?: 100f,
-                                        backgroundColor = resolvedColorLong,
-                                        fontSizeMultiplier = widget.fontSizeMultiplier,
-                                        textColorOverride = widget.textColorOverride,
-                                        colorZones = widget.colorZones,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
+                                } else Modifier,
+                                onResize = { amount ->
+                                    resizingOffsets[widget.id] = (resizingOffsets[widget.id] ?: Offset.Zero) + amount
+                                },
+                                onResizeEnd = {
+                                    scope.launch {
+                                        val latestVisualWidth = animatableSize.value.width + (resizingOffsets[widget.id]?.x ?: 0f)
+                                        val latestVisualHeight = animatableSize.value.height + (resizingOffsets[widget.id]?.y ?: 0f)
+                                        
+                                        val (finalColSpan, finalRowSpan) = calculateSnapSize(latestVisualWidth, latestVisualHeight, widget.column, widget.row, density)
+                                        
+                                        val targetSize = IntSize(
+                                            with(density) { GridSystem.cellToDp(finalColSpan).toPx().roundToInt() },
+                                            with(density) { GridSystem.cellToDp(finalRowSpan).toPx().roundToInt() }
+                                        )
+                                        
+                                        animatableSize.snapTo(targetSize)
+                                        resizingOffsets.remove(widget.id)
+                                        viewModel.updateWidgetSize(widget.id, finalColSpan, finalRowSpan)
+                                    }
+                                },
+                                onEditClick = { editingWidget = widget }
+                            ) {
+                                when (widget.type) {
+                                    WidgetType.BUTTON -> {
+                                        ButtonWidget(
+                                            label = resolvedLabel,
+                                            onClick = { viewModel.onButtonPress(widget.tagAddress) },
+                                            backgroundColor = resolvedColorLong,
+                                            fontSizeMultiplier = widget.fontSizeMultiplier,
+                                            textColorOverride = widget.textColorOverride,
+                                            hapticFeedbackEnabled = dashboardLayout.hapticFeedbackEnabled,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                    WidgetType.SLIDER -> {
+                                        SliderWidget(
+                                            label = resolvedLabel,
+                                            value = currentValue,
+                                            onValueChange = { viewModel.onSliderChange(widget.tagAddress, it) },
+                                            valueRange = (widget.minValue ?: 0f)..(widget.maxValue ?: 100f),
+                                            backgroundColor = resolvedColorLong,
+                                            fontSizeMultiplier = widget.fontSizeMultiplier,
+                                            modifier = Modifier.fillMaxSize().padding(8.dp)
+                                        )
+                                    }
+                                    WidgetType.GAUGE -> {
+                                        GaugeWidget(
+                                            label = resolvedLabel,
+                                            value = currentValue,
+                                            minValue = widget.minValue ?: 0f,
+                                            maxValue = widget.maxValue ?: 100f,
+                                            backgroundColor = resolvedColorLong,
+                                            fontSizeMultiplier = widget.fontSizeMultiplier,
+                                            targetTicks = widget.targetTicks,
+                                            colorZones = widget.colorZones,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
-            
-            if (isEditMode) {
-                WidgetPalette(
-                    onAddWidget = { viewModel.addWidget(it) },
-                    modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter)
-                )
+                
+                if (isEditMode) {
+                    WidgetPalette(
+                        onAddWidget = { viewModel.addWidget(it) },
+                        modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter)
+                    )
+                }
             }
         }
     }

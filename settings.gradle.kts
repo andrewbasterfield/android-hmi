@@ -21,4 +21,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "HMI Control Panel"
 include(":app")
+include(":core:ui")
+include(":feature:diagnostics")
 

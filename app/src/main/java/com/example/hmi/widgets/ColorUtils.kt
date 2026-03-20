@@ -2,11 +2,58 @@ package com.example.hmi.widgets
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import com.example.hmi.core.ui.theme.StatusAmber
+import com.example.hmi.core.ui.theme.StatusGreen
+import com.example.hmi.core.ui.theme.StatusRed
+import com.example.hmi.core.ui.theme.SurfaceContainerLow
+import com.example.hmi.core.ui.theme.Void
 
 /**
  * Utility functions for color manipulation in the HMI.
  */
 object ColorUtils {
+    
+    // OSHA-compliant preset colors (ANSI Z535.1)
+    val OSHA_SAFETY_GREEN = StatusGreen // Safety
+    val OSHA_SAFETY_YELLOW = StatusAmber // Caution
+    val OSHA_SAFETY_RED = StatusRed // Danger/Emergency
+    val OSHA_SAFETY_BLUE = Color(0xFF005EB8) // Information
+    val OSHA_SAFETY_ORANGE = Color(0xFFE06B00) // Warning
+    
+    val KINETIC_PRESETS = listOf(
+        OSHA_SAFETY_GREEN,
+        OSHA_SAFETY_YELLOW,
+        OSHA_SAFETY_RED,
+        OSHA_SAFETY_BLUE,
+        OSHA_SAFETY_ORANGE,
+        SurfaceContainerLow
+    )
+
+    /**
+     * Maps legacy colors to the nearest OSHA/Kinetic tokens.
+     * Ensures existing layouts look ruggedized and high-contrast (BUG-002).
+     */
+    fun sanitizeColor(legacyColor: Color): Color {
+        val lum = legacyColor.luminance()
+        
+        // If it's close to black, map to Obsidian
+        if (lum < 0.1f) return Void
+        
+        // If it's a "Grey", map to Stacking Surface
+        if (legacyColor.red > 0.3f && legacyColor.red < 0.7f && 
+            Math.abs(legacyColor.red - legacyColor.green) < 0.1f &&
+            Math.abs(legacyColor.green - legacyColor.blue) < 0.1f) {
+            return SurfaceContainerLow
+        }
+        
+        // Map common "Danger/Caution" shades to exact OSHA tokens
+        if (legacyColor.red > 0.6f && legacyColor.green < 0.3f && legacyColor.blue < 0.3f) return StatusRed
+        if (legacyColor.red > 0.6f && legacyColor.green > 0.6f && legacyColor.blue < 0.3f) return StatusAmber
+        if (legacyColor.green > 0.6f && legacyColor.red < 0.3f && legacyColor.blue < 0.3f) return StatusGreen
+        
+        return legacyColor
+    }
+
     /**
      * Parses a hex color string (e.g., "#FF0000" or "FF0000") into a Long.
      * Returns the internal Compose Color value (64-bit ULong) as a Long.

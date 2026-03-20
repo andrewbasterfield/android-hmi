@@ -18,5 +18,6 @@ data class WidgetConfiguration(
     val textColorOverride: String? = null, // "BLACK", "WHITE", or null (AUTO)
     val minValue: Float? = null,
     val maxValue: Float? = null,
+    val targetTicks: Int = 6,
     val colorZones: List<GaugeZone> = emptyList()
 )
