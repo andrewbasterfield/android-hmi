@@ -4,6 +4,8 @@ import java.util.UUID
 
 enum class WidgetType { BUTTON, SLIDER, GAUGE }
 
+enum class AlarmState { Normal, Unacknowledged, Acknowledged }
+
 data class WidgetConfiguration(
     val id: String = UUID.randomUUID().toString(),
     val type: WidgetType,
@@ -21,5 +23,7 @@ data class WidgetConfiguration(
     val targetTicks: Int = 6,
     val colorZones: List<GaugeZone> = emptyList(),
     val needleColor: Long? = null,
-    val isNeedleDynamic: Boolean = false
+    val isNeedleDynamic: Boolean = false,
+    val units: String? = null,
+    val alarmState: AlarmState = AlarmState.Normal
 )

@@ -83,7 +83,12 @@ class DashboardViewModel @Inject constructor(
                     id = widget.id ?: java.util.UUID.randomUUID().toString(),
                     tagAddress = widget.tagAddress ?: "",
                     targetTicks = widget.targetTicks,
-                    colorZones = widget.colorZones ?: emptyList()
+                    colorZones = widget.colorZones ?: emptyList(),
+                    alarmState = if (widget.alarmState == com.example.hmi.data.AlarmState.Acknowledged) {
+                        com.example.hmi.data.AlarmState.Unacknowledged 
+                    } else {
+                        widget.alarmState ?: com.example.hmi.data.AlarmState.Normal
+                    }
                 )
             }
         )
@@ -186,6 +191,23 @@ class DashboardViewModel @Inject constructor(
         val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
         _dashboardLayout.value = newLayout
         viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+    }
+    
+    fun acknowledgeAlarm(tagAddress: String) {
+        val currentWidgets = _dashboardLayout.value.widgets.toMutableList()
+        var changed = false
+        for (i in currentWidgets.indices) {
+            val widget = currentWidgets[i]
+            if (widget.tagAddress == tagAddress && widget.alarmState == com.example.hmi.data.AlarmState.Unacknowledged) {
+                currentWidgets[i] = widget.copy(alarmState = com.example.hmi.data.AlarmState.Acknowledged)
+                changed = true
+            }
+        }
+        if (changed) {
+            val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
+            _dashboardLayout.value = newLayout
+            viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+        }
     }
     
     fun updateDashboardSettings(name: String, canvasColor: Long?, hapticFeedbackEnabled: Boolean) {

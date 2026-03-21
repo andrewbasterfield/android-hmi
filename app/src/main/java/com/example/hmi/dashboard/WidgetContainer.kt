@@ -9,6 +9,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -23,7 +25,7 @@ import com.example.hmi.widgets.ColorUtils
 
 /**
  * A uniform container for all HMI widgets.
- * Rugged functionalism: 0dp corners, 2px bezels. No header row.
+ * Rugged functionalism: 2px corners (via Theme), 2px bezels. No header row.
  * Includes a tactile 32x32dp Resize Handle in Edit Mode (BUG-001).
  */
 @Composable
@@ -42,13 +44,17 @@ fun WidgetContainer(
     val baseBg = backgroundColor?.let { ColorUtils.toColor(it) } ?: StitchTheme.tokens.surfaceContainerLow
     val bg = baseBg.copy(alpha = alpha)
 
+    // US2 FIX: Use rememberUpdatedState to prevent pointerInput restart during drag
+    val currentOnResize by rememberUpdatedState(onResize)
+    val currentOnResizeEnd by rememberUpdatedState(onResizeEnd)
+
     val contentColor = when (textColorOverride) {
         "BLACK" -> Color.Black
         "WHITE" -> Color.White
         else -> ColorUtils.getIndustrialContrastColor(baseBg)
     }.copy(alpha = alpha)
 
-    val shape = RectangleShape // Strictly 0dp
+    val shape = MaterialTheme.shapes.small
 
     Box(modifier = modifier) {
         Surface(
@@ -84,10 +90,10 @@ fun WidgetContainer(
                                 .size(32.dp)
                                 .pointerInput(Unit) {
                                     detectDragGestures(
-                                        onDragEnd = { onResizeEnd() },
+                                        onDragEnd = { currentOnResizeEnd() },
                                         onDrag = { change, dragAmount ->
                                             change.consume()
-                                            onResize(dragAmount)
+                                            currentOnResize(dragAmount)
                                         }
                                     )
                                 }

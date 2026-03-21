@@ -86,6 +86,7 @@ fun WidgetConfigDialog(
     var targetTicks by remember { mutableFloatStateOf(initialWidget?.targetTicks?.toFloat() ?: 6f) }
     var needleColor by remember { mutableStateOf(initialWidget?.needleColor) }
     var isNeedleDynamic by remember { mutableStateOf(initialWidget?.isNeedleDynamic ?: false) }
+    var units by remember { mutableStateOf(initialWidget?.units ?: "") }
     
     val colorZones = remember { mutableStateListOf<GaugeZone>().apply { 
         addAll(initialWidget?.colorZones ?: emptyList()) 
@@ -164,6 +165,15 @@ fun WidgetConfigDialog(
                     onValueChange = { customLabel = it },
                     label = { Text("Custom Label (Optional)") },
                     placeholder = { Text(tagAddress.ifEmpty { "Enter label" }) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = units,
+                    onValueChange = { units = it },
+                    label = { Text("Units (e.g. PSI, °C)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 
@@ -329,7 +339,8 @@ fun WidgetConfigDialog(
                             targetTicks = targetTicks.toInt(),
                             colorZones = colorZones.toList(),
                             needleColor = needleColor,
-                            isNeedleDynamic = isNeedleDynamic
+                            isNeedleDynamic = isNeedleDynamic,
+                            units = units.ifBlank { null }
                         )
                     )
                 },

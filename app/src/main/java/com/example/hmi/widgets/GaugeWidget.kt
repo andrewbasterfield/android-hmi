@@ -31,6 +31,11 @@ import com.example.hmi.data.GaugeZone
 import kotlin.math.cos
 import kotlin.math.sin
 
+import androidx.compose.foundation.clickable
+import com.example.hmi.core.ui.components.AlarmPulse
+import com.example.hmi.core.ui.components.PulseState
+import com.example.hmi.core.ui.utils.SiFormatter
+
 val NeedleColorKey = SemanticsPropertyKey<Color>("NeedleColor")
 var SemanticsPropertyReceiver.needleColor by NeedleColorKey
 
@@ -46,7 +51,10 @@ fun GaugeWidget(
     targetTicks: Int = 6,
     colorZones: List<GaugeZone> = emptyList(),
     needleColor: Long? = null,
-    isNeedleDynamic: Boolean = false
+    isNeedleDynamic: Boolean = false,
+    units: String? = null,
+    pulseState: PulseState = PulseState.NORMAL,
+    onAcknowledgeAlarm: () -> Unit = {}
 ) {
     // BUG-011 Parked: Using fastest available spring for zero-lag response.
     // Phantom needles are acknowledged as a display-persistence limitation for now.
@@ -62,13 +70,21 @@ fun GaugeWidget(
     val contentColor = LocalContentColor.current
     val startAngle = 135f
     val sweepAngle = 270f
+    
+    val formattedUnits = SiFormatter.formatUnit(units)
+    val formattedValue = SiFormatter.formatValue(value)
 
-    Column(
+    AlarmPulse(
+        state = pulseState,
         modifier = modifier
             .fillMaxSize()
             .padding(8.dp)
+            .clickable(enabled = pulseState == PulseState.UNACKNOWLEDGED) {
+                onAcknowledgeAlarm()
+            }
             .semantics { 
-                contentDescription = "Gauge for $label showing ${"%.1f".format(value)}"
+                val displayUnits = if (formattedUnits.isNullOrBlank()) "" else " $formattedUnits"
+                contentDescription = "Gauge for $label showing $formattedValue$displayUnits"
                 // US1/US2: Expose needle color for testing
                 val currentNeedleColor = ColorUtils.resolveNeedleColor(
                     currentValue = animatedValue,
@@ -78,116 +94,137 @@ fun GaugeWidget(
                     defaultColor = contentColor
                 )
                 this.needleColor = currentNeedleColor
-            },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            }
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 36.sp * fontSizeMultiplier,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            ),
-            color = contentColor.copy(alpha = 0.8f)
-        )
-        
-        Box(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Canvas(modifier = Modifier.fillMaxSize(0.9f)) {
-                val center = Offset(size.width / 2, size.height / 2)
-                val radius = size.minDimension / 2
-                val innerRadius = radius * 0.8f
-                val strokeWidth = 4.dp.toPx()
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 36.sp * fontSizeMultiplier,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                ),
+                color = contentColor.copy(alpha = 0.8f)
+            )
+            
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Canvas(modifier = Modifier.fillMaxSize(0.9f)) {
+                    val center = Offset(size.width / 2, size.height / 2)
+                    val radius = size.minDimension / 2
+                    val innerRadius = radius * 0.8f
+                    val strokeWidth = 4.dp.toPx()
 
-                // 1. Draw background track (Aligned with contentColor)
-                drawArc(
-                    color = contentColor.copy(alpha = 0.2f),
-                    startAngle = startAngle,
-                    sweepAngle = sweepAngle,
-                    useCenter = false,
-                    topLeft = Offset(center.x - radius, center.y - radius),
-                    size = Size(radius * 2, radius * 2),
-                    style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
-                )
+                    // 1. Draw background track (Aligned with contentColor)
+                    drawArc(
+                        color = contentColor.copy(alpha = 0.2f),
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle,
+                        useCenter = false,
+                        topLeft = Offset(center.x - radius, center.y - radius),
+                        size = Size(radius * 2, radius * 2),
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
+                    )
 
-                // 2. Draw color zones
-                colorZones.forEach { zone ->
-                    val zoneStartValue = zone.startValue.coerceIn(minValue, maxValue)
-                    val zoneEndValue = zone.endValue.coerceIn(minValue, maxValue)
-                    
-                    if (zoneEndValue > zoneStartValue) {
-                        val zoneStartAngle = startAngle + (zoneStartValue - minValue) / (maxValue - minValue) * sweepAngle
-                        val zoneSweepAngle = (zoneEndValue - zoneStartValue) / (maxValue - minValue) * sweepAngle
+                    // 2. Draw color zones
+                    colorZones.forEach { zone ->
+                        val zoneStartValue = zone.startValue.coerceIn(minValue, maxValue)
+                        val zoneEndValue = zone.endValue.coerceIn(minValue, maxValue)
                         
-                        drawArc(
-                            color = ColorUtils.toColor(zone.color),
-                            startAngle = zoneStartAngle,
-                            sweepAngle = zoneSweepAngle,
-                            useCenter = false,
-                            topLeft = Offset(center.x - radius, center.y - radius),
-                            size = Size(radius * 2, radius * 2),
-                            style = Stroke(width = strokeWidth * 1.5f, cap = StrokeCap.Butt)
+                        if (zoneEndValue > zoneStartValue) {
+                            val zoneStartAngle = startAngle + (zoneStartValue - minValue) / (maxValue - minValue) * sweepAngle
+                            val zoneSweepAngle = (zoneEndValue - zoneStartValue) / (maxValue - minValue) * sweepAngle
+                            
+                            drawArc(
+                                color = ColorUtils.toColor(zone.color),
+                                startAngle = zoneStartAngle,
+                                sweepAngle = zoneSweepAngle,
+                                useCenter = false,
+                                topLeft = Offset(center.x - radius, center.y - radius),
+                                size = Size(radius * 2, radius * 2),
+                                style = Stroke(width = strokeWidth * 1.5f, cap = StrokeCap.Butt)
+                            )
+                        }
+                    }
+
+                    // 3. Draw ticks
+                    val step = ScaleUtils.calculateNiceStep(maxValue - minValue, targetTicks)
+                    val ticks = ScaleUtils.generateTicks(minValue, maxValue, step)
+                    
+                    ticks.forEach { tickValue ->
+                        val angle = startAngle + (tickValue - minValue) / (maxValue - minValue) * sweepAngle
+                        val angleRad = Math.toRadians(angle.toDouble())
+                        
+                        val outerX = center.x + radius * cos(angleRad).toFloat()
+                        val outerY = center.y + radius * sin(angleRad).toFloat()
+                        val innerX = center.x + innerRadius * cos(angleRad).toFloat()
+                        val innerY = center.y + innerRadius * sin(angleRad).toFloat()
+
+                        drawLine(
+                            color = contentColor.copy(alpha = 0.8f),
+                            start = Offset(innerX, innerY),
+                            end = Offset(outerX, outerY),
+                            strokeWidth = 2.dp.toPx()
                         )
                     }
+
+                    // 4. Draw Needle
+                    val currentNeedleColor = ColorUtils.resolveNeedleColor(
+                        currentValue = animatedValue,
+                        isNeedleDynamic = isNeedleDynamic,
+                        staticNeedleColor = needleColor,
+                        colorZones = colorZones,
+                        defaultColor = contentColor
+                    )
+
+                    val needleAngle = startAngle + (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * sweepAngle
+                    rotate(degrees = needleAngle, pivot = center) {
+                        val needlePath = Path().apply {
+                            moveTo(center.x + radius * 0.9f, center.y)
+                            lineTo(center.x, center.y - 4.dp.toPx())
+                            lineTo(center.x - 8.dp.toPx(), center.y)
+                            lineTo(center.x, center.y + 4.dp.toPx())
+                            close()
+                        }
+                        drawPath(path = needlePath, color = currentNeedleColor)
+                    }
+
+                    drawCircle(color = currentNeedleColor, radius = 6.dp.toPx(), center = center)
                 }
+            }
 
-                // 3. Draw ticks
-                val step = ScaleUtils.calculateNiceStep(maxValue - minValue, targetTicks)
-                val ticks = ScaleUtils.generateTicks(minValue, maxValue, step)
-                
-                ticks.forEach { tickValue ->
-                    val angle = startAngle + (tickValue - minValue) / (maxValue - minValue) * sweepAngle
-                    val angleRad = Math.toRadians(angle.toDouble())
-                    
-                    val outerX = center.x + radius * cos(angleRad).toFloat()
-                    val outerY = center.y + radius * sin(angleRad).toFloat()
-                    val innerX = center.x + innerRadius * cos(angleRad).toFloat()
-                    val innerY = center.y + innerRadius * sin(angleRad).toFloat()
-
-                    drawLine(
-                        color = contentColor.copy(alpha = 0.8f),
-                        start = Offset(innerX, innerY),
-                        end = Offset(outerX, outerY),
-                        strokeWidth = 2.dp.toPx()
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = formattedValue,
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 64.sp * fontSizeMultiplier,
+                        fontWeight = FontWeight.Black
+                    ),
+                    color = contentColor
+                )
+                if (!formattedUnits.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = formattedUnits,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontSize = 32.sp * fontSizeMultiplier,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = contentColor.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(bottom = 8.dp) // Align slightly above baseline for optical balance
                     )
                 }
-
-                // 4. Draw Needle
-                val currentNeedleColor = ColorUtils.resolveNeedleColor(
-                    currentValue = animatedValue,
-                    isNeedleDynamic = isNeedleDynamic,
-                    staticNeedleColor = needleColor,
-                    colorZones = colorZones,
-                    defaultColor = contentColor
-                )
-
-                val needleAngle = startAngle + (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * sweepAngle
-                rotate(degrees = needleAngle, pivot = center) {
-                    val needlePath = Path().apply {
-                        moveTo(center.x + radius * 0.9f, center.y)
-                        lineTo(center.x, center.y - 4.dp.toPx())
-                        lineTo(center.x - 8.dp.toPx(), center.y)
-                        lineTo(center.x, center.y + 4.dp.toPx())
-                        close()
-                    }
-                    drawPath(path = needlePath, color = currentNeedleColor)
-                }
-
-                drawCircle(color = currentNeedleColor, radius = 6.dp.toPx(), center = center)
             }
         }
-
-        Text(
-            text = "%.1f".format(value),
-            style = MaterialTheme.typography.displaySmall.copy(
-                fontFamily = FontFamily.Monospace,
-                fontSize = 64.sp * fontSizeMultiplier,
-                fontWeight = FontWeight.Black
-            ),
-            color = contentColor
-        )
     }
 }

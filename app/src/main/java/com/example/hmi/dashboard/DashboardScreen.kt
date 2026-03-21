@@ -55,6 +55,9 @@ fun DashboardScreen(
     
     val draggingOffsets = remember { mutableStateMapOf<String, Offset>() }
     val resizingOffsets = remember { mutableStateMapOf<String, Offset>() }
+    
+    // US2 DEEP FIX: Track the starting state of a gesture to avoid feedback loops with animations
+    val gestureStartStates = remember { mutableStateMapOf<String, Pair<IntOffset, IntSize>>() }
 
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
@@ -231,11 +234,16 @@ fun DashboardScreen(
                             )
                         }
 
-                        val visualX = if (isBeingDragged) animatableOffset.value.x + dragOffset!!.x else animatableOffset.value.x.toFloat()
-                        val visualY = if (isBeingDragged) animatableOffset.value.y + dragOffset!!.y else animatableOffset.value.y.toFloat()
+                        // US2 DEEP FIX: Calculations must be relative to gesture START state to avoid feedback jitter
+                        val visualX = if (isBeingDragged) (gestureStartStates[widget.id]?.first?.x ?: animatableOffset.value.x).toFloat() + dragOffset!!.x 
+                                      else animatableOffset.value.x.toFloat()
+                        val visualY = if (isBeingDragged) (gestureStartStates[widget.id]?.first?.y ?: animatableOffset.value.y).toFloat() + dragOffset!!.y 
+                                      else animatableOffset.value.y.toFloat()
 
-                        val visualWidth = if (isBeingResized) animatableSize.value.width + resizeOffset!!.x else animatableSize.value.width.toFloat()
-                        val visualHeight = if (isBeingResized) animatableSize.value.height + resizeOffset!!.y else animatableSize.value.height.toFloat()
+                        val visualWidth = if (isBeingResized) (gestureStartStates[widget.id]?.second?.width ?: animatableSize.value.width).toFloat() + resizeOffset!!.x 
+                                          else animatableSize.value.width.toFloat()
+                        val visualHeight = if (isBeingResized) (gestureStartStates[widget.id]?.second?.height ?: animatableSize.value.height).toFloat() + resizeOffset!!.y 
+                                           else animatableSize.value.height.toFloat()
 
                         if (isBeingDragged) {
                             val (ghostCol, ghostRow) = calculateSnapCells(visualX, visualY, widget.colSpan, widget.rowSpan, density)
@@ -277,6 +285,26 @@ fun DashboardScreen(
                             ) {}
                         }
 
+                        val currentOnDragEnd by rememberUpdatedState {
+                            scope.launch {
+                                val startState = gestureStartStates[widget.id]
+                                val latestVisualX = (startState?.first?.x ?: animatableOffset.value.x) + (draggingOffsets[widget.id]?.x ?: 0f)
+                                val latestVisualY = (startState?.first?.y ?: animatableOffset.value.y) + (draggingOffsets[widget.id]?.y ?: 0f)
+                                
+                                val (finalCol, finalRow) = calculateSnapCells(latestVisualX, latestVisualY, widget.colSpan, widget.rowSpan, density)
+                                
+                                val targetPixels = IntOffset(
+                                    with(density) { GridSystem.cellToDp(finalCol).toPx().roundToInt() },
+                                    with(density) { GridSystem.cellToDp(finalRow).toPx().roundToInt() }
+                                )
+                                
+                                viewModel.updateWidgetPosition(widget.id, finalCol, finalRow)
+                                animatableOffset.snapTo(targetPixels)
+                                draggingOffsets.remove(widget.id)
+                                gestureStartStates.remove(widget.id)
+                            }
+                        }
+
                         Box(
                             modifier = Modifier
                                 .size(
@@ -295,38 +323,40 @@ fun DashboardScreen(
                                 moveModifier = if (isEditMode) {
                                     Modifier.pointerInput(widget.id) {
                                         detectDragGestures(
-                                            onDragStart = { draggingOffsets[widget.id] = Offset.Zero },
-                                            onDragEnd = {
-                                                scope.launch {
-                                                    val latestVisualX = animatableOffset.value.x + (draggingOffsets[widget.id]?.x ?: 0f)
-                                                    val latestVisualY = animatableOffset.value.y + (draggingOffsets[widget.id]?.y ?: 0f)
-                                                    
-                                                    val (finalCol, finalRow) = calculateSnapCells(latestVisualX, latestVisualY, widget.colSpan, widget.rowSpan, density)
-                                                    
-                                                    val targetPixels = IntOffset(
-                                                        with(density) { GridSystem.cellToDp(finalCol).toPx().roundToInt() },
-                                                        with(density) { GridSystem.cellToDp(finalRow).toPx().roundToInt() }
-                                                    )
-                                                    
-                                                    animatableOffset.snapTo(targetPixels)
-                                                    draggingOffsets.remove(widget.id)
-                                                    viewModel.updateWidgetPosition(widget.id, finalCol, finalRow)
-                                                }
+                                            onDragStart = { 
+                                                gestureStartStates[widget.id] = animatableOffset.value to animatableSize.value
+                                                draggingOffsets[widget.id] = Offset.Zero 
                                             },
-                                            onDragCancel = { draggingOffsets.remove(widget.id) }
+                                            onDragEnd = { currentOnDragEnd() },
+                                            onDragCancel = { 
+                                                draggingOffsets.remove(widget.id)
+                                                gestureStartStates.remove(widget.id)
+                                            }
                                         ) { change, amount ->
-                                            change.consume()
-                                            draggingOffsets[widget.id] = (draggingOffsets[widget.id] ?: Offset.Zero) + amount
+                                            // US2 DEEP FIX: EXCLUDE BOTTOM-RIGHT 40dp FROM MOVE GESTURE
+                                            val touchX = change.position.x
+                                            val touchY = change.position.y
+                                            val width = size.width
+                                            val height = size.height
+                                            
+                                            if (touchX < width - 40.dp.toPx() || touchY < height - 40.dp.toPx()) {
+                                                change.consume()
+                                                draggingOffsets[widget.id] = (draggingOffsets[widget.id] ?: Offset.Zero) + amount
+                                            }
                                         }
                                     }
                                 } else Modifier,
                                 onResize = { amount ->
+                                    if (gestureStartStates[widget.id] == null) {
+                                        gestureStartStates[widget.id] = animatableOffset.value to animatableSize.value
+                                    }
                                     resizingOffsets[widget.id] = (resizingOffsets[widget.id] ?: Offset.Zero) + amount
                                 },
                                 onResizeEnd = {
                                     scope.launch {
-                                        val latestVisualWidth = animatableSize.value.width + (resizingOffsets[widget.id]?.x ?: 0f)
-                                        val latestVisualHeight = animatableSize.value.height + (resizingOffsets[widget.id]?.y ?: 0f)
+                                        val startState = gestureStartStates[widget.id]
+                                        val latestVisualWidth = (startState?.second?.width ?: animatableSize.value.width) + (resizingOffsets[widget.id]?.x ?: 0f)
+                                        val latestVisualHeight = (startState?.second?.height ?: animatableSize.value.height) + (resizingOffsets[widget.id]?.y ?: 0f)
                                         
                                         val (finalColSpan, finalRowSpan) = calculateSnapSize(latestVisualWidth, latestVisualHeight, widget.column, widget.row, density)
                                         
@@ -335,9 +365,10 @@ fun DashboardScreen(
                                             with(density) { GridSystem.cellToDp(finalRowSpan).toPx().roundToInt() }
                                         )
                                         
+                                        viewModel.updateWidgetSize(widget.id, finalColSpan, finalRowSpan)
                                         animatableSize.snapTo(targetSize)
                                         resizingOffsets.remove(widget.id)
-                                        viewModel.updateWidgetSize(widget.id, finalColSpan, finalRowSpan)
+                                        gestureStartStates.remove(widget.id)
                                     }
                                 },
                                 onEditClick = { editingWidget = widget }
@@ -366,6 +397,11 @@ fun DashboardScreen(
                                         )
                                     }
                                     WidgetType.GAUGE -> {
+                                        val pulseState = when (widget.alarmState) {
+                                            com.example.hmi.data.AlarmState.Normal -> com.example.hmi.core.ui.components.PulseState.NORMAL
+                                            com.example.hmi.data.AlarmState.Unacknowledged -> com.example.hmi.core.ui.components.PulseState.UNACKNOWLEDGED
+                                            com.example.hmi.data.AlarmState.Acknowledged -> com.example.hmi.core.ui.components.PulseState.ACKNOWLEDGED
+                                        }
                                         GaugeWidget(
                                             label = resolvedLabel,
                                             value = currentValue,
@@ -377,6 +413,9 @@ fun DashboardScreen(
                                             colorZones = widget.colorZones,
                                             needleColor = widget.needleColor,
                                             isNeedleDynamic = widget.isNeedleDynamic,
+                                            units = widget.units,
+                                            pulseState = pulseState,
+                                            onAcknowledgeAlarm = { viewModel.acknowledgeAlarm(widget.tagAddress) },
                                             modifier = Modifier.fillMaxSize()
                                         )
                                     }

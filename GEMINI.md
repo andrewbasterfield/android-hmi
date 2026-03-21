@@ -49,7 +49,6 @@ Kotlin (Latest stable): Follow standard conventions
 ## Recent Changes
 - 019-customize-gauge-colors: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore (Preferences), GSON, Kotlin Coroutines (StateFlow)
 - 018-gauge-tick-config: Added Kotlin 1.9+ + Jetpack Compose, Hilt, Jetpack DataStore, GSON
-- 018-gauge-tick-config: Added Kotlin 1.9+ + Jetpack Compose, Hilt, Jetpack DataStore
 
 
 <!-- MANUAL ADDITIONS START -->

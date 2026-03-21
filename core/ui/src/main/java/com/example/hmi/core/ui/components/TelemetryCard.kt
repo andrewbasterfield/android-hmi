@@ -19,8 +19,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
 import com.example.hmi.core.ui.theme.HealthStatus
 import com.example.hmi.core.ui.theme.StitchTheme
+import com.example.hmi.core.ui.utils.SiFormatter
 
 @Composable
 fun TelemetryCard(
@@ -29,6 +31,8 @@ fun TelemetryCard(
     unit: String,
     status: HealthStatus,
     modifier: Modifier = Modifier,
+    pulseState: PulseState = PulseState.NORMAL,
+    onAcknowledgeAlarm: () -> Unit = {},
     onDetailsClick: (() -> Unit)? = null
 ) {
     val statusColor = when (status) {
@@ -42,67 +46,76 @@ fun TelemetryCard(
         HealthStatus.CAUTION -> Icons.Default.Warning
         HealthStatus.CRITICAL -> Icons.Default.Error
     }
+    
+    val formattedUnit = SiFormatter.formatUnit(unit)
 
-    Box(
+    AlarmPulse(
+        state = pulseState,
+        normalColor = MaterialTheme.colorScheme.outline,
         modifier = modifier
             .background(StitchTheme.tokens.surfaceContainerLow)
-            .border(2.dp, MaterialTheme.colorScheme.outline)
-            .padding(12.dp)
             .heightIn(min = 100.dp)
-    ) {
-        // Health Accent Bar
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(4.dp)
-                .background(statusColor)
-                .align(Alignment.CenterStart)
-        )
-
-        Column(
-            modifier = Modifier
-                .padding(start = 12.dp)
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = label.uppercase(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.outline
-                )
-                Icon(
-                    imageVector = statusIcon,
-                    contentDescription = status.name,
-                    tint = statusColor,
-                    modifier = Modifier.size(16.dp)
-                )
+            .clickable(enabled = pulseState == PulseState.UNACKNOWLEDGED) {
+                onAcknowledgeAlarm()
             }
+    ) {
+        Box(
+            modifier = Modifier.padding(12.dp).fillMaxSize()
+        ) {
+            // Health Accent Bar
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(4.dp)
+                    .background(statusColor)
+                    .align(Alignment.CenterStart)
+            )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.Bottom
+            Column(
+                modifier = Modifier
+                    .padding(start = 12.dp)
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontFamily = FontFamily.Monospace, // Ensure monospaced
-                        textAlign = TextAlign.End
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = unit.uppercase(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = label.uppercase(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                    Icon(
+                        imageVector = statusIcon,
+                        contentDescription = status.name,
+                        tint = statusColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontFamily = FontFamily.Monospace, // Ensure monospaced
+                            textAlign = TextAlign.End
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = formattedUnit,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.outline,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
             }
         }
     }
