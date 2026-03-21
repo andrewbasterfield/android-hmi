@@ -3,7 +3,7 @@
 - [X] **BUG-003**: Resize handles non-functional - fixed gesture conflict.
 - [X] **BUG-004**: Font size slider not working for buttons - fixed propagation.
 - [X] **BUG-005**: Automatic capitalization was unwanted - disabled.
-- [ ] **BUG-006**: Typography scale refinement - audit fontSizeMultiplier propagation.
+- [X] **BUG-006**: Typography scale refinement - verified propagation across all widgets.
 - [X] **BUG-007**: Typography baseline doubling - default 1.0x is now "Normal".
 - [X] **BUG-008**: Widget Config Dialog oversized - fixed height to wrapContent.
 - [X] **BUG-009**: Text color override not applied - fixed LocalContentColor propagation.
