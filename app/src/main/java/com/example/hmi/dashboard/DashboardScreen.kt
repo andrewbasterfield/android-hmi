@@ -379,8 +379,8 @@ fun DashboardScreen(
                                             label = resolvedLabel,
                                             onClick = { viewModel.onButtonPress(widget.tagAddress) },
                                             backgroundColor = resolvedColorLong,
+                                            textColor = widget.textColor,
                                             fontSizeMultiplier = widget.fontSizeMultiplier,
-                                            textColorOverride = widget.textColorOverride,
                                             hapticFeedbackEnabled = dashboardLayout.hapticFeedbackEnabled,
                                             modifier = Modifier.fillMaxSize()
                                         )

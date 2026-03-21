@@ -4,6 +4,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.unit.dp
 import com.example.hmi.core.ui.theme.StitchTheme
+import com.example.hmi.core.ui.utils.ShapeKey
 import org.junit.Rule
 import org.junit.Test
 
@@ -19,9 +20,9 @@ class IndustrialComponentTest {
             }
         }
 
-        // Use a generic selector or tag if available
-        // For stub, it might not even render a node with text
-        // composeTestRule.onNodeWithText("TEST").assertHeightIsAtLeast(64.dp)
+        composeTestRule.onNodeWithText("TEST", useUnmergedTree = true)
+            .onParent()
+            .assertHeightIsAtLeast(64.dp)
     }
 
     @Test
@@ -31,5 +32,35 @@ class IndustrialComponentTest {
                 IndustrialInput(value = "", onValueChange = {}, label = "TEST")
             }
         }
+        
+        composeTestRule.onNodeWithText("TEST")
+            .onParent()
+            .assertHeightIsAtLeast(64.dp)
+    }
+
+    @Test
+    fun industrialButton_usesSmallShape() {
+        composeTestRule.setContent {
+            StitchTheme {
+                IndustrialButton(onClick = {}, label = "TEST")
+            }
+        }
+
+        composeTestRule.onNodeWithText("TEST", useUnmergedTree = true)
+            .onParent()
+            .assert(SemanticsMatcher.expectValue(ShapeKey, "small"))
+    }
+
+    @Test
+    fun industrialInput_usesSmallShape() {
+        composeTestRule.setContent {
+            StitchTheme {
+                IndustrialInput(value = "", onValueChange = {}, label = "TEST")
+            }
+        }
+
+        composeTestRule.onNodeWithText("TEST")
+            .onParent()
+            .assert(SemanticsMatcher.expectValue(ShapeKey, "small"))
     }
 }

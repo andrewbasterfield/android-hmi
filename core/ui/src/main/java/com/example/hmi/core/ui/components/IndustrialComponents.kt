@@ -10,13 +10,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.hmi.core.ui.theme.Outline
 import com.example.hmi.core.ui.theme.StitchTheme
+import com.example.hmi.core.ui.utils.ColorUtils
+import com.example.hmi.core.ui.utils.componentShape
+
+enum class IndustrialButtonStyle {
+    OUTLINED, SOLID
+}
 
 @Composable
 fun IndustrialButton(
@@ -24,32 +31,69 @@ fun IndustrialButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     label: String = "",
+    style: IndustrialButtonStyle = IndustrialButtonStyle.OUTLINED,
     fontSizeMultiplier: Float = 1.0f,
-    baseContentColor: Color = LocalContentColor.current, // Added to support overrides
+    baseContentColor: Color = LocalContentColor.current, // The "Identity" color
+    contentColorOverride: Color? = null, // Explicit override for the label
+    pressedFillColor: Color? = null, // Custom override for the "Push" background
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable RowScope.() -> Unit = {}
 ) {
     val isPressed by interactionSource.collectIsPressedAsState()
     
-    // Inverse Video Logic (FR-006)
-    // If pressed, swap to Primary/OnPrimary. 
-    // If not pressed, use the provided baseContentColor (or LocalContentColor).
-    val backgroundColor = if (isPressed) MaterialTheme.colorScheme.primary else Color.Transparent
-    val contentColor = if (isPressed) MaterialTheme.colorScheme.onPrimary else baseContentColor
-    val borderColor = if (isPressed) Color.Transparent else baseContentColor.copy(alpha = 0.5f)
+    val backgroundColor: Color
+    val contentColor: Color
+    val borderStroke: BorderStroke?
+
+    // 1. Resolve the "Identity Pair" for the Normal state
+    val identityColor = baseContentColor
+    val contrastColor = contentColorOverride ?: ColorUtils.getIndustrialContrastColor(identityColor)
+
+    if (style == IndustrialButtonStyle.SOLID) {
+        // SOLID style: Simply swap the Identity Pair on press
+        // Normal: Identity BG / Contrast Text
+        // Pressed: Contrast BG / Identity Text
+        backgroundColor = if (isPressed) {
+            pressedFillColor ?: contrastColor
+        } else {
+            identityColor
+        }
+        
+        contentColor = if (isPressed) {
+            if (pressedFillColor != null) {
+                ColorUtils.getIndustrialContrastColor(pressedFillColor)
+            } else {
+                identityColor
+            }
+        } else {
+            contrastColor
+        }
+        
+        // Always maintain a thin bezel of the identity color when pressed
+        // to keep the button visible if it swaps to a dark contrast color.
+        borderStroke = if (isPressed) BorderStroke(2.dp, identityColor) else null
+    } else {
+        // OUTLINED style: Invert to solid Identity BG
+        backgroundColor = if (isPressed) identityColor else Color.Transparent
+        contentColor = if (isPressed) contrastColor else identityColor
+        borderStroke = if (isPressed) null else BorderStroke(2.dp, identityColor.copy(alpha = 0.5f))
+    }
 
     Surface(
         onClick = onClick,
         modifier = modifier
             .heightIn(min = 64.dp)
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .semantics { 
+                componentShape = "small"
+            },
         enabled = enabled,
-        shape = RectangleShape, // 0dp
+        shape = MaterialTheme.shapes.small,
         color = backgroundColor,
         contentColor = contentColor,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = if (!isPressed) BorderStroke(2.dp, borderColor) else null,
+        border = borderStroke,
         interactionSource = interactionSource
     ) {
         Row(
@@ -60,8 +104,8 @@ fun IndustrialButton(
             if (label.isNotEmpty()) {
                 Text(
                     text = label,
+                    color = contentColor,
                     style = MaterialTheme.typography.labelMedium.copy(
-                        // BUG-007: Doubled base font size
                         fontSize = (MaterialTheme.typography.labelMedium.fontSize * 2) * fontSizeMultiplier
                     ),
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
@@ -84,6 +128,9 @@ fun IndustrialInput(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
+            .semantics { 
+                componentShape = "small"
+            }
     ) {
         if (label.isNotEmpty()) {
             Text(
@@ -104,9 +151,9 @@ fun IndustrialInput(
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(MaterialTheme.shapes.small)
                 .background(StitchTheme.tokens.surfaceContainerHighest)
                 .drawBehind {
-                    // 4px bottom border "shelf"
                     val strokeWidth = 4.dp.toPx()
                     val y = size.height - strokeWidth / 2
                     drawLine(

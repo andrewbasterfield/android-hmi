@@ -1,5 +1,6 @@
 package com.example.hmi.dashboard
 
+import com.example.hmi.core.ui.theme.Void
 import com.example.hmi.data.DashboardLayout
 import com.example.hmi.data.DashboardRepository
 import com.example.hmi.data.WidgetConfiguration
@@ -65,7 +66,7 @@ class ThemeMigrationTest {
         verify(repository).saveLayout(captor.capture())
         
         val migratedLayout = captor.firstValue
-        assertEquals(0xFF131313.toLong(), migratedLayout.canvasColor)
+        assertEquals(Void.value.toLong(), migratedLayout.canvasColor)
         assertTrue(migratedLayout.isKineticCockpitMigrated)
         assertTrue(migratedLayout.isDarkThemeMigrated)
         // Check that fontSizeMultiplier is initialized (should be 1.0f by default)

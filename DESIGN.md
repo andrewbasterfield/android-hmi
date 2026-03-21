@@ -47,7 +47,7 @@ In this system, "Up" means "Ready to Touch." We do not use traditional soft drop
 ## 5. Components
 
 ### Buttons (Tactile Targets)
-*   **Primary:** Solid `primary_fixed_dim` (#00e639) background with `on_primary_fixed` (#002203) text. Hard industrial corners (`2px`). Minimum touch target: 64px height.
+*   **Primary:** Solid `primary_fixed_dim` (#00e639) background with `on_primary_fixed` (#002203) text. Hard industrial corners (`4px`). Minimum touch target: 64px height.
 *   **Secondary/Toggle:** 2px stroke of `outline`. On `active` state, fill with `secondary_container`.
 *   **States:** `Pressed` states must invert the color scheme (Inverse Primary) to provide immediate visual confirmation of a mechanical-style "click."
 
@@ -71,7 +71,7 @@ In this system, "Up" means "Ready to Touch." We do not use traditional soft drop
 ## 6. Do’s and Don’ts
 
 ### Do:
-*   **Use 2px Border Radius:** Maintain a "hard industrial" edge. It communicates rigidity and precision while avoiding the "digital sharpness" of a raw 90-degree corner.
+*   **Use 4px Border Radius:** Maintain a "hard industrial" edge. It communicates rigidity and precision while avoiding the "digital sharpness" of a raw 90-degree corner.
 *   **Use Monospaced Alignment:** Align decimal points in telemetry data so values don't "jump" when changing.
 *   **Prioritize Touch Target Clearance:** Ensure all interactive elements have at least `spacing-4` (1.4rem) of dead space between them to prevent accidental triggers.
 

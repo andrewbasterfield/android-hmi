@@ -16,8 +16,10 @@ data class WidgetConfiguration(
     val tagAddress: String,
     val customLabel: String? = null,
     val backgroundColor: Long? = null,
+    val textColor: Long? = null, // Replaced String with Long? for full color selector
+    val pressedFillColor: Long? = null, // Kept in model for backward compat, but UI will remove
     val fontSizeMultiplier: Float = 1.0f,
-    val textColorOverride: String? = null, // "BLACK", "WHITE", or null (AUTO)
+    val textColorOverride: String? = null, // Deprecated: use textColor instead
     val minValue: Float? = null,
     val maxValue: Float? = null,
     val targetTicks: Int = 6,

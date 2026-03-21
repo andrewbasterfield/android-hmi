@@ -77,10 +77,20 @@ fun WidgetConfigDialog(
     var tagAddress by remember { mutableStateOf(initialWidget?.tagAddress ?: "") }
     var customLabel by remember { mutableStateOf(initialWidget?.customLabel ?: "") }
     var selectedColor by remember { mutableStateOf(initialWidget?.backgroundColor) }
+    
+    // Migrate legacy textColorOverride to new textColor picker
+    val migratedTextColor = remember {
+        initialWidget?.textColor ?: when(initialWidget?.textColorOverride) {
+            "BLACK" -> 0xFF000000uL.toLong()
+            "WHITE" -> 0xFFFFFFFFuL.toLong()
+            else -> null
+        }
+    }
+    var selectedTextColor by remember { mutableStateOf(migratedTextColor) }
+    
     var colSpan by remember { mutableStateOf(initialWidget?.colSpan?.toString() ?: "1") }
     var rowSpan by remember { mutableStateOf(initialWidget?.rowSpan?.toString() ?: "1") }
     var fontSizeMultiplier by remember { mutableFloatStateOf(initialWidget?.fontSizeMultiplier ?: 1.0f) }
-    var textColorOverride by remember { mutableStateOf(initialWidget?.textColorOverride) }
     var minValue by remember { mutableStateOf(initialWidget?.minValue?.toString() ?: "0") }
     var maxValue by remember { mutableStateOf(initialWidget?.maxValue?.toString() ?: "100") }
     var targetTicks by remember { mutableFloatStateOf(initialWidget?.targetTicks?.toFloat() ?: 6f) }
@@ -204,23 +214,6 @@ fun WidgetConfigDialog(
                     steps = 20
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Text Color", style = MaterialTheme.typography.labelMedium)
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                val options = listOf("Auto" to null, "Black" to "BLACK", "White" to "WHITE")
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    options.forEachIndexed { index, (label, value) ->
-                        SegmentedButton(
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                            onClick = { textColorOverride = value },
-                            selected = textColorOverride == value
-                        ) {
-                            Text(label)
-                        }
-                    }
-                }
-
                 if (selectedType == WidgetType.SLIDER || selectedType == WidgetType.GAUGE) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -320,6 +313,16 @@ fun WidgetConfigDialog(
                         selectedColor = it 
                     }
                 )
+
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("Label Color (Auto if empty)", style = MaterialTheme.typography.labelMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                HmiColorPicker(
+                    selectedColor = selectedTextColor,
+                    onColorSelected = { 
+                        selectedTextColor = it 
+                    }
+                )
             }
         },
         confirmButton = {
@@ -330,8 +333,8 @@ fun WidgetConfigDialog(
                             tagAddress = tagAddress,
                             customLabel = customLabel.ifBlank { null },
                             backgroundColor = selectedColor,
+                            textColor = selectedTextColor,
                             fontSizeMultiplier = fontSizeMultiplier,
-                            textColorOverride = textColorOverride,
                             colSpan = colSpan.toIntOrNull() ?: 1,
                             rowSpan = rowSpan.toIntOrNull() ?: 1,
                             minValue = minValue.toFloatOrNull(),
