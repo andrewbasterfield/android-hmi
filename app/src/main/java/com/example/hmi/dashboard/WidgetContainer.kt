@@ -25,8 +25,9 @@ import com.example.hmi.widgets.ColorUtils
 
 /**
  * A uniform container for all HMI widgets.
- * Rugged functionalism: 2px corners (via Theme), 2px bezels. No header row.
- * Includes a tactile 32x32dp Resize Handle in Edit Mode (BUG-001).
+ * Rugged functionalism: 4px corners (via Theme).
+ * In Run Mode: No border (relying on color shifts per DESIGN.md).
+ * In Edit Mode: 2px Amber Bezel to indicate manipulation zone.
  */
 @Composable
 fun WidgetContainer(
@@ -58,9 +59,14 @@ fun WidgetContainer(
 
     Box(modifier = modifier) {
         Surface(
-            modifier = Modifier.fillMaxSize().then(moveModifier), // Apply move gesture here
+            modifier = Modifier.fillMaxSize().then(moveModifier),
             color = bg,
-            border = BorderStroke(2.dp, StitchTheme.tokens.statusAmber.copy(alpha = 0.5f)), // 2px Bezel
+            // Border is only visible in Edit Mode to reduce visual noise in Run Mode
+            border = if (isEditMode) {
+                BorderStroke(2.dp, StitchTheme.tokens.statusAmber.copy(alpha = 0.5f))
+            } else {
+                null
+            },
             shape = shape
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {

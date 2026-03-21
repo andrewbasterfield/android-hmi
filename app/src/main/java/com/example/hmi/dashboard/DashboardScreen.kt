@@ -393,6 +393,7 @@ fun DashboardScreen(
                                             valueRange = (widget.minValue ?: 0f)..(widget.maxValue ?: 100f),
                                             backgroundColor = resolvedColorLong,
                                             fontSizeMultiplier = widget.fontSizeMultiplier,
+                                            units = widget.units,
                                             modifier = Modifier.fillMaxSize().padding(8.dp)
                                         )
                                     }

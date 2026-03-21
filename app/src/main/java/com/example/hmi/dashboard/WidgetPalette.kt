@@ -180,12 +180,16 @@ fun WidgetConfigDialog(
                 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                OutlinedTextField(
-                    value = units,
-                    onValueChange = { units = it },
-                    label = { Text("Units (e.g. PSI, °C)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (selectedType == WidgetType.SLIDER || selectedType == WidgetType.GAUGE) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = units,
+                        onValueChange = { units = it },
+                        label = { Text("Units (e.g. PSI, °C)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -343,7 +347,7 @@ fun WidgetConfigDialog(
                             colorZones = colorZones.toList(),
                             needleColor = needleColor,
                             isNeedleDynamic = isNeedleDynamic,
-                            units = units.ifBlank { null }
+                            units = if (selectedType == WidgetType.BUTTON) null else units.ifBlank { null }
                         )
                     )
                 },

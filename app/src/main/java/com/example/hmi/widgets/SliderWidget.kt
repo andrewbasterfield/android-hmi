@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hmi.core.ui.theme.StitchTheme
+import com.example.hmi.core.ui.utils.SiFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,10 +24,14 @@ fun SliderWidget(
     modifier: Modifier = Modifier,
     valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
     backgroundColor: Long? = null,
-    fontSizeMultiplier: Float = 1.0f
+    fontSizeMultiplier: Float = 1.0f,
+    units: String? = null
 ) {
     // Rely on LocalContentColor provided by WidgetContainer
     val contentColor = LocalContentColor.current
+    
+    val formattedUnits = SiFormatter.formatUnit(units)
+    val formattedValue = SiFormatter.formatValue(value)
 
     Column(
         modifier = modifier.padding(8.dp),
@@ -97,16 +102,31 @@ fun SliderWidget(
                 color = contentColor.copy(alpha = 0.6f)
             )
             
-            // BUG-007: Doubled Readout (24sp -> 48sp)
-            Text(
-                text = "%.1f".format(value),
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 48.sp * fontSizeMultiplier,
-                    fontWeight = FontWeight.Bold
-                ),
-                color = contentColor
-            )
+            // Readout with Units
+            Row(verticalAlignment = Alignment.Bottom) {
+                // BUG-007: Doubled Readout (24sp -> 48sp)
+                Text(
+                    text = formattedValue,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 48.sp * fontSizeMultiplier,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = contentColor
+                )
+                if (!formattedUnits.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = formattedUnits,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontSize = 24.sp * fontSizeMultiplier,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = contentColor.copy(alpha = 0.7f),
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+            }
 
             // BUG-007: Doubled scale Labels (16sp -> 32sp)
             Text(
