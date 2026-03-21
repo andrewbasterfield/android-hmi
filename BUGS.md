@@ -13,6 +13,9 @@ This file tracks functional and visual bugs identified during development and te
 
 - [ ] **BUG-006**: Typography scale refinement.
     - *Symptoms*: Despite the baseline fix in BUG-002, fonts are still perceived as "tiny" on some devices. Need to audit `fontSizeMultiplier` propagation.
+- Adding zones to the gague - entering the numbers is funky with the handling of the initial 0.0 value (it can't be removed from the number box) AND the zones get mixed up
+- Can't change the colours of a gauge
+- tests are broken
 
 ## 🟢 Low Priority / Visual Polish
 

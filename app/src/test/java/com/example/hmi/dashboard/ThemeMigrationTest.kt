@@ -40,13 +40,13 @@ class ThemeMigrationTest {
     }
 
     @Test
-    fun `migration logic sets canvasColor to black and increments version`() = runTest(testDispatcher) {
+    fun `migration logic sets canvasColor to Void and increments version`() = runTest(testDispatcher) {
         // Arrange: A legacy layout with light background and false migrated flag
         val legacyLayout = DashboardLayout(
             id = UUID.randomUUID().toString(),
             name = "Legacy",
             canvasColor = 0xFFFFFFFF.toLong(), // White
-            isDarkThemeMigrated = false,
+            isKineticCockpitMigrated = false,
             widgets = listOf(
                 WidgetConfiguration(type = WidgetType.BUTTON, tagAddress = "T1")
             )
@@ -65,7 +65,8 @@ class ThemeMigrationTest {
         verify(repository).saveLayout(captor.capture())
         
         val migratedLayout = captor.firstValue
-        assertEquals(0xFF000000.toLong(), migratedLayout.canvasColor)
+        assertEquals(0xFF131313.toLong(), migratedLayout.canvasColor)
+        assertTrue(migratedLayout.isKineticCockpitMigrated)
         assertTrue(migratedLayout.isDarkThemeMigrated)
         // Check that fontSizeMultiplier is initialized (should be 1.0f by default)
         assertEquals(1.0f, migratedLayout.widgets[0].fontSizeMultiplier)

@@ -132,4 +132,22 @@ object ColorUtils {
         val b = (color.blue * 255).toInt()
         return String.format("%02X%02X%02X", r, g, b)
     }
+
+    /**
+     * Resolves the needle color based on dynamic/static settings and zone thresholds.
+     */
+    fun resolveNeedleColor(
+        currentValue: Float,
+        isNeedleDynamic: Boolean,
+        staticNeedleColor: Long?,
+        colorZones: List<com.example.hmi.data.GaugeZone>,
+        defaultColor: Color
+    ): Color {
+        val activeZone = colorZones.find { currentValue >= it.startValue && currentValue <= it.endValue }
+        return when {
+            isNeedleDynamic && activeZone != null -> toColor(activeZone.color)
+            staticNeedleColor != null -> toColor(staticNeedleColor)
+            else -> defaultColor
+        }
+    }
 }

@@ -84,6 +84,8 @@ fun WidgetConfigDialog(
     var minValue by remember { mutableStateOf(initialWidget?.minValue?.toString() ?: "0") }
     var maxValue by remember { mutableStateOf(initialWidget?.maxValue?.toString() ?: "100") }
     var targetTicks by remember { mutableFloatStateOf(initialWidget?.targetTicks?.toFloat() ?: 6f) }
+    var needleColor by remember { mutableStateOf(initialWidget?.needleColor) }
+    var isNeedleDynamic by remember { mutableStateOf(initialWidget?.isNeedleDynamic ?: false) }
     
     val colorZones = remember { mutableStateListOf<GaugeZone>().apply { 
         addAll(initialWidget?.colorZones ?: emptyList()) 
@@ -246,8 +248,36 @@ fun WidgetConfigDialog(
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Needle Styling", style = MaterialTheme.typography.titleSmall)
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Dynamic Needle Color", style = MaterialTheme.typography.bodyMedium)
+                        Switch(
+                            checked = isNeedleDynamic,
+                            onCheckedChange = { isNeedleDynamic = it }
+                        )
+                    }
+                    Text(
+                        "Needle matches the color of the current value's zone.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    if (!isNeedleDynamic) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Static Needle Color", style = MaterialTheme.typography.labelMedium)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HmiColorPicker(
+                            selectedColor = needleColor,
+                            onColorSelected = { needleColor = it }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
                     Text("Gauge Color Zones", style = MaterialTheme.typography.titleSmall)
                     
                     colorZones.forEachIndexed { index, zone ->
@@ -336,7 +366,9 @@ fun WidgetConfigDialog(
                             minValue = minValue.toFloatOrNull(),
                             maxValue = maxValue.toFloatOrNull(),
                             targetTicks = targetTicks.toInt(),
-                            colorZones = colorZones.toList()
+                            colorZones = colorZones.toList(),
+                            needleColor = needleColor,
+                            isNeedleDynamic = isNeedleDynamic
                         )
                     )
                 },

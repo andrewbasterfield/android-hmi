@@ -19,5 +19,7 @@ data class WidgetConfiguration(
     val minValue: Float? = null,
     val maxValue: Float? = null,
     val targetTicks: Int = 6,
-    val colorZones: List<GaugeZone> = emptyList()
+    val colorZones: List<GaugeZone> = emptyList(),
+    val needleColor: Long? = null,
+    val isNeedleDynamic: Boolean = false
 )

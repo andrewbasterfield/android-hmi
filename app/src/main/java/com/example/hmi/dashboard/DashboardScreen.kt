@@ -375,6 +375,8 @@ fun DashboardScreen(
                                             fontSizeMultiplier = widget.fontSizeMultiplier,
                                             targetTicks = widget.targetTicks,
                                             colorZones = widget.colorZones,
+                                            needleColor = widget.needleColor,
+                                            isNeedleDynamic = widget.isNeedleDynamic,
                                             modifier = Modifier.fillMaxSize()
                                         )
                                     }
