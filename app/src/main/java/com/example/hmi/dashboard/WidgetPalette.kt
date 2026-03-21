@@ -281,50 +281,11 @@ fun WidgetConfigDialog(
                     Text("Gauge Color Zones", style = MaterialTheme.typography.titleSmall)
                     
                     colorZones.forEachIndexed { index, zone ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                            shape = IndustrialShape.Small,
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    OutlinedTextField(
-                                        value = zone.startValue.toString(),
-                                        onValueChange = { val v = it.toFloatOrNull() ?: 0f; colorZones[index] = zone.copy(startValue = v) },
-                                        label = { Text("Start") },
-                                        modifier = Modifier.weight(1f),
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                                    )
-                                    OutlinedTextField(
-                                        value = zone.endValue.toString(),
-                                        onValueChange = { val v = it.toFloatOrNull() ?: 0f; colorZones[index] = zone.copy(endValue = v) },
-                                        label = { Text("End") },
-                                        modifier = Modifier.weight(1f),
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                                    )
-                                    IconButton(onClick = { colorZones.removeAt(index) }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Remove Zone", tint = MaterialTheme.colorScheme.error)
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(32.dp)
-                                            .background(ColorUtils.toColor(zone.color), shape = IndustrialShape.Small)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Zone Color", style = MaterialTheme.typography.labelSmall)
-                                }
-                                HmiColorPicker(
-                                    selectedColor = zone.color,
-                                    onColorSelected = { colorZones[index] = zone.copy(color = it ?: 0xFF00FF00uL.toLong()) }
-                                )
-                            }
-                        }
+                        ZoneEditCard(
+                            zone = zone,
+                            onZoneChanged = { colorZones[index] = it },
+                            onDelete = { colorZones.removeAt(index) }
+                        )
                     }
                     
                     OutlinedButton(
@@ -398,4 +359,65 @@ fun WidgetConfigDialog(
             }
         }
     )
+}
+
+@Composable
+fun ZoneEditCard(
+    zone: GaugeZone,
+    onZoneChanged: (GaugeZone) -> Unit,
+    onDelete: () -> Unit
+) {
+    var startInput by remember { mutableStateOf(zone.startValue.toString()) }
+    var endInput by remember { mutableStateOf(zone.endValue.toString()) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        shape = IndustrialShape.Small,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = startInput,
+                    onValueChange = { input ->
+                        startInput = input
+                        input.toFloatOrNull()?.let { onZoneChanged(zone.copy(startValue = it)) }
+                    },
+                    label = { Text("Start") },
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                OutlinedTextField(
+                    value = endInput,
+                    onValueChange = { input ->
+                        endInput = input
+                        input.toFloatOrNull()?.let { onZoneChanged(zone.copy(endValue = it)) }
+                    },
+                    label = { Text("End") },
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Remove Zone", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(ColorUtils.toColor(zone.color), shape = IndustrialShape.Small)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Zone Color", style = MaterialTheme.typography.labelSmall)
+            }
+            HmiColorPicker(
+                selectedColor = zone.color,
+                onColorSelected = { onZoneChanged(zone.copy(color = it ?: 0xFF00FF00uL.toLong())) }
+            )
+        }
+    }
 }
