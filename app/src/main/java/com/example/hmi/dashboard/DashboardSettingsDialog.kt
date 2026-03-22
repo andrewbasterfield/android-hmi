@@ -50,7 +50,7 @@ fun DashboardSettingsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Dashboard Settings") },
+        title = { Text("Layout Settings") },
         modifier = Modifier.fillMaxWidth(0.95f),
         shape = IndustrialShape.Standard, // US1: 8dp rounded corners
         text = {
@@ -62,7 +62,7 @@ fun DashboardSettingsDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Dashboard Name") },
+                    label = { Text("Layout Name") },
                     modifier = Modifier.fillMaxWidth().testTag("DashboardNameField")
                 )
                 

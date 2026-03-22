@@ -6,10 +6,6 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -143,6 +139,18 @@ fun DashboardScreen(
         return colSpan to rowSpan
     }
 
+    var showAddWidgetDialog by remember { mutableStateOf(false) }
+
+    if (showAddWidgetDialog) {
+        WidgetConfigDialog(
+            onDismiss = { showAddWidgetDialog = false },
+            onConfirm = { widget ->
+                viewModel.addWidget(widget)
+                showAddWidgetDialog = false
+            }
+        )
+    }
+
     EmergencyHUD(status = globalStatus) {
         Scaffold(
             topBar = {
@@ -150,10 +158,12 @@ fun DashboardScreen(
                     title = { Text(dashboardLayout.name) },
                     actions = {
                         if (isEditMode) {
+                            Button(onClick = { showAddWidgetDialog = true }) {
+                                Text("Add Widget")
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
                             Button(onClick = { showDashboardSettings = true }) {
-                                Icon(Icons.Default.Settings, contentDescription = null)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Dashboard Settings")
+                                Text("Layout")
                             }
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -162,8 +172,6 @@ fun DashboardScreen(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Button(onClick = onNavigateBack) {
-                            Icon(Icons.Default.Link, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
                             Text("Connection")
                         }
                     }
@@ -434,12 +442,6 @@ fun DashboardScreen(
                     }
                 }
                 
-                if (isEditMode) {
-                    WidgetPalette(
-                        onAddWidget = { viewModel.addWidget(it) },
-                        modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter)
-                    )
-                }
             }
         }
     }

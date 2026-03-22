@@ -141,6 +141,8 @@ fun SliderWidget(
                     ),
                     color = contentColor.copy(alpha = 0.6f)
                 )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
             }
 
             if (metricFontSizeMultiplier > 0.0f) {
@@ -162,6 +164,8 @@ fun SliderWidget(
                     ),
                     color = contentColor.copy(alpha = 0.6f)
                 )
+            } else {
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
