@@ -46,7 +46,7 @@ fun GaugeWidget(
     minValue: Float,
     maxValue: Float,
     modifier: Modifier = Modifier,
-    backgroundColor: Long? = null,
+    @Suppress("UNUSED_PARAMETER") backgroundColor: Long? = null, // Handled by WidgetContainer
     labelFontSizeMultiplier: Float = 1.0f,
     metricFontSizeMultiplier: Float = 1.0f,
     targetTicks: Int = 6,

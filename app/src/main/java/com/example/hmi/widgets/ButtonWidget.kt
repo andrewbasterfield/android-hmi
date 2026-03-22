@@ -24,8 +24,6 @@ fun ButtonWidget(
     // Explicit override for the label text from the new full color picker
     val labelOverride = textColor?.let { Color(it.toULong()) }
 
-    // We leverage the IndustrialButton from :core:ui which handles
-    // the "Inverse Video" (FR-006) and haptic triggers (FR-010).
     IndustrialButton(
         onClick = onClick,
         label = if (labelFontSizeMultiplier > 0.0f) label else "",
@@ -33,6 +31,7 @@ fun ButtonWidget(
         fontSizeMultiplier = labelFontSizeMultiplier,
         baseContentColor = identityColor,
         contentColorOverride = labelOverride,
+        hapticFeedbackEnabled = hapticFeedbackEnabled,
         modifier = modifier.fillMaxSize()
     )
 }

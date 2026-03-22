@@ -268,25 +268,18 @@ fun WidgetConfigDialog(
                         fontWeight = FontWeight.Bold
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Text("Needle Styling", style = MaterialTheme.typography.titleSmall)
-                    
+                    Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Dynamic Needle Color", style = MaterialTheme.typography.bodyMedium)
+                        Text("Pointer matches Zone Color", style = MaterialTheme.typography.bodyMedium)
                         Switch(
                             checked = isNeedleDynamic,
                             onCheckedChange = { isNeedleDynamic = it }
                         )
                     }
-                    Text(
-                        "Needle matches the color of the current value's zone.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
 
                     if (!isNeedleDynamic) {
                         Spacer(modifier = Modifier.height(16.dp))
@@ -297,10 +290,36 @@ fun WidgetConfigDialog(
                             onColorSelected = { needleColor = it }
                         )
                     }
+                }
 
+                Spacer(modifier = Modifier.height(24.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Background Color", style = MaterialTheme.typography.labelSmall)
+                Spacer(modifier = Modifier.height(8.dp))
+                HmiColorPicker(
+                    selectedColor = selectedColor,
+                    onColorSelected = {
+                        selectedColor = it
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+                Text("Label Color (Auto if empty)", style = MaterialTheme.typography.labelSmall)
+                Spacer(modifier = Modifier.height(8.dp))
+                HmiColorPicker(
+                    selectedColor = selectedTextColor,
+                    onColorSelected = {
+                        selectedTextColor = it
+                    }
+                )
+
+                if (selectedType == WidgetType.GAUGE) {
                     Spacer(modifier = Modifier.height(24.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text("Gauge Color Zones", style = MaterialTheme.typography.titleSmall)
-                    
+
                     colorZones.forEachIndexed { index, zone ->
                         ZoneEditCard(
                             zone = zone,
@@ -308,7 +327,7 @@ fun WidgetConfigDialog(
                             onDelete = { colorZones.removeAt(index) }
                         )
                     }
-                    
+
                     OutlinedButton(
                         onClick = { colorZones.add(GaugeZone(0f, 100f, 0xFF00FF00uL.toLong())) },
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -319,28 +338,6 @@ fun WidgetConfigDialog(
                         Text("Add Color Zone")
                     }
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
-                HorizontalDivider()
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("Background Color", style = MaterialTheme.typography.labelSmall)
-                Spacer(modifier = Modifier.height(8.dp))
-                HmiColorPicker(
-                    selectedColor = selectedColor,
-                    onColorSelected = { 
-                        selectedColor = it 
-                    }
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-                Text("Label Color (Auto if empty)", style = MaterialTheme.typography.labelSmall)
-                Spacer(modifier = Modifier.height(8.dp))
-                HmiColorPicker(
-                    selectedColor = selectedTextColor,
-                    onColorSelected = { 
-                        selectedTextColor = it 
-                    }
-                )
             }
         },
         confirmButton = {

@@ -7,13 +7,18 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,10 +42,19 @@ fun IndustrialButton(
     baseContentColor: Color = LocalContentColor.current, // The "Identity" color
     contentColorOverride: Color? = null, // Explicit override for the label
     pressedFillColor: Color? = null, // Custom override for the "Push" background
+    hapticFeedbackEnabled: Boolean = true,
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable RowScope.() -> Unit = {}
 ) {
+    val haptic = LocalHapticFeedback.current
     val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Trigger haptic feedback on press
+    LaunchedEffect(isPressed) {
+        if (isPressed && hapticFeedbackEnabled) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        }
+    }
     
     val backgroundColor: Color
     val contentColor: Color

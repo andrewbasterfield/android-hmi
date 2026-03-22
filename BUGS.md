@@ -12,3 +12,4 @@
 - [X] **BUG-012**: Gauge Color Customization missing - manual and dynamic needle coloring added.
 - [X] **BUG-013**: UI Test Suite stability - switched to standalone Compose tests.
 - [X] **BUG-014**: Gauge Zone numeric entry bug ('Unremovable 0.0').
+- [ ] **BUG-015**: Haptic feedback not working on this hardware

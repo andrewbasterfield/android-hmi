@@ -56,10 +56,10 @@ val HmiTypography = Typography(
 
 @Composable
 fun HmiTheme(
-    darkTheme: Boolean = true, // Force dark theme by default
+    @Suppress("UNUSED_PARAMETER") darkTheme: Boolean = true, // Reserved: HMI always uses dark
     content: @Composable () -> Unit
 ) {
-    val colorScheme = DarkColorScheme // Always use dark scheme for HMI cockpit style
+    val colorScheme = DarkColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,

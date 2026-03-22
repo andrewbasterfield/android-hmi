@@ -30,7 +30,7 @@ fun SliderWidget(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
-    backgroundColor: Long? = null,
+    @Suppress("UNUSED_PARAMETER") backgroundColor: Long? = null, // Handled by WidgetContainer
     labelFontSizeMultiplier: Float = 1.0f,
     metricFontSizeMultiplier: Float = 1.0f,
     units: String? = null
@@ -74,7 +74,7 @@ fun SliderWidget(
                         .background(contentColor, RectangleShape)
                 )
             },
-            track = { sliderState ->
+            track = { _ ->
                 val layoutBgColor = MaterialTheme.colorScheme.background
                 // Rugged Rectangle Track
                 Box(
