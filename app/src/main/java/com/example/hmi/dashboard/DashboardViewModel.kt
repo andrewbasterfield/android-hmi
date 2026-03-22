@@ -76,15 +76,13 @@ class DashboardViewModel @Inject constructor(
     private fun ensureNonNullFields(layout: DashboardLayout?): DashboardLayout {
         if (layout == null) return DashboardLayout()
         return layout.copy(
-            id = layout.id ?: "",
-            name = layout.name ?: "Unnamed Layout",
-            widgets = (layout.widgets ?: emptyList()).map { widget ->
+            widgets = layout.widgets.map { widget ->
                 val migratedLabelMultiplier = if (widget.fontSizeMultiplier != null && widget.fontSizeMultiplier > 0.05f && widget.labelFontSizeMultiplier == 1.0f) {
                     widget.fontSizeMultiplier
                 } else {
                     widget.labelFontSizeMultiplier
                 }
-                
+
                 val migratedMetricMultiplier = if (widget.fontSizeMultiplier != null && widget.fontSizeMultiplier > 0.05f && widget.metricFontSizeMultiplier == 1.0f) {
                     widget.fontSizeMultiplier
                 } else {
@@ -92,16 +90,12 @@ class DashboardViewModel @Inject constructor(
                 }
 
                 widget.copy(
-                    id = widget.id ?: java.util.UUID.randomUUID().toString(),
-                    tagAddress = widget.tagAddress ?: "",
-                    targetTicks = widget.targetTicks,
-                    colorZones = widget.colorZones ?: emptyList(),
                     labelFontSizeMultiplier = migratedLabelMultiplier,
                     metricFontSizeMultiplier = migratedMetricMultiplier,
                     alarmState = if (widget.alarmState == com.example.hmi.data.AlarmState.Acknowledged) {
-                        com.example.hmi.data.AlarmState.Unacknowledged 
+                        com.example.hmi.data.AlarmState.Unacknowledged
                     } else {
-                        widget.alarmState ?: com.example.hmi.data.AlarmState.Normal
+                        widget.alarmState
                     }
                 )
             }
@@ -125,7 +119,8 @@ class DashboardViewModel @Inject constructor(
                     // Force buttons to Primary identity if they had no color
                     com.example.hmi.core.ui.theme.Primary.value.toLong()
                 } else {
-                    null // Sliders and Gauges should remain transparent by default
+                    // Sliders and Gauges use null to auto-follow theme background
+                    null
                 }
 
                 // FR-013/RATIONALIZE: Ensure typography scale doesn't start below baseline (unless 0.0 to hide)
@@ -260,7 +255,7 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             try {
                 val newLayout = gson.fromJson(json, DashboardLayout::class.java)
-                if (newLayout == null || (newLayout.name?.isBlank() != false)) {
+                if (newLayout == null || newLayout.name.isBlank()) {
                     _importResult.emit(Result.failure(Exception("Invalid layout or name cannot be blank")))
                     return@launch
                 }

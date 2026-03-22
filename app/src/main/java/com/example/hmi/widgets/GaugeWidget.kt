@@ -115,16 +115,21 @@ fun GaugeWidget(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
+                val layoutBgColor = MaterialTheme.colorScheme.background
                 // ... (rest of the Canvas code unchanged)
-                Canvas(modifier = Modifier.fillMaxSize(0.9f)) {
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize(0.9f)
+                        .semantics { trackBackgroundColor = layoutBgColor }
+                ) {
                     val center = Offset(size.width / 2, size.height / 2)
                     val radius = size.minDimension / 2
                     val innerRadius = radius * 0.8f
                     val strokeWidth = 4.dp.toPx()
 
-                    // 1. Draw background track (Aligned with contentColor)
+                    // 1. Draw background track (Matched to layout background)
                     drawArc(
-                        color = contentColor.copy(alpha = 0.2f),
+                        color = layoutBgColor,
                         startAngle = startAngle,
                         sweepAngle = sweepAngle,
                         useCenter = false,

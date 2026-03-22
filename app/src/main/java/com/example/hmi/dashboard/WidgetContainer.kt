@@ -18,10 +18,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.hmi.core.ui.theme.StitchTheme
 import com.example.hmi.widgets.ColorUtils
+
+val TrackBackgroundColorKey = SemanticsPropertyKey<Color>("TrackBackgroundColor")
+var SemanticsPropertyReceiver.trackBackgroundColor by TrackBackgroundColorKey
 
 /**
  * A uniform container for all HMI widgets.
@@ -42,8 +48,14 @@ fun WidgetContainer(
     onEditClick: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
-    val baseBg = backgroundColor?.let { ColorUtils.toColor(it) } ?: Color.Transparent
-    val bg = baseBg.copy(alpha = alpha)
+    val baseBg = backgroundColor?.let { ColorUtils.toColor(it) }
+
+    // FIX: Check for null/default BEFORE alpha copy to avoid Transparent becoming Black
+    val containerBg = if (baseBg == null) {
+        MaterialTheme.colorScheme.background
+    } else {
+        baseBg.copy(alpha = alpha)
+    }
 
     // US2 FIX: Use rememberUpdatedState to prevent pointerInput restart during drag
     val currentOnResize by rememberUpdatedState(onResize)
@@ -52,15 +64,18 @@ fun WidgetContainer(
     val contentColor = when (textColorOverride) {
         "BLACK" -> Color.Black
         "WHITE" -> Color.White
-        else -> ColorUtils.getIndustrialContrastColor(baseBg)
+        else -> ColorUtils.getIndustrialContrastColor(baseBg ?: MaterialTheme.colorScheme.background)
     }.copy(alpha = alpha)
 
     val shape = MaterialTheme.shapes.small
 
     Box(modifier = modifier) {
         Surface(
-            modifier = Modifier.fillMaxSize().then(moveModifier),
-            color = bg,
+            modifier = Modifier
+                .fillMaxSize()
+                .then(moveModifier)
+                .semantics { trackBackgroundColor = containerBg },
+            color = containerBg,
             // Border is only visible in Edit Mode to reduce visual noise in Run Mode
             border = if (isEditMode) {
                 BorderStroke(2.dp, StitchTheme.tokens.statusAmber.copy(alpha = 0.5f))

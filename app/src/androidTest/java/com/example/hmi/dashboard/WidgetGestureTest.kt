@@ -103,7 +103,6 @@ class WidgetGestureTest {
                     ButtonWidget(
                         label = "Drag Me Button",
                         onClick = {},
-                        enabled = false,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -186,8 +185,7 @@ class WidgetGestureTest {
                         value = 50f,
                         minValue = 0f,
                         maxValue = 100f,
-                        enabled = false, // DISABLED IN EDIT MODE
-                        pulseState = PulseState.UNACKNOWLEDGED, // Would be clickable if enabled
+                        pulseState = PulseState.UNACKNOWLEDGED,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -207,6 +205,7 @@ class WidgetGestureTest {
     @Test
     fun resizingWidget_shouldTriggerOnResize() {
         var resizeTriggered = false
+        var dragStartedInTest = false
         val widgetId = "test-widget-resize"
 
         composeTestRule.setContent {
@@ -217,7 +216,19 @@ class WidgetGestureTest {
                                             down.position.y > size.height - 48.dp.toPx()
                     
                     if (!isDownInResizeZone) {
-                        // Drag logic...
+                        var dragObj: PointerInputChange?
+                        do {
+                            dragObj = awaitTouchSlopOrCancellation(down.id) { change, _ ->
+                                change.consume()
+                            }
+                        } while (dragObj != null && !dragObj.isConsumed)
+
+                        if (dragObj != null) {
+                            dragStartedInTest = true
+                            drag(dragObj.id) { change ->
+                                change.consume()
+                            }
+                        }
                     }
                 }
             }
@@ -244,5 +255,6 @@ class WidgetGestureTest {
         }
 
         assert(resizeTriggered) { "Resize should have been triggered when dragging from the corner" }
+        assert(!dragStartedInTest) { "Drag should NOT have been triggered when starting in resize zone" }
     }
 }

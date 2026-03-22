@@ -48,7 +48,7 @@ fun DiagnosticsScreen(
     }
 
     StitchTheme {
-        EmergencyHUD(status = systemStatus) {
+        EmergencyHUD(status = systemStatus, modifier = modifier) {
             Scaffold(
                 topBar = {
                     Box(

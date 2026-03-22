@@ -35,7 +35,7 @@ fun TelemetryCard(
     metricFontSizeMultiplier: Float = 1.0f,
     pulseState: PulseState = PulseState.NORMAL,
     onAcknowledgeAlarm: () -> Unit = {},
-    onDetailsClick: (() -> Unit)? = null
+    @Suppress("UNUSED_PARAMETER") onDetailsClick: (() -> Unit)? = null // Reserved for drill-down
 ) {
     val statusColor = when (status) {
         HealthStatus.NORMAL -> StitchTheme.tokens.statusGreen

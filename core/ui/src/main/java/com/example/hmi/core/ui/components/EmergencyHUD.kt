@@ -18,6 +18,7 @@ import com.example.hmi.core.ui.theme.StitchTheme
 @Composable
 fun EmergencyHUD(
     status: HealthStatus,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "HUD Pulse")
@@ -38,7 +39,7 @@ fun EmergencyHUD(
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .drawBehind {
                 if (glowColor != Color.Transparent) {

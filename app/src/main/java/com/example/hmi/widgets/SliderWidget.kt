@@ -8,6 +8,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -15,6 +18,9 @@ import androidx.compose.ui.unit.sp
 import com.example.hmi.core.ui.theme.StitchTheme
 import com.example.hmi.core.ui.theme.MonospaceFont
 import com.example.hmi.core.ui.utils.SiFormatter
+
+val TrackBackgroundColorKey = SemanticsPropertyKey<Color>("TrackBackgroundColor")
+var SemanticsPropertyReceiver.trackBackgroundColor by TrackBackgroundColorKey
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,12 +75,14 @@ fun SliderWidget(
                 )
             },
             track = { sliderState ->
+                val layoutBgColor = MaterialTheme.colorScheme.background
                 // Rugged Rectangle Track
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp)
-                        .background(contentColor.copy(alpha = 0.1f), RectangleShape)
+                        .background(layoutBgColor, RectangleShape)
+                        .semantics { trackBackgroundColor = layoutBgColor }
                         .align(Alignment.CenterHorizontally)
                 ) {
                     // Active part

@@ -2,6 +2,8 @@ package com.example.hmi.widgets
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import com.example.hmi.core.ui.theme.StatusAmber
 import com.example.hmi.core.ui.theme.StatusGreen
 import com.example.hmi.core.ui.theme.StatusRed
@@ -13,6 +15,9 @@ import com.example.hmi.core.ui.theme.Void
  */
 object ColorUtils {
     
+    val TrackBackgroundColorKey = SemanticsPropertyKey<Color>("TrackBackgroundColor")
+    var SemanticsPropertyReceiver.trackBackgroundColor by TrackBackgroundColorKey
+
     // OSHA-compliant preset colors (ANSI Z535.1)
     val OSHA_SAFETY_GREEN = StatusGreen // Safety
     val OSHA_SAFETY_YELLOW = StatusAmber // Caution
