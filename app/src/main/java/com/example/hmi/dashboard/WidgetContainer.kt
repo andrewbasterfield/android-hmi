@@ -42,7 +42,7 @@ fun WidgetContainer(
     onEditClick: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
-    val baseBg = backgroundColor?.let { ColorUtils.toColor(it) } ?: StitchTheme.tokens.surfaceContainerLow
+    val baseBg = backgroundColor?.let { ColorUtils.toColor(it) } ?: Color.Transparent
     val bg = baseBg.copy(alpha = alpha)
 
     // US2 FIX: Use rememberUpdatedState to prevent pointerInput restart during drag

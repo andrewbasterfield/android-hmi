@@ -248,7 +248,7 @@ fun DashboardScreen(
                         if (isBeingDragged) {
                             val (ghostCol, ghostRow) = calculateSnapCells(visualX, visualY, widget.colSpan, widget.rowSpan, density)
                             WidgetContainer(
-                                backgroundColor = widget.backgroundColor,
+                                backgroundColor = resolvedColorLong,
                                 alpha = 0.3f,
                                 modifier = Modifier
                                     .size(
@@ -268,7 +268,7 @@ fun DashboardScreen(
                         if (isBeingResized) {
                             val (ghostColSpan, ghostRowSpan) = calculateSnapSize(visualWidth, visualHeight, widget.column, widget.row, density)
                             WidgetContainer(
-                                backgroundColor = widget.backgroundColor,
+                                backgroundColor = resolvedColorLong,
                                 alpha = 0.3f,
                                 modifier = Modifier
                                     .size(
@@ -380,7 +380,7 @@ fun DashboardScreen(
                                             onClick = { viewModel.onButtonPress(widget.tagAddress) },
                                             backgroundColor = resolvedColorLong,
                                             textColor = widget.textColor,
-                                            fontSizeMultiplier = widget.fontSizeMultiplier,
+                                            labelFontSizeMultiplier = widget.labelFontSizeMultiplier,
                                             hapticFeedbackEnabled = dashboardLayout.hapticFeedbackEnabled,
                                             modifier = Modifier.fillMaxSize()
                                         )
@@ -392,7 +392,8 @@ fun DashboardScreen(
                                             onValueChange = { viewModel.onSliderChange(widget.tagAddress, it) },
                                             valueRange = (widget.minValue ?: 0f)..(widget.maxValue ?: 100f),
                                             backgroundColor = resolvedColorLong,
-                                            fontSizeMultiplier = widget.fontSizeMultiplier,
+                                            labelFontSizeMultiplier = widget.labelFontSizeMultiplier,
+                                            metricFontSizeMultiplier = widget.metricFontSizeMultiplier,
                                             units = widget.units,
                                             modifier = Modifier.fillMaxSize().padding(8.dp)
                                         )
@@ -409,7 +410,8 @@ fun DashboardScreen(
                                             minValue = widget.minValue ?: 0f,
                                             maxValue = widget.maxValue ?: 100f,
                                             backgroundColor = resolvedColorLong,
-                                            fontSizeMultiplier = widget.fontSizeMultiplier,
+                                            labelFontSizeMultiplier = widget.labelFontSizeMultiplier,
+                                            metricFontSizeMultiplier = widget.metricFontSizeMultiplier,
                                             targetTicks = widget.targetTicks,
                                             colorZones = widget.colorZones,
                                             needleColor = widget.needleColor,

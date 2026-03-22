@@ -15,7 +15,7 @@ fun ButtonWidget(
     modifier: Modifier = Modifier,
     backgroundColor: Long? = null,
     textColor: Long? = null,
-    fontSizeMultiplier: Float = 1.0f,
+    labelFontSizeMultiplier: Float = 1.0f,
     hapticFeedbackEnabled: Boolean = true
 ) {
     // Identity color of the button (background in SOLID mode)
@@ -28,9 +28,9 @@ fun ButtonWidget(
     // the "Inverse Video" (FR-006) and haptic triggers (FR-010).
     IndustrialButton(
         onClick = onClick,
-        label = label,
+        label = if (labelFontSizeMultiplier > 0.0f) label else "",
         style = IndustrialButtonStyle.SOLID,
-        fontSizeMultiplier = fontSizeMultiplier,
+        fontSizeMultiplier = labelFontSizeMultiplier,
         baseContentColor = identityColor,
         contentColorOverride = labelOverride,
         modifier = modifier.fillMaxSize()

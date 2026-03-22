@@ -90,7 +90,12 @@ fun WidgetConfigDialog(
     
     var colSpan by remember { mutableStateOf(initialWidget?.colSpan?.toString() ?: "1") }
     var rowSpan by remember { mutableStateOf(initialWidget?.rowSpan?.toString() ?: "1") }
-    var fontSizeMultiplier by remember { mutableFloatStateOf(initialWidget?.fontSizeMultiplier ?: 1.0f) }
+    var labelFontSizeMultiplier by remember { 
+        mutableFloatStateOf(initialWidget?.labelFontSizeMultiplier ?: initialWidget?.fontSizeMultiplier ?: 1.0f) 
+    }
+    var metricFontSizeMultiplier by remember { 
+        mutableFloatStateOf(initialWidget?.metricFontSizeMultiplier ?: 1.0f) 
+    }
     var minValue by remember { mutableStateOf(initialWidget?.minValue?.toString() ?: "0") }
     var maxValue by remember { mutableStateOf(initialWidget?.maxValue?.toString() ?: "100") }
     var targetTicks by remember { mutableFloatStateOf(initialWidget?.targetTicks?.toFloat() ?: 6f) }
@@ -116,13 +121,13 @@ fun WidgetConfigDialog(
     }
 
     // Adaptive default size logic: Calculate required columns based on text length and font size
-    val calculatedColSpan = remember(tagAddress, customLabel, fontSizeMultiplier) {
+    val calculatedColSpan = remember(tagAddress, customLabel, labelFontSizeMultiplier) {
         val text = customLabel.ifBlank { tagAddress }
         if (text.isEmpty()) 1
         else {
             // Heuristic: ~0.6 chars per sp width, 80dp cell size
             val baseFontSize = 18f 
-            val charWidthSp = (baseFontSize * 2) * 0.6f * fontSizeMultiplier
+            val charWidthSp = (baseFontSize * 2) * 0.6f * labelFontSizeMultiplier
             val totalWidthSp = text.length * charWidthSp
             val requiredCells = kotlin.math.ceil(totalWidthSp / 80f).toInt().coerceAtLeast(1)
             requiredCells.coerceAtMost(8)
@@ -148,7 +153,7 @@ fun WidgetConfigDialog(
                     .verticalScroll(rememberScrollState())
             ) {
                 if (initialWidget == null) {
-                    Text("Type", style = MaterialTheme.typography.labelMedium)
+                    Text("Type", style = MaterialTheme.typography.labelSmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         WidgetType.values().forEach { type ->
                             FilterChip(
@@ -210,15 +215,24 @@ fun WidgetConfigDialog(
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Font Size: ${"%.1f".format(fontSizeMultiplier)}x", style = MaterialTheme.typography.labelMedium)
+                Text("Label Font Size: ${"%.1f".format(labelFontSizeMultiplier)}x", style = MaterialTheme.typography.labelSmall)
                 Slider(
-                    value = fontSizeMultiplier,
-                    onValueChange = { fontSizeMultiplier = it },
-                    valueRange = 0.5f..2.5f,
-                    steps = 20
+                    value = labelFontSizeMultiplier,
+                    onValueChange = { labelFontSizeMultiplier = it },
+                    valueRange = 0.0f..2.0f,
+                    steps = 19
                 )
 
                 if (selectedType == WidgetType.SLIDER || selectedType == WidgetType.GAUGE) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Metric Font Size: ${"%.1f".format(metricFontSizeMultiplier)}x", style = MaterialTheme.typography.labelSmall)
+                    Slider(
+                        value = metricFontSizeMultiplier,
+                        onValueChange = { metricFontSizeMultiplier = it },
+                        valueRange = 0.0f..2.0f,
+                        steps = 19
+                    )
+
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         OutlinedTextField(
@@ -240,7 +254,7 @@ fun WidgetConfigDialog(
 
                 if (selectedType == WidgetType.GAUGE) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Tick Density: ${targetTicks.toInt()}", style = MaterialTheme.typography.labelMedium)
+                    Text("Tick Density: ${targetTicks.toInt()}", style = MaterialTheme.typography.labelSmall)
                     Slider(
                         value = targetTicks,
                         onValueChange = { targetTicks = it },
@@ -276,7 +290,7 @@ fun WidgetConfigDialog(
 
                     if (!isNeedleDynamic) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Static Needle Color", style = MaterialTheme.typography.labelMedium)
+                        Text("Static Needle Color", style = MaterialTheme.typography.labelSmall)
                         Spacer(modifier = Modifier.height(8.dp))
                         HmiColorPicker(
                             selectedColor = needleColor,
@@ -309,7 +323,7 @@ fun WidgetConfigDialog(
                 Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider()
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Background Color", style = MaterialTheme.typography.labelMedium)
+                Text("Background Color", style = MaterialTheme.typography.labelSmall)
                 Spacer(modifier = Modifier.height(8.dp))
                 HmiColorPicker(
                     selectedColor = selectedColor,
@@ -319,7 +333,7 @@ fun WidgetConfigDialog(
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
-                Text("Label Color (Auto if empty)", style = MaterialTheme.typography.labelMedium)
+                Text("Label Color (Auto if empty)", style = MaterialTheme.typography.labelSmall)
                 Spacer(modifier = Modifier.height(8.dp))
                 HmiColorPicker(
                     selectedColor = selectedTextColor,
@@ -338,7 +352,8 @@ fun WidgetConfigDialog(
                             customLabel = customLabel.ifBlank { null },
                             backgroundColor = selectedColor,
                             textColor = selectedTextColor,
-                            fontSizeMultiplier = fontSizeMultiplier,
+                            labelFontSizeMultiplier = labelFontSizeMultiplier,
+                            metricFontSizeMultiplier = metricFontSizeMultiplier,
                             colSpan = colSpan.toIntOrNull() ?: 1,
                             rowSpan = rowSpan.toIntOrNull() ?: 1,
                             minValue = minValue.toFloatOrNull(),

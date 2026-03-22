@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.hmi.core.ui.theme.StitchTheme
+import com.example.hmi.core.ui.theme.MonospaceFont
 import com.example.hmi.core.ui.utils.SiFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -24,30 +25,30 @@ fun SliderWidget(
     modifier: Modifier = Modifier,
     valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
     backgroundColor: Long? = null,
-    fontSizeMultiplier: Float = 1.0f,
+    labelFontSizeMultiplier: Float = 1.0f,
+    metricFontSizeMultiplier: Float = 1.0f,
     units: String? = null
 ) {
     // Rely on LocalContentColor provided by WidgetContainer
     val contentColor = LocalContentColor.current
     
-    val formattedUnits = SiFormatter.formatUnit(units)
-    val formattedValue = SiFormatter.formatValue(value)
+    val metricText = SiFormatter.formatMetric(value, units)
 
     Column(
         modifier = modifier.padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // BUG-007: Doubled base font size (18sp -> 36sp)
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 36.sp * fontSizeMultiplier,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp
-            ),
-            color = contentColor.copy(alpha = 0.8f)
-        )
+        if (labelFontSizeMultiplier > 0.0f) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontSize = MaterialTheme.typography.headlineSmall.fontSize * labelFontSizeMultiplier,
+                    letterSpacing = 1.25.sp
+                ),
+                color = contentColor.copy(alpha = 0.8f)
+            )
+        }
 
         Slider(
             value = value,
@@ -92,51 +93,37 @@ fun SliderWidget(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // BUG-007: Doubled scale Labels (16sp -> 32sp)
-            Text(
-                text = "%.0f".format(valueRange.start),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 32.sp * fontSizeMultiplier
-                ),
-                color = contentColor.copy(alpha = 0.6f)
-            )
-            
-            // Readout with Units
-            Row(verticalAlignment = Alignment.Bottom) {
-                // BUG-007: Doubled Readout (24sp -> 48sp)
+            if (labelFontSizeMultiplier > 0.0f) {
                 Text(
-                    text = formattedValue,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 48.sp * fontSizeMultiplier,
-                        fontWeight = FontWeight.Bold
+                    text = "%.0f".format(valueRange.start),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = MonospaceFont,
+                        fontSize = MaterialTheme.typography.labelSmall.fontSize * labelFontSizeMultiplier
+                    ),
+                    color = contentColor.copy(alpha = 0.6f)
+                )
+            }
+            
+            if (metricFontSizeMultiplier > 0.0f) {
+                Text(
+                    text = metricText,
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontSize = MaterialTheme.typography.displayMedium.fontSize * metricFontSizeMultiplier
                     ),
                     color = contentColor
                 )
-                if (!formattedUnits.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = formattedUnits,
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontSize = 24.sp * fontSizeMultiplier,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = contentColor.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                }
             }
 
-            // BUG-007: Doubled scale Labels (16sp -> 32sp)
-            Text(
-                text = "%.0f".format(valueRange.endInclusive),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 32.sp * fontSizeMultiplier
-                ),
-                color = contentColor.copy(alpha = 0.6f)
-            )
+            if (labelFontSizeMultiplier > 0.0f) {
+                Text(
+                    text = "%.0f".format(valueRange.endInclusive),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = MonospaceFont,
+                        fontSize = MaterialTheme.typography.labelSmall.fontSize * labelFontSizeMultiplier
+                    ),
+                    color = contentColor.copy(alpha = 0.6f)
+                )
+            }
         }
     }
 }

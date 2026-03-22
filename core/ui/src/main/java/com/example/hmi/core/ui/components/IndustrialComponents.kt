@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.hmi.core.ui.theme.Outline
 import com.example.hmi.core.ui.theme.StitchTheme
 import com.example.hmi.core.ui.utils.ColorUtils
@@ -105,10 +106,9 @@ fun IndustrialButton(
                 Text(
                     text = label,
                     color = contentColor,
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontSize = (MaterialTheme.typography.labelMedium.fontSize * 2) * fontSizeMultiplier
-                    ),
-                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = MaterialTheme.typography.headlineSmall.fontSize * fontSizeMultiplier
+                    )
                 )
             }
             content()
@@ -135,7 +135,7 @@ fun IndustrialInput(
         if (label.isNotEmpty()) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.outline,
                 modifier = Modifier.padding(bottom = 4.dp)
             )

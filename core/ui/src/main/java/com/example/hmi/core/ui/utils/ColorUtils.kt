@@ -22,6 +22,7 @@ object ColorUtils {
      * if the background is too dark for comfortable reading.
      */
     fun getIndustrialContrastColor(backgroundColor: Color): Color {
+        if (backgroundColor == Color.Transparent) return Color.White
         val bgLuminance = backgroundColor.luminance()
         
         // For industrial HMI, we prefer White text on any color that isn't distinctly "bright"

@@ -37,7 +37,7 @@ fun DashboardSettingsDialog(
     onConfirm: (String, Long?, Boolean) -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
-    var selectedColor by remember { mutableStateOf<Long?>(initialCanvasColor ?: HmiPalette.Black.value.toLong()) }
+    var selectedColor by remember { mutableStateOf<Long?>(initialCanvasColor) }
     var hapticEnabled by remember { mutableStateOf(initialHapticEnabled) }
     var showJsonTransfer by remember { mutableStateOf(false) }
 
@@ -67,7 +67,7 @@ fun DashboardSettingsDialog(
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Canvas Background Color", style = MaterialTheme.typography.labelMedium)
+                Text("Canvas Background Color", style = MaterialTheme.typography.labelSmall)
                 Spacer(modifier = Modifier.height(8.dp))
                 HmiColorPicker(
                     selectedColor = selectedColor,

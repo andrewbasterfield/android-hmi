@@ -31,6 +31,8 @@ fun TelemetryCard(
     unit: String,
     status: HealthStatus,
     modifier: Modifier = Modifier,
+    labelFontSizeMultiplier: Float = 1.0f,
+    metricFontSizeMultiplier: Float = 1.0f,
     pulseState: PulseState = PulseState.NORMAL,
     onAcknowledgeAlarm: () -> Unit = {},
     onDetailsClick: (() -> Unit)? = null
@@ -47,7 +49,7 @@ fun TelemetryCard(
         HealthStatus.CRITICAL -> Icons.Default.Error
     }
     
-    val formattedUnit = SiFormatter.formatUnit(unit)
+    val metricText = SiFormatter.formatMetric(value, unit)
 
     AlarmPulse(
         state = pulseState,
@@ -83,8 +85,10 @@ fun TelemetryCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = label.uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
+                        text = label,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontSize = MaterialTheme.typography.headlineSmall.fontSize * labelFontSizeMultiplier
+                        ),
                         color = MaterialTheme.colorScheme.outline
                     )
                     Icon(
@@ -95,27 +99,15 @@ fun TelemetryCard(
                     )
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    Text(
-                        text = value,
-                        style = MaterialTheme.typography.displayLarge.copy(
-                            fontFamily = FontFamily.Monospace, // Ensure monospaced
-                            textAlign = TextAlign.End
-                        ),
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = formattedUnit,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
+                Text(
+                    text = metricText,
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontSize = MaterialTheme.typography.displayMedium.fontSize * metricFontSizeMultiplier
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                )
             }
         }
     }

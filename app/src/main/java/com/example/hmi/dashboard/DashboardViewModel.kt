@@ -79,11 +79,25 @@ class DashboardViewModel @Inject constructor(
             id = layout.id ?: "",
             name = layout.name ?: "Unnamed Layout",
             widgets = (layout.widgets ?: emptyList()).map { widget ->
+                val migratedLabelMultiplier = if (widget.fontSizeMultiplier != null && widget.fontSizeMultiplier > 0.05f && widget.labelFontSizeMultiplier == 1.0f) {
+                    widget.fontSizeMultiplier
+                } else {
+                    widget.labelFontSizeMultiplier
+                }
+                
+                val migratedMetricMultiplier = if (widget.fontSizeMultiplier != null && widget.fontSizeMultiplier > 0.05f && widget.metricFontSizeMultiplier == 1.0f) {
+                    widget.fontSizeMultiplier
+                } else {
+                    widget.metricFontSizeMultiplier
+                }
+
                 widget.copy(
                     id = widget.id ?: java.util.UUID.randomUUID().toString(),
                     tagAddress = widget.tagAddress ?: "",
                     targetTicks = widget.targetTicks,
                     colorZones = widget.colorZones ?: emptyList(),
+                    labelFontSizeMultiplier = migratedLabelMultiplier,
+                    metricFontSizeMultiplier = migratedMetricMultiplier,
                     alarmState = if (widget.alarmState == com.example.hmi.data.AlarmState.Acknowledged) {
                         com.example.hmi.data.AlarmState.Unacknowledged 
                     } else {
@@ -104,12 +118,22 @@ class DashboardViewModel @Inject constructor(
             isKineticCockpitMigrated = true,
             isDarkThemeMigrated = true,
             widgets = layout.widgets.map { widget ->
-                val legacyColor = widget.backgroundColor?.let { ColorUtils.toColor(it) } ?: Color.Gray
-                val sanitized = ColorUtils.sanitizeColor(legacyColor)
+                val legacyColor = widget.backgroundColor?.let { ColorUtils.toColor(it) }
+                val sanitized = if (legacyColor != null) {
+                    ColorUtils.sanitizeColor(legacyColor).value.toLong()
+                } else if (widget.type == WidgetType.BUTTON) {
+                    // Force buttons to Primary identity if they had no color
+                    com.example.hmi.core.ui.theme.Primary.value.toLong()
+                } else {
+                    null // Sliders and Gauges should remain transparent by default
+                }
+
+                // FR-013/RATIONALIZE: Ensure typography scale doesn't start below baseline (unless 0.0 to hide)
+                val zoom = if (widget.labelFontSizeMultiplier > 0.0f && widget.labelFontSizeMultiplier < 1.0f) 1.0f else widget.labelFontSizeMultiplier
                 widget.copy(
-                    backgroundColor = sanitized.value.toLong(),
-                    // FR-013: Ensure typography scale doesn't start below baseline
-                    fontSizeMultiplier = if (widget.fontSizeMultiplier < 1.0f) 1.0f else widget.fontSizeMultiplier
+                    backgroundColor = sanitized,
+                    labelFontSizeMultiplier = zoom,
+                    metricFontSizeMultiplier = 1.0f
                 )
             }
         )

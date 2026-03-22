@@ -47,7 +47,8 @@ fun GaugeWidget(
     maxValue: Float,
     modifier: Modifier = Modifier,
     backgroundColor: Long? = null,
-    fontSizeMultiplier: Float = 1.0f,
+    labelFontSizeMultiplier: Float = 1.0f,
+    metricFontSizeMultiplier: Float = 1.0f,
     targetTicks: Int = 6,
     colorZones: List<GaugeZone> = emptyList(),
     needleColor: Long? = null,
@@ -71,8 +72,7 @@ fun GaugeWidget(
     val startAngle = 135f
     val sweepAngle = 270f
     
-    val formattedUnits = SiFormatter.formatUnit(units)
-    val formattedValue = SiFormatter.formatValue(value)
+    val metricText = SiFormatter.formatMetric(value, units)
 
     AlarmPulse(
         state = pulseState,
@@ -83,8 +83,7 @@ fun GaugeWidget(
                 onAcknowledgeAlarm()
             }
             .semantics { 
-                val displayUnits = if (formattedUnits.isNullOrBlank()) "" else " $formattedUnits"
-                contentDescription = "Gauge for $label showing $formattedValue$displayUnits"
+                contentDescription = "Gauge for $label showing $metricText"
                 // US1/US2: Expose needle color for testing
                 val currentNeedleColor = ColorUtils.resolveNeedleColor(
                     currentValue = animatedValue,
@@ -101,20 +100,22 @@ fun GaugeWidget(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 36.sp * fontSizeMultiplier,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                ),
-                color = contentColor.copy(alpha = 0.8f)
-            )
+            if (labelFontSizeMultiplier > 0.0f) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = MaterialTheme.typography.headlineSmall.fontSize * labelFontSizeMultiplier,
+                        letterSpacing = 1.25.sp
+                    ),
+                    color = contentColor.copy(alpha = 0.8f)
+                )
+            }
             
             Box(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
+                // ... (rest of the Canvas code unchanged)
                 Canvas(modifier = Modifier.fillMaxSize(0.9f)) {
                     val center = Offset(size.width / 2, size.height / 2)
                     val radius = size.minDimension / 2
@@ -199,31 +200,15 @@ fun GaugeWidget(
                 }
             }
 
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.Center
-            ) {
+            if (metricFontSizeMultiplier > 0.0f) {
                 Text(
-                    text = formattedValue,
-                    style = MaterialTheme.typography.displaySmall.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 64.sp * fontSizeMultiplier,
-                        fontWeight = FontWeight.Black
+                    text = metricText,
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontSize = MaterialTheme.typography.displayMedium.fontSize * metricFontSizeMultiplier
                     ),
-                    color = contentColor
+                    color = contentColor,
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
-                if (!formattedUnits.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = formattedUnits,
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontSize = 32.sp * fontSizeMultiplier,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = contentColor.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(bottom = 8.dp) // Align slightly above baseline for optical balance
-                    )
-                }
             }
         }
     }

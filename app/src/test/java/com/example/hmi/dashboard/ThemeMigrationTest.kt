@@ -69,8 +69,8 @@ class ThemeMigrationTest {
         assertEquals(Void.value.toLong(), migratedLayout.canvasColor)
         assertTrue(migratedLayout.isKineticCockpitMigrated)
         assertTrue(migratedLayout.isDarkThemeMigrated)
-        // Check that fontSizeMultiplier is initialized (should be 1.0f by default)
-        assertEquals(1.0f, migratedLayout.widgets[0].fontSizeMultiplier)
+        // Check that labelFontSizeMultiplier is initialized (should be 1.0f by default)
+        assertEquals(1.0f, migratedLayout.widgets[0].labelFontSizeMultiplier)
     }
 
     @Test

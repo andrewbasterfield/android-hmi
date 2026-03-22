@@ -18,10 +18,21 @@ val Typography = Typography(
         fontSize = 32.sp,
         letterSpacing = 1.15.sp
     ),
+    displayMedium = TextStyle(
+        fontFamily = SpaceGrotesk,
+        fontWeight = FontWeight.Bold,
+        fontSize = 48.sp
+    ),
     headlineLarge = TextStyle(
         fontFamily = SpaceGrotesk,
         fontWeight = FontWeight.Bold,
         fontSize = 24.sp
+    ),
+    headlineSmall = TextStyle(
+        fontFamily = Inter,
+        fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
+        letterSpacing = 1.sp
     ),
     bodyLarge = TextStyle(
         fontFamily = Inter,
@@ -34,5 +45,17 @@ val Typography = Typography(
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         letterSpacing = 1.25.sp
+    ),
+    labelSmall = TextStyle(
+        fontFamily = Inter,
+        fontWeight = FontWeight.Bold,
+        fontSize = 14.sp,
+        letterSpacing = 1.sp
     )
 )
+
+/**
+ * Rationalized Typography for Widgets
+ */
+val WidgetLabelStyle = Typography.headlineSmall
+val WidgetMetricStyle = Typography.displayMedium
