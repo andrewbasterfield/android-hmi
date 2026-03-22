@@ -94,11 +94,27 @@ class DashboardViewModelTest {
             {
               "id": "test-id",
               "name": "Imported Layout",
+              "isKineticCockpitMigrated": true,
+              "isDarkThemeMigrated": true,
+              "hapticFeedbackEnabled": true,
               "widgets": [
                 {
                   "id": "w1",
                   "type": "GAUGE",
-                  "tagAddress": "GAUGE_TAG"
+                  "tagAddress": "GAUGE_TAG",
+                  "column": 0,
+                  "row": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "labelFontSizeMultiplier": 1.0,
+                  "metricFontSizeMultiplier": 1.0,
+                  "targetTicks": 6,
+                  "arcSweep": 180.0,
+                  "colorZones": [],
+                  "isNeedleDynamic": false,
+                  "alarmState": "Normal",
+                  "showOutline": false,
+                  "zOrder": 0
                 }
               ]
             }

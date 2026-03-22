@@ -40,11 +40,10 @@ fun SliderWidget(
     
     val metricText = SiFormatter.formatMetric(value, units)
 
-    Column(
-        modifier = modifier.padding(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    Box(
+        modifier = modifier.padding(8.dp)
     ) {
+        // Label at top
         if (labelFontSizeMultiplier > 0.0f) {
             Text(
                 text = label,
@@ -52,15 +51,17 @@ fun SliderWidget(
                     fontSize = MaterialTheme.typography.headlineSmall.fontSize * labelFontSizeMultiplier,
                     letterSpacing = 1.25.sp
                 ),
-                color = contentColor.copy(alpha = 0.8f)
+                color = contentColor.copy(alpha = 0.8f),
+                modifier = Modifier.align(Alignment.TopCenter)
             )
         }
 
+        // Slider in center
         Slider(
             value = value,
             onValueChange = onValueChange,
             valueRange = valueRange,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            modifier = Modifier.fillMaxWidth().align(Alignment.Center),
             colors = SliderDefaults.colors(
                 thumbColor = contentColor,
                 activeTrackColor = contentColor,
@@ -125,8 +126,9 @@ fun SliderWidget(
             }
         )
 
+        // Metric row pinned to bottom
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -140,7 +142,7 @@ fun SliderWidget(
                     color = contentColor.copy(alpha = 0.6f)
                 )
             }
-            
+
             if (metricFontSizeMultiplier > 0.0f) {
                 Text(
                     text = metricText,

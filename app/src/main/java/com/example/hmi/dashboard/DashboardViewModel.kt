@@ -175,7 +175,12 @@ class DashboardViewModel @Inject constructor(
         val index = currentWidgets.indexOfFirst { it.id == widgetId }
         if (index != -1) {
             val widget = currentWidgets[index]
-            currentWidgets[index] = widget.copy(column = column, row = row)
+            val maxZOrder = currentWidgets.maxOfOrNull { it.zOrder } ?: 0
+            currentWidgets[index] = widget.copy(
+                column = column,
+                row = row,
+                zOrder = maxZOrder + 1
+            )
             val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
             _dashboardLayout.value = newLayout
             viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }

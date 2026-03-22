@@ -31,5 +31,6 @@ data class WidgetConfiguration(
     val isNeedleDynamic: Boolean = false,
     val units: String? = null,
     val alarmState: AlarmState = AlarmState.Normal,
-    val showOutline: Boolean = false
+    val showOutline: Boolean = false,
+    val zOrder: Int = 0
 )

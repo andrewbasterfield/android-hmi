@@ -314,7 +314,7 @@ fun DashboardScreen(
                                 .offset {
                                     IntOffset(visualX.roundToInt(), visualY.roundToInt())
                                 }
-                                .zIndex(if (isBeingDragged || isBeingResized) 1f else 0f)
+                                .zIndex(widget.zOrder.toFloat() + if (isBeingDragged || isBeingResized) 10000f else 0f)
                         ) {
                             val containerColor = resolvedColorLong ?: if (widget.type == WidgetType.BUTTON) {
                                 com.example.hmi.core.ui.theme.Primary.value.toLong()
