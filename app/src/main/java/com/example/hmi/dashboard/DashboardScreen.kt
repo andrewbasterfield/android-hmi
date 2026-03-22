@@ -248,8 +248,8 @@ fun DashboardScreen(
                         if (isBeingDragged) {
                             val (ghostCol, ghostRow) = calculateSnapCells(visualX, visualY, widget.colSpan, widget.rowSpan, density)
                             WidgetContainer(
-                                backgroundColor = resolvedColorLong,
-                                alpha = 0.3f,
+                                backgroundColor = null,
+                                isEditMode = true,
                                 modifier = Modifier
                                     .size(
                                         width = GridSystem.cellToDp(widget.colSpan),
@@ -268,8 +268,8 @@ fun DashboardScreen(
                         if (isBeingResized) {
                             val (ghostColSpan, ghostRowSpan) = calculateSnapSize(visualWidth, visualHeight, widget.column, widget.row, density)
                             WidgetContainer(
-                                backgroundColor = resolvedColorLong,
-                                alpha = 0.3f,
+                                backgroundColor = null,
+                                isEditMode = true,
                                 modifier = Modifier
                                     .size(
                                         width = GridSystem.cellToDp(ghostColSpan),
@@ -316,8 +316,12 @@ fun DashboardScreen(
                                 }
                                 .zIndex(if (isBeingDragged || isBeingResized) 1f else 0f)
                         ) {
+                            val containerColor = resolvedColorLong ?: if (widget.type == WidgetType.BUTTON) {
+                                com.example.hmi.core.ui.theme.Primary.value.toLong()
+                            } else null
+
                             WidgetContainer(
-                                backgroundColor = resolvedColorLong,
+                                backgroundColor = containerColor,
                                 isEditMode = isEditMode,
                                 textColorOverride = widget.textColorOverride,
                                 moveModifier = if (isEditMode) {

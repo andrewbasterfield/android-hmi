@@ -101,15 +101,14 @@ object ColorUtils {
     /**
      * Determines the contrast color for the "Modern Industrial" aesthetic.
      * Prioritizes Black text (#000000) for vibrant colors, but switches to White text (#FFFFFF)
-     * if the 4.5:1 contrast ratio (WCAG AA) cannot be met.
+     * if the background is too dark for comfortable reading.
      */
     fun getIndustrialContrastColor(backgroundColor: Color): Color {
         val bgLuminance = backgroundColor.luminance()
         
-        // Calculate contrast ratio for Black text: (bgL + 0.05) / (0.0 + 0.05)
-        val blackContrast = (bgLuminance + 0.05f) / 0.05f
-        
-        return if (blackContrast >= 4.5f) {
+        // For industrial HMI, we prefer White text on any color that isn't distinctly "bright"
+        // OSHA Blue and Red typically require White. Green and Yellow typically require Black.
+        return if (bgLuminance > 0.35f) {
             Color.Black
         } else {
             Color.White
