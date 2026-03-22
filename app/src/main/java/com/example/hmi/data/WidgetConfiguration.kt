@@ -25,9 +25,11 @@ data class WidgetConfiguration(
     val minValue: Float? = null,
     val maxValue: Float? = null,
     val targetTicks: Int = 6,
+    val arcSweep: Float = 180f, // Degrees of arc (90-270), centered at 12 o'clock
     val colorZones: List<GaugeZone> = emptyList(),
     val needleColor: Long? = null,
     val isNeedleDynamic: Boolean = false,
     val units: String? = null,
-    val alarmState: AlarmState = AlarmState.Normal
+    val alarmState: AlarmState = AlarmState.Normal,
+    val showOutline: Boolean = false
 )

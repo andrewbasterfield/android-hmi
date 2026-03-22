@@ -76,21 +76,50 @@ fun SliderWidget(
             },
             track = { _ ->
                 val layoutBgColor = MaterialTheme.colorScheme.background
-                // Rugged Rectangle Track
-                Box(
+                val fraction = (value - valueRange.start) / (valueRange.endInclusive - valueRange.start)
+
+                // Track with ticks at ends
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(8.dp)
-                        .background(layoutBgColor, RectangleShape)
-                        .semantics { trackBackgroundColor = layoutBgColor }
-                        .align(Alignment.CenterHorizontally)
+                        .semantics { trackBackgroundColor = layoutBgColor },
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Active part
+                    // Start tick
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth((value - valueRange.start) / (valueRange.endInclusive - valueRange.start))
-                            .fillMaxHeight()
-                            .background(contentColor, RectangleShape)
+                            .width(2.dp)
+                            .height(16.dp)
+                            .background(contentColor.copy(alpha = 0.8f), RectangleShape)
+                    )
+
+                    // Track area
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(8.dp)
+                    ) {
+                        // Inactive track (remaining portion) - grey like gauge arc
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(contentColor.copy(alpha = 0.3f), RectangleShape)
+                        )
+                        // Active track (filled portion)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(fraction)
+                                .fillMaxHeight()
+                                .background(contentColor, RectangleShape)
+                        )
+                    }
+
+                    // End tick
+                    Box(
+                        modifier = Modifier
+                            .width(2.dp)
+                            .height(16.dp)
+                            .background(contentColor.copy(alpha = 0.8f), RectangleShape)
                     )
                 }
             }

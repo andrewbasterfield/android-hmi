@@ -42,6 +42,7 @@ fun WidgetContainer(
     isEditMode: Boolean = false,
     alpha: Float = 1f,
     textColorOverride: String? = null,
+    showOutline: Boolean = false,
     moveModifier: Modifier = Modifier, // Added to handle movement independently
     onResize: (Offset) -> Unit = {},
     onResizeEnd: () -> Unit = {},
@@ -76,11 +77,11 @@ fun WidgetContainer(
                 .then(moveModifier)
                 .semantics { trackBackgroundColor = containerBg },
             color = containerBg,
-            // Border is only visible in Edit Mode to reduce visual noise in Run Mode
-            border = if (isEditMode) {
-                BorderStroke(2.dp, StitchTheme.tokens.statusAmber.copy(alpha = 0.5f))
-            } else {
-                null
+            // Border: Edit Mode uses amber, Run Mode can optionally show content-colored outline
+            border = when {
+                isEditMode -> BorderStroke(2.dp, StitchTheme.tokens.statusAmber.copy(alpha = 0.5f))
+                showOutline -> BorderStroke(2.dp, contentColor.copy(alpha = 0.3f))
+                else -> null
             },
             shape = shape
         ) {

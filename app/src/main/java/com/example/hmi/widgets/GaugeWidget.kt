@@ -50,6 +50,7 @@ fun GaugeWidget(
     labelFontSizeMultiplier: Float = 1.0f,
     metricFontSizeMultiplier: Float = 1.0f,
     targetTicks: Int = 6,
+    arcSweep: Float = 180f,
     colorZones: List<GaugeZone> = emptyList(),
     needleColor: Long? = null,
     isNeedleDynamic: Boolean = false,
@@ -69,8 +70,8 @@ fun GaugeWidget(
     )
 
     val contentColor = LocalContentColor.current
-    val startAngle = 135f
-    val sweepAngle = 270f
+    val sweepAngle = arcSweep.coerceIn(90f, 270f)
+    val startAngle = 270f - (sweepAngle / 2f)  // Centered at 12 o'clock
     
     val metricText = SiFormatter.formatMetric(value, units)
 
@@ -116,20 +117,56 @@ fun GaugeWidget(
                 contentAlignment = Alignment.Center
             ) {
                 val layoutBgColor = MaterialTheme.colorScheme.background
-                // ... (rest of the Canvas code unchanged)
                 Canvas(
                     modifier = Modifier
-                        .fillMaxSize(0.9f)
+                        .fillMaxSize()
                         .semantics { trackBackgroundColor = layoutBgColor }
                 ) {
-                    val center = Offset(size.width / 2, size.height / 2)
-                    val radius = size.minDimension / 2
-                    val innerRadius = radius * 0.8f
                     val strokeWidth = 4.dp.toPx()
+                    val padding = 8.dp.toPx()
 
-                    // 1. Draw background track (Matched to layout background)
+                    // Calculate bounding box of visible arc (center can be outside canvas)
+                    // Arc is centered at 12 o'clock (270°), spanning from startAngle to startAngle + sweepAngle
+                    val startRad = Math.toRadians(startAngle.toDouble())
+                    val endRad = Math.toRadians((startAngle + sweepAngle).toDouble())
+                    val halfSweepRad = Math.toRadians((sweepAngle / 2f).toDouble())
+
+                    // For arc centered at 270°: find extent of visible arc relative to center
+                    // Left extent: min x coordinate (at 180° if arc crosses it, else at endpoint)
+                    // Right extent: max x coordinate (at 0°/360° if arc crosses it, else at endpoint)
+                    // Top extent: always -1 (at 270°, the midpoint)
+                    // Bottom extent: max y of endpoints
+
+                    val leftX = if (sweepAngle >= 180f) -1f else -kotlin.math.sin(halfSweepRad).toFloat()
+                    val rightX = if (sweepAngle >= 180f) 1f else kotlin.math.sin(halfSweepRad).toFloat()
+                    val topY = -1f  // Arc always reaches 12 o'clock
+                    val bottomY = if (sweepAngle > 180f) {
+                        kotlin.math.sin(Math.toRadians((sweepAngle - 180f) / 2.0)).toFloat()
+                    } else {
+                        -kotlin.math.cos(halfSweepRad).toFloat()  // Bottom of arc for < 180°
+                    }
+
+                    val arcWidth = rightX - leftX
+                    val arcHeight = bottomY - topY
+
+                    // Calculate radius to fit the arc bounding box within canvas
+                    val availableWidth = size.width - padding * 2
+                    val availableHeight = size.height - padding * 2
+                    val maxRadiusForWidth = availableWidth / arcWidth
+                    val maxRadiusForHeight = availableHeight / arcHeight
+
+                    val radius = minOf(maxRadiusForWidth, maxRadiusForHeight)
+                    val innerRadius = radius * 0.8f
+
+                    // Position center: horizontally centered, arc pinned to top
+                    val arcCenterX = (leftX + rightX) / 2f
+                    val centerX = size.width / 2f - arcCenterX * radius
+                    val centerY = padding - topY * radius  // Arc top at padding
+                    val center = Offset(centerX, centerY)
+
+                    // 1. Draw base arc (visible scale line for areas without zones)
                     drawArc(
-                        color = layoutBgColor,
+                        color = contentColor.copy(alpha = 0.3f),
                         startAngle = startAngle,
                         sweepAngle = sweepAngle,
                         useCenter = false,
@@ -138,8 +175,8 @@ fun GaugeWidget(
                         style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
                     )
 
-                    // 2. Draw color zones
-                    colorZones.forEach { zone ->
+                    // 2. Draw color zones (reversed so first zone in list draws on top)
+                    colorZones.reversed().forEach { zone ->
                         val zoneStartValue = zone.startValue.coerceIn(minValue, maxValue)
                         val zoneEndValue = zone.endValue.coerceIn(minValue, maxValue)
                         
@@ -163,24 +200,29 @@ fun GaugeWidget(
                     val step = ScaleUtils.calculateNiceStep(maxValue - minValue, targetTicks)
                     val ticks = ScaleUtils.generateTicks(minValue, maxValue, step)
                     
+                    val tickInnerRadius = radius * 0.88f // Shortened ticks (60% of original)
                     ticks.forEach { tickValue ->
                         val angle = startAngle + (tickValue - minValue) / (maxValue - minValue) * sweepAngle
                         val angleRad = Math.toRadians(angle.toDouble())
-                        
+
                         val outerX = center.x + radius * cos(angleRad).toFloat()
                         val outerY = center.y + radius * sin(angleRad).toFloat()
-                        val innerX = center.x + innerRadius * cos(angleRad).toFloat()
-                        val innerY = center.y + innerRadius * sin(angleRad).toFloat()
+                        val innerX = center.x + tickInnerRadius * cos(angleRad).toFloat()
+                        val innerY = center.y + tickInnerRadius * sin(angleRad).toFloat()
+
+                        // Color tick based on zone it falls within (first zone in list wins)
+                        val tickZone = colorZones.find { tickValue >= it.startValue && tickValue <= it.endValue }
+                        val tickColor = tickZone?.let { ColorUtils.toColor(it.color) } ?: contentColor.copy(alpha = 0.8f)
 
                         drawLine(
-                            color = contentColor.copy(alpha = 0.8f),
+                            color = tickColor,
                             start = Offset(innerX, innerY),
                             end = Offset(outerX, outerY),
                             strokeWidth = 2.dp.toPx()
                         )
                     }
 
-                    // 4. Draw Needle
+                    // 4. Draw Pointer (Glass Cockpit style chevron/caret)
                     val currentNeedleColor = ColorUtils.resolveNeedleColor(
                         currentValue = animatedValue,
                         isNeedleDynamic = isNeedleDynamic,
@@ -189,31 +231,48 @@ fun GaugeWidget(
                         defaultColor = contentColor
                     )
 
-                    val needleAngle = startAngle + (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * sweepAngle
-                    rotate(degrees = needleAngle, pivot = center) {
-                        val needlePath = Path().apply {
-                            moveTo(center.x + radius * 0.9f, center.y)
-                            lineTo(center.x, center.y - 4.dp.toPx())
-                            lineTo(center.x - 8.dp.toPx(), center.y)
-                            lineTo(center.x, center.y + 4.dp.toPx())
-                            close()
-                        }
-                        drawPath(path = needlePath, color = currentNeedleColor)
+                    val pointerAngle = startAngle + (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * sweepAngle
+                    val pointerAngleRad = Math.toRadians(pointerAngle.toDouble())
+
+                    // Position pointer on the inside of the arc
+                    val pointerTipRadius = radius * 0.95f  // Tip points toward arc
+                    val pointerBaseRadius = radius * 0.75f // Base sits inside
+                    val pointerWidth = 6.dp.toPx()
+
+                    // Calculate pointer tip (pointing outward)
+                    val tipX = center.x + pointerTipRadius * cos(pointerAngleRad).toFloat()
+                    val tipY = center.y + pointerTipRadius * sin(pointerAngleRad).toFloat()
+
+                    // Calculate base corners (perpendicular to radial direction)
+                    val perpAngle = pointerAngleRad + Math.PI / 2
+                    val baseX = center.x + pointerBaseRadius * cos(pointerAngleRad).toFloat()
+                    val baseY = center.y + pointerBaseRadius * sin(pointerAngleRad).toFloat()
+
+                    val corner1X = baseX + pointerWidth * cos(perpAngle).toFloat()
+                    val corner1Y = baseY + pointerWidth * sin(perpAngle).toFloat()
+                    val corner2X = baseX - pointerWidth * cos(perpAngle).toFloat()
+                    val corner2Y = baseY - pointerWidth * sin(perpAngle).toFloat()
+
+                    val pointerPath = Path().apply {
+                        moveTo(tipX, tipY)
+                        lineTo(corner1X, corner1Y)
+                        lineTo(corner2X, corner2Y)
+                        close()
                     }
-
-                    drawCircle(color = currentNeedleColor, radius = 6.dp.toPx(), center = center)
+                    drawPath(path = pointerPath, color = currentNeedleColor)
                 }
-            }
 
-            if (metricFontSizeMultiplier > 0.0f) {
-                Text(
-                    text = metricText,
-                    style = MaterialTheme.typography.displayMedium.copy(
-                        fontSize = MaterialTheme.typography.displayMedium.fontSize * metricFontSizeMultiplier
-                    ),
-                    color = contentColor,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                // Metric display at bottom, below the arc
+                if (metricFontSizeMultiplier > 0.0f) {
+                    Text(
+                        text = metricText,
+                        style = MaterialTheme.typography.displayMedium.copy(
+                            fontSize = MaterialTheme.typography.displayMedium.fontSize * metricFontSizeMultiplier
+                        ),
+                        color = contentColor,
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
+                }
             }
         }
     }

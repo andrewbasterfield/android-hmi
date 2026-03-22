@@ -138,7 +138,8 @@ object ColorUtils {
     }
 
     /**
-     * Resolves the needle color based on dynamic/static settings and zone thresholds.
+     * Resolves the pointer color based on dynamic/static settings and zone thresholds.
+     * Uses "first wins" - if zones overlap, the first matching zone in the list takes precedence.
      */
     fun resolveNeedleColor(
         currentValue: Float,

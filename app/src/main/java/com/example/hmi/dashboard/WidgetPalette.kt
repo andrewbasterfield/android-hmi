@@ -8,6 +8,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -99,13 +101,15 @@ fun WidgetConfigDialog(
     var minValue by remember { mutableStateOf(initialWidget?.minValue?.toString() ?: "0") }
     var maxValue by remember { mutableStateOf(initialWidget?.maxValue?.toString() ?: "100") }
     var targetTicks by remember { mutableFloatStateOf(initialWidget?.targetTicks?.toFloat() ?: 6f) }
+    var arcSweep by remember { mutableFloatStateOf(initialWidget?.arcSweep ?: 180f) }
     var needleColor by remember { mutableStateOf(initialWidget?.needleColor) }
     var isNeedleDynamic by remember { mutableStateOf(initialWidget?.isNeedleDynamic ?: false) }
     var units by remember { mutableStateOf(initialWidget?.units ?: "") }
     
-    val colorZones = remember { mutableStateListOf<GaugeZone>().apply { 
-        addAll(initialWidget?.colorZones ?: emptyList()) 
+    val colorZones = remember { mutableStateListOf<GaugeZone>().apply {
+        addAll(initialWidget?.colorZones ?: emptyList())
     } }
+    var showOutline by remember { mutableStateOf(initialWidget?.showOutline ?: false) }
 
     // Scale Assistance logic (FR-006)
     val scaleOutcome = remember(minValue, maxValue, targetTicks) {
@@ -269,6 +273,15 @@ fun WidgetConfigDialog(
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
+                    Text("Arc Sweep: ${arcSweep.toInt()}°", style = MaterialTheme.typography.labelSmall)
+                    Slider(
+                        value = arcSweep,
+                        onValueChange = { arcSweep = it },
+                        valueRange = 90f..270f,
+                        steps = 17  // 10° increments
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -314,6 +327,19 @@ fun WidgetConfigDialog(
                     }
                 )
 
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Show Outline", style = MaterialTheme.typography.bodyMedium)
+                    Switch(
+                        checked = showOutline,
+                        onCheckedChange = { showOutline = it }
+                    )
+                }
+
                 if (selectedType == WidgetType.GAUGE) {
                     Spacer(modifier = Modifier.height(24.dp))
                     HorizontalDivider()
@@ -323,7 +349,22 @@ fun WidgetConfigDialog(
                     colorZones.forEachIndexed { index, zone ->
                         ZoneEditCard(
                             zone = zone,
+                            index = index,
+                            isFirst = index == 0,
+                            isLast = index == colorZones.lastIndex,
                             onZoneChanged = { colorZones[index] = it },
+                            onMoveUp = {
+                                if (index > 0) {
+                                    val item = colorZones.removeAt(index)
+                                    colorZones.add(index - 1, item)
+                                }
+                            },
+                            onMoveDown = {
+                                if (index < colorZones.lastIndex) {
+                                    val item = colorZones.removeAt(index)
+                                    colorZones.add(index + 1, item)
+                                }
+                            },
                             onDelete = { colorZones.removeAt(index) }
                         )
                     }
@@ -356,10 +397,12 @@ fun WidgetConfigDialog(
                             minValue = minValue.toFloatOrNull(),
                             maxValue = maxValue.toFloatOrNull(),
                             targetTicks = targetTicks.toInt(),
+                            arcSweep = arcSweep,
                             colorZones = colorZones.toList(),
                             needleColor = needleColor,
                             isNeedleDynamic = isNeedleDynamic,
-                            units = if (selectedType == WidgetType.BUTTON) null else units.ifBlank { null }
+                            units = if (selectedType == WidgetType.BUTTON) null else units.ifBlank { null },
+                            showOutline = showOutline
                         )
                     )
                 },
@@ -394,18 +437,54 @@ fun WidgetConfigDialog(
 @Composable
 fun ZoneEditCard(
     zone: GaugeZone,
+    index: Int,
+    isFirst: Boolean,
+    isLast: Boolean,
     onZoneChanged: (GaugeZone) -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
     onDelete: () -> Unit
 ) {
     var startInput by remember { mutableStateOf(zone.startValue.toString()) }
     var endInput by remember { mutableStateOf(zone.endValue.toString()) }
 
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         shape = IndustrialShape.Small,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
+            // Header row with zone number and reorder/delete buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Zone ${index + 1}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row {
+                    IconButton(onClick = onMoveUp, enabled = !isFirst) {
+                        Icon(
+                            Icons.Default.KeyboardArrowUp,
+                            contentDescription = "Move Up",
+                            tint = if (!isFirst) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    }
+                    IconButton(onClick = onMoveDown, enabled = !isLast) {
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Move Down",
+                            tint = if (!isLast) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, contentDescription = "Remove Zone", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -430,9 +509,6 @@ fun ZoneEditCard(
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Remove Zone", tint = MaterialTheme.colorScheme.error)
-                }
             }
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {

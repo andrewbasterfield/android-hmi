@@ -324,6 +324,7 @@ fun DashboardScreen(
                                 backgroundColor = containerColor,
                                 isEditMode = isEditMode,
                                 textColorOverride = widget.textColorOverride,
+                                showOutline = widget.showOutline,
                                 moveModifier = if (isEditMode) {
                                     Modifier.pointerInput(widget.id) {
                                         detectDragGestures(
@@ -417,6 +418,7 @@ fun DashboardScreen(
                                             labelFontSizeMultiplier = widget.labelFontSizeMultiplier,
                                             metricFontSizeMultiplier = widget.metricFontSizeMultiplier,
                                             targetTicks = widget.targetTicks,
+                                            arcSweep = widget.arcSweep,
                                             colorZones = widget.colorZones,
                                             needleColor = widget.needleColor,
                                             isNeedleDynamic = widget.isNeedleDynamic,
