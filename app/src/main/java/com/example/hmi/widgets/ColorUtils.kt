@@ -141,17 +141,17 @@ object ColorUtils {
      * Resolves the pointer color based on dynamic/static settings and zone thresholds.
      * Uses "first wins" - if zones overlap, the first matching zone in the list takes precedence.
      */
-    fun resolveNeedleColor(
+    fun resolvePointerColor(
         currentValue: Float,
-        isNeedleDynamic: Boolean,
-        staticNeedleColor: Long?,
+        isPointerDynamic: Boolean,
+        staticPointerColor: Long?,
         colorZones: List<com.example.hmi.data.GaugeZone>,
         defaultColor: Color
     ): Color {
         val activeZone = colorZones.find { currentValue >= it.startValue && currentValue <= it.endValue }
         return when {
-            isNeedleDynamic && activeZone != null -> toColor(activeZone.color)
-            staticNeedleColor != null -> toColor(staticNeedleColor)
+            isPointerDynamic && activeZone != null -> toColor(activeZone.color)
+            staticPointerColor != null -> toColor(staticPointerColor)
             else -> defaultColor
         }
     }

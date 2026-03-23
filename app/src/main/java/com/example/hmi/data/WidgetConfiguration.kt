@@ -4,6 +4,8 @@ import java.util.UUID
 
 enum class WidgetType { BUTTON, SLIDER, GAUGE }
 
+enum class GaugeStyle { POINTER, ARC_FILL }
+
 enum class AlarmState { Normal, Unacknowledged, Acknowledged }
 
 data class WidgetConfiguration(
@@ -27,8 +29,9 @@ data class WidgetConfiguration(
     val targetTicks: Int = 6,
     val arcSweep: Float = 180f, // Degrees of arc (90-270), centered at 12 o'clock
     val colorZones: List<GaugeZone> = emptyList(),
-    val needleColor: Long? = null,
-    val isNeedleDynamic: Boolean = false,
+    val pointerColor: Long? = null,
+    val isPointerDynamic: Boolean = true,
+    val gaugeStyle: GaugeStyle? = GaugeStyle.POINTER,
     val units: String? = null,
     val alarmState: AlarmState = AlarmState.Normal,
     val showOutline: Boolean = false,

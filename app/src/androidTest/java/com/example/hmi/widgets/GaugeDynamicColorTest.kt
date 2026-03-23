@@ -14,7 +14,7 @@ class GaugeDynamicColorTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun gaugeWidget_needleFollowsZoneColorWhenValueInZone() {
+    fun gaugeWidget_pointerFollowsZoneColorWhenValueInZone() {
         val zoneColor = Color.Red
         val defaultColor = Color.Blue
         val colorZones = listOf(
@@ -28,17 +28,17 @@ class GaugeDynamicColorTest {
                 minValue = 0f,
                 maxValue = 100f,
                 colorZones = colorZones,
-                isNeedleDynamic = true,
-                needleColor = defaultColor.value.toLong()
+                isPointerDynamic = true,
+                pointerColor = defaultColor.value.toLong()
             )
         }
 
-        composeTestRule.onNode(SemanticsMatcher.expectValue(NeedleColorKey, zoneColor))
+        composeTestRule.onNode(SemanticsMatcher.expectValue(PointerColorKey, zoneColor))
             .assertIsDisplayed()
     }
 
     @Test
-    fun gaugeWidget_needleFallsBackToStaticWhenOutsideZone() {
+    fun gaugeWidget_pointerFallsBackToStaticWhenOutsideZone() {
         val zoneColor = Color.Red
         val defaultColor = Color.Blue
         val colorZones = listOf(
@@ -52,12 +52,12 @@ class GaugeDynamicColorTest {
                 minValue = 0f,
                 maxValue = 100f,
                 colorZones = colorZones,
-                isNeedleDynamic = true,
-                needleColor = defaultColor.value.toLong()
+                isPointerDynamic = true,
+                pointerColor = defaultColor.value.toLong()
             )
         }
 
-        composeTestRule.onNode(SemanticsMatcher.expectValue(NeedleColorKey, defaultColor))
+        composeTestRule.onNode(SemanticsMatcher.expectValue(PointerColorKey, defaultColor))
             .assertIsDisplayed()
     }
 }

@@ -30,8 +30,8 @@ class GaugeScaleColorTest {
         }
 
         // Ticks and Labels should now be yellow (aligned with contentColor/settings cog)
-        // Note: NeedleColor semantics uses the same resolve logic
-        composeTestRule.onNode(SemanticsMatcher.expectValue(NeedleColorKey, expectedColor))
+        // Note: PointerColor semantics uses the same resolve logic
+        composeTestRule.onNode(SemanticsMatcher.expectValue(PointerColorKey, expectedColor))
             .assertIsDisplayed()
     }
 }

@@ -36,8 +36,8 @@ import com.example.hmi.core.ui.components.AlarmPulse
 import com.example.hmi.core.ui.components.PulseState
 import com.example.hmi.core.ui.utils.SiFormatter
 
-val NeedleColorKey = SemanticsPropertyKey<Color>("NeedleColor")
-var SemanticsPropertyReceiver.needleColor by NeedleColorKey
+val PointerColorKey = SemanticsPropertyKey<Color>("PointerColor")
+var SemanticsPropertyReceiver.pointerColor by PointerColorKey
 
 @Composable
 fun GaugeWidget(
@@ -52,14 +52,15 @@ fun GaugeWidget(
     targetTicks: Int = 6,
     arcSweep: Float = 180f,
     colorZones: List<GaugeZone> = emptyList(),
-    needleColor: Long? = null,
-    isNeedleDynamic: Boolean = false,
+    pointerColor: Long? = null,
+    isPointerDynamic: Boolean = false,
+    gaugeStyle: com.example.hmi.data.GaugeStyle? = com.example.hmi.data.GaugeStyle.POINTER,
     units: String? = null,
     pulseState: PulseState = PulseState.NORMAL,
     onAcknowledgeAlarm: () -> Unit = {}
 ) {
     // BUG-011 Parked: Using fastest available spring for zero-lag response.
-    // Phantom needles are acknowledged as a display-persistence limitation for now.
+    // Phantom pointers are acknowledged as a display-persistence limitation for now.
     val animatedValue by animateFloatAsState(
         targetValue = value,
         animationSpec = spring(
@@ -84,16 +85,19 @@ fun GaugeWidget(
                 onAcknowledgeAlarm()
             }
             .semantics { 
-                contentDescription = "Gauge for $label showing $metricText"
-                // US1/US2: Expose needle color for testing
-                val currentNeedleColor = ColorUtils.resolveNeedleColor(
+                val percent = ((value - minValue) / (maxValue - minValue) * 100).coerceIn(0f, 100f)
+                val styleText = if (gaugeStyle == com.example.hmi.data.GaugeStyle.ARC_FILL) " (filled to ${percent.toInt()}%)" else ""
+                contentDescription = "Gauge for $label showing $metricText$styleText"
+                
+                // US1/US2/US3: Expose pointer color for testing (used by both styles)
+                val currentPointerColor = ColorUtils.resolvePointerColor(
                     currentValue = animatedValue,
-                    isNeedleDynamic = isNeedleDynamic,
-                    staticNeedleColor = needleColor,
+                    isPointerDynamic = isPointerDynamic,
+                    staticPointerColor = pointerColor,
                     colorZones = colorZones,
                     defaultColor = contentColor
                 )
-                this.needleColor = currentNeedleColor
+                this.pointerColor = currentPointerColor
             }
     ) {
         Column(
@@ -127,8 +131,6 @@ fun GaugeWidget(
 
                     // Calculate bounding box of visible arc (center can be outside canvas)
                     // Arc is centered at 12 o'clock (270°), spanning from startAngle to startAngle + sweepAngle
-                    val startRad = Math.toRadians(startAngle.toDouble())
-                    val endRad = Math.toRadians((startAngle + sweepAngle).toDouble())
                     val halfSweepRad = Math.toRadians((sweepAngle / 2f).toDouble())
 
                     // For arc centered at 270°: find extent of visible arc relative to center
@@ -156,7 +158,6 @@ fun GaugeWidget(
                     val maxRadiusForHeight = availableHeight / arcHeight
 
                     val radius = minOf(maxRadiusForWidth, maxRadiusForHeight)
-                    val innerRadius = radius * 0.8f
 
                     // Position center: horizontally centered, arc pinned to top
                     val arcCenterX = (leftX + rightX) / 2f
@@ -175,6 +176,19 @@ fun GaugeWidget(
                         style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
                     )
 
+                    // 1.1 Draw Track Arc for ARC_FILL style (UI-004)
+                    if (gaugeStyle == com.example.hmi.data.GaugeStyle.ARC_FILL) {
+                        drawArc(
+                            color = contentColor.copy(alpha = 0.15f),
+                            startAngle = startAngle,
+                            sweepAngle = sweepAngle,
+                            useCenter = false,
+                            topLeft = Offset(center.x - radius, center.y - radius),
+                            size = Size(radius * 2, radius * 2),
+                            style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
+                        )
+                    }
+
                     // 2. Draw color zones (reversed so first zone in list draws on top)
                     colorZones.reversed().forEach { zone ->
                         val zoneStartValue = zone.startValue.coerceIn(minValue, maxValue)
@@ -191,9 +205,30 @@ fun GaugeWidget(
                                 useCenter = false,
                                 topLeft = Offset(center.x - radius, center.y - radius),
                                 size = Size(radius * 2, radius * 2),
-                                style = Stroke(width = strokeWidth * 1.5f, cap = StrokeCap.Butt)
+                                style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
                             )
                         }
+                    }
+
+                    // 2.1 Draw Fill Arc for ARC_FILL style (MUST DRAW AFTER ZONES for Strategy 1)
+                    if (gaugeStyle == com.example.hmi.data.GaugeStyle.ARC_FILL) {
+                        val currentPointerColor = ColorUtils.resolvePointerColor(
+                            currentValue = animatedValue,
+                            isPointerDynamic = isPointerDynamic,
+                            staticPointerColor = pointerColor,
+                            colorZones = colorZones,
+                            defaultColor = contentColor
+                        )
+                        val fillSweepAngle = (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * sweepAngle
+                        drawArc(
+                            color = currentPointerColor,
+                            startAngle = startAngle,
+                            sweepAngle = fillSweepAngle,
+                            useCenter = false,
+                            topLeft = Offset(center.x - radius, center.y - radius),
+                            size = Size(radius * 2, radius * 2),
+                            style = Stroke(width = strokeWidth * 2.5f, cap = StrokeCap.Butt)
+                        )
                     }
 
                     // 3. Draw ticks
@@ -223,43 +258,45 @@ fun GaugeWidget(
                     }
 
                     // 4. Draw Pointer (Glass Cockpit style chevron/caret)
-                    val currentNeedleColor = ColorUtils.resolveNeedleColor(
-                        currentValue = animatedValue,
-                        isNeedleDynamic = isNeedleDynamic,
-                        staticNeedleColor = needleColor,
-                        colorZones = colorZones,
-                        defaultColor = contentColor
-                    )
+                    if (gaugeStyle == com.example.hmi.data.GaugeStyle.POINTER) {
+                        val currentPointerColor = ColorUtils.resolvePointerColor(
+                            currentValue = animatedValue,
+                            isPointerDynamic = isPointerDynamic,
+                            staticPointerColor = pointerColor,
+                            colorZones = colorZones,
+                            defaultColor = contentColor
+                        )
 
-                    val pointerAngle = startAngle + (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * sweepAngle
-                    val pointerAngleRad = Math.toRadians(pointerAngle.toDouble())
+                        val pointerAngle = startAngle + (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * sweepAngle
+                        val pointerAngleRad = Math.toRadians(pointerAngle.toDouble())
 
-                    // Position pointer on the inside of the arc
-                    val pointerTipRadius = radius * 0.95f  // Tip points toward arc
-                    val pointerBaseRadius = radius * 0.75f // Base sits inside
-                    val pointerWidth = 6.dp.toPx()
+                        // Position pointer on the inside of the arc
+                        val pointerTipRadius = radius * 0.95f  // Tip points toward arc
+                        val pointerBaseRadius = radius * 0.75f // Base sits inside
+                        val pointerWidth = 6.dp.toPx()
 
-                    // Calculate pointer tip (pointing outward)
-                    val tipX = center.x + pointerTipRadius * cos(pointerAngleRad).toFloat()
-                    val tipY = center.y + pointerTipRadius * sin(pointerAngleRad).toFloat()
+                        // Calculate pointer tip (pointing outward)
+                        val tipX = center.x + pointerTipRadius * cos(pointerAngleRad).toFloat()
+                        val tipY = center.y + pointerTipRadius * sin(pointerAngleRad).toFloat()
 
-                    // Calculate base corners (perpendicular to radial direction)
-                    val perpAngle = pointerAngleRad + Math.PI / 2
-                    val baseX = center.x + pointerBaseRadius * cos(pointerAngleRad).toFloat()
-                    val baseY = center.y + pointerBaseRadius * sin(pointerAngleRad).toFloat()
+                        // Calculate base corners (perpendicular to radial direction)
+                        val perpAngle = pointerAngleRad + Math.PI / 2
+                        val baseX = center.x + pointerBaseRadius * cos(pointerAngleRad).toFloat()
+                        val baseY = center.y + pointerBaseRadius * sin(pointerAngleRad).toFloat()
 
-                    val corner1X = baseX + pointerWidth * cos(perpAngle).toFloat()
-                    val corner1Y = baseY + pointerWidth * sin(perpAngle).toFloat()
-                    val corner2X = baseX - pointerWidth * cos(perpAngle).toFloat()
-                    val corner2Y = baseY - pointerWidth * sin(perpAngle).toFloat()
+                        val corner1X = baseX + pointerWidth * cos(perpAngle).toFloat()
+                        val corner1Y = baseY + pointerWidth * sin(perpAngle).toFloat()
+                        val corner2X = baseX - pointerWidth * cos(perpAngle).toFloat()
+                        val corner2Y = baseY - pointerWidth * sin(perpAngle).toFloat()
 
-                    val pointerPath = Path().apply {
-                        moveTo(tipX, tipY)
-                        lineTo(corner1X, corner1Y)
-                        lineTo(corner2X, corner2Y)
-                        close()
+                        val pointerPath = Path().apply {
+                            moveTo(tipX, tipY)
+                            lineTo(corner1X, corner1Y)
+                            lineTo(corner2X, corner2Y)
+                            close()
+                        }
+                        drawPath(path = pointerPath, color = currentPointerColor)
                     }
-                    drawPath(path = pointerPath, color = currentNeedleColor)
                 }
 
                 // Metric display at bottom, below the arc

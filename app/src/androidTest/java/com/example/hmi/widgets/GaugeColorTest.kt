@@ -15,7 +15,7 @@ class GaugeColorTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun gaugeWidget_respectsManualNeedleColor() {
+    fun gaugeWidget_respectsManualPointerColor() {
         val customColor = Color.Red
 
         composeTestRule.setContent {
@@ -24,12 +24,12 @@ class GaugeColorTest {
                 value = 50f,
                 minValue = 0f,
                 maxValue = 100f,
-                needleColor = customColor.value.toLong()
+                pointerColor = customColor.value.toLong()
             )
         }
 
-        // Verify that the needle color is correctly reported via semantics
-        composeTestRule.onNode(SemanticsMatcher.expectValue(NeedleColorKey, customColor))
+        // Verify that the pointer color is correctly reported via semantics
+        composeTestRule.onNode(SemanticsMatcher.expectValue(PointerColorKey, customColor))
             .assertIsDisplayed()
     }
 }

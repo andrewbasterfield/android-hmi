@@ -102,8 +102,9 @@ fun WidgetConfigDialog(
     var maxValue by remember { mutableStateOf(initialWidget?.maxValue?.toString() ?: "100") }
     var targetTicks by remember { mutableFloatStateOf(initialWidget?.targetTicks?.toFloat() ?: 6f) }
     var arcSweep by remember { mutableFloatStateOf(initialWidget?.arcSweep ?: 180f) }
-    var needleColor by remember { mutableStateOf(initialWidget?.needleColor) }
-    var isNeedleDynamic by remember { mutableStateOf(initialWidget?.isNeedleDynamic ?: false) }
+    var selectedGaugeStyle by remember { mutableStateOf(initialWidget?.gaugeStyle ?: com.example.hmi.data.GaugeStyle.POINTER) }
+    var pointerColor by remember { mutableStateOf(initialWidget?.pointerColor) }
+    var isPointerDynamic by remember { mutableStateOf(initialWidget?.isPointerDynamic ?: true) }
     var units by remember { mutableStateOf(initialWidget?.units ?: "") }
     
     val colorZones = remember { mutableStateListOf<GaugeZone>().apply {
@@ -282,6 +283,18 @@ fun WidgetConfigDialog(
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
+                    Text("Display Style", style = MaterialTheme.typography.labelSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        com.example.hmi.data.GaugeStyle.values().forEach { style ->
+                            FilterChip(
+                                selected = selectedGaugeStyle == style,
+                                onClick = { selectedGaugeStyle = style },
+                                label = { Text(style.name) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -289,18 +302,18 @@ fun WidgetConfigDialog(
                     ) {
                         Text("Pointer matches Zone Color", style = MaterialTheme.typography.bodyMedium)
                         Switch(
-                            checked = isNeedleDynamic,
-                            onCheckedChange = { isNeedleDynamic = it }
+                            checked = isPointerDynamic,
+                            onCheckedChange = { isPointerDynamic = it }
                         )
                     }
 
-                    if (!isNeedleDynamic) {
+                    if (!isPointerDynamic) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Static Needle Color", style = MaterialTheme.typography.labelSmall)
+                        Text("Static Pointer Color", style = MaterialTheme.typography.labelSmall)
                         Spacer(modifier = Modifier.height(8.dp))
                         HmiColorPicker(
-                            selectedColor = needleColor,
-                            onColorSelected = { needleColor = it }
+                            selectedColor = pointerColor,
+                            onColorSelected = { pointerColor = it }
                         )
                     }
                 }
@@ -398,9 +411,10 @@ fun WidgetConfigDialog(
                             maxValue = maxValue.toFloatOrNull(),
                             targetTicks = targetTicks.toInt(),
                             arcSweep = arcSweep,
+                            gaugeStyle = selectedGaugeStyle,
                             colorZones = colorZones.toList(),
-                            needleColor = needleColor,
-                            isNeedleDynamic = isNeedleDynamic,
+                            pointerColor = pointerColor,
+                            isPointerDynamic = isPointerDynamic,
                             units = if (selectedType == WidgetType.BUTTON) null else units.ifBlank { null },
                             showOutline = showOutline
                         )

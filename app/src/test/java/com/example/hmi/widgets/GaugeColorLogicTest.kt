@@ -15,11 +15,11 @@ class GaugeColorLogicTest {
     )
 
     @Test
-    fun `resolves static needle color when dynamic is off`() {
-        val color = ColorUtils.resolveNeedleColor(
+    fun `resolves static pointer color when dynamic is off`() {
+        val color = ColorUtils.resolvePointerColor(
             currentValue = 90f,
-            isNeedleDynamic = false,
-            staticNeedleColor = staticColor.value.toLong(),
+            isPointerDynamic = false,
+            staticPointerColor = staticColor.value.toLong(),
             colorZones = colorZones,
             defaultColor = defaultColor
         )
@@ -28,10 +28,10 @@ class GaugeColorLogicTest {
 
     @Test
     fun `resolves zone color when dynamic is on and value in zone`() {
-        val color = ColorUtils.resolveNeedleColor(
+        val color = ColorUtils.resolvePointerColor(
             currentValue = 90f,
-            isNeedleDynamic = true,
-            staticNeedleColor = staticColor.value.toLong(),
+            isPointerDynamic = true,
+            staticPointerColor = staticColor.value.toLong(),
             colorZones = colorZones,
             defaultColor = defaultColor
         )
@@ -40,10 +40,10 @@ class GaugeColorLogicTest {
 
     @Test
     fun `resolves static color when dynamic is on but value outside zones`() {
-        val color = ColorUtils.resolveNeedleColor(
+        val color = ColorUtils.resolvePointerColor(
             currentValue = 50f,
-            isNeedleDynamic = true,
-            staticNeedleColor = staticColor.value.toLong(),
+            isPointerDynamic = true,
+            staticPointerColor = staticColor.value.toLong(),
             colorZones = colorZones,
             defaultColor = defaultColor
         )
@@ -52,10 +52,10 @@ class GaugeColorLogicTest {
 
     @Test
     fun `resolves default color when no static or dynamic match`() {
-        val color = ColorUtils.resolveNeedleColor(
+        val color = ColorUtils.resolvePointerColor(
             currentValue = 50f,
-            isNeedleDynamic = false,
-            staticNeedleColor = null,
+            isPointerDynamic = false,
+            staticPointerColor = null,
             colorZones = colorZones,
             defaultColor = defaultColor
         )
