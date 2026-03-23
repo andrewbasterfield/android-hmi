@@ -43,7 +43,7 @@
 
 ### Implementation for User Story 1
 
-- [x] T005 [P] [US1] Define demo server connection constants (IP: 127.0.0.1, Port: 9999) in `app/src/main/java/com/example/hmi/data/PlcConnectionProfile.kt` or `ConnectionViewModel.kt`
+- [x] T005 [P] [US1] Define demo server connection constants (IP: 127.0.0.1, Port: 9999) in `app/src/main/java/com.example.hmi.protocol.PlcConnectionProfile.kt` or `ConnectionViewModel.kt`
 - [x] T006 [US1] Add a dedicated "Connect to Local Demo Server" button to `app/src/main/java/com/example/hmi/connection/ConnectionScreen.kt`
 - [x] T007 [US1] Verify accessibility (touch targets 48x48dp, content descriptions) for the new button in `app/src/main/java/com/example/hmi/connection/ConnectionScreen.kt`
 - [x] T008 [US1] Implement `connectToDemoServer()` logic in `app/src/main/java/com/example/hmi/connection/ConnectionViewModel.kt`

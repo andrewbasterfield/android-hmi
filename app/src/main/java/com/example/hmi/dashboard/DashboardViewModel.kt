@@ -9,6 +9,7 @@ import com.example.hmi.data.DashboardRepository
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
 import com.example.hmi.di.IoDispatcher
+import com.example.hmi.protocol.ConnectionState
 import com.example.hmi.protocol.PlcCommunicator
 import com.example.hmi.protocol.PlcValue
 import com.example.hmi.widgets.ColorUtils
@@ -30,6 +31,8 @@ class DashboardViewModel @Inject constructor(
     private val repository: DashboardRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
+
+    val connectionState = plcCommunicator.connectionState
 
     private val _dashboardLayout = MutableStateFlow(DashboardLayout())
     val dashboardLayout: StateFlow<DashboardLayout> = _dashboardLayout.asStateFlow()
@@ -158,7 +161,8 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             when (widget.interactionType) {
                 com.example.hmi.data.InteractionType.MOMENTARY -> {
-                    plcCommunicator.writeTag(widget.tagAddress, PlcValue.BooleanValue(true))
+                    // Momentary: Send 'true' on press, NO retain
+                    plcCommunicator.writeTag(widget.tagAddress, PlcValue.BooleanValue(true), shouldRetain = false)
                 }
                 com.example.hmi.data.InteractionType.LATCHING -> {
                     val currentVal = _tagValues.value[widget.tagAddress] ?: 0f
@@ -169,18 +173,25 @@ class DashboardViewModel @Inject constructor(
                         put(widget.tagAddress, if (newValue) 1f else 0f) 
                     }
                     
-                    plcCommunicator.writeTag(widget.tagAddress, PlcValue.BooleanValue(newValue))
+                    plcCommunicator.writeTag(widget.tagAddress, PlcValue.BooleanValue(newValue), shouldRetain = true)
                 }
-                com.example.hmi.data.InteractionType.INDICATOR -> {
-                    // Indicators are read-only
-                }
+                com.example.hmi.data.InteractionType.INDICATOR -> {}
+            }
+        }
+    }
+
+    fun onButtonRelease(widget: WidgetConfiguration) {
+        if (widget.interactionType == com.example.hmi.data.InteractionType.MOMENTARY) {
+            viewModelScope.launch(ioDispatcher) {
+                // Momentary: Send 'false' on release, NO retain
+                plcCommunicator.writeTag(widget.tagAddress, PlcValue.BooleanValue(false), shouldRetain = false)
             }
         }
     }
 
     fun onSliderChange(tagAddress: String, value: Float) {
         viewModelScope.launch(ioDispatcher) {
-            plcCommunicator.writeTag(tagAddress, PlcValue.FloatValue(value))
+            plcCommunicator.writeTag(tagAddress, PlcValue.FloatValue(value), shouldRetain = true)
             _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value) }
         }
     }

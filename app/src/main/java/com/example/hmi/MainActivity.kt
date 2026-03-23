@@ -58,8 +58,14 @@ class MainActivity : ComponentActivity() {
                     // Automatically return to connection screen if connection drops
                     LaunchedEffect(connectionState) {
                         if (isDashboard && (connectionState == ConnectionState.DISCONNECTED || connectionState == ConnectionState.ERROR)) {
-                            navController.navigate("connection") {
-                                popUpTo("dashboard") { inclusive = true }
+                            // Industrial Hysteresis: Wait 5s before kicking user out to allow for auto-reconnect
+                            kotlinx.coroutines.delay(5000)
+                            
+                            // Check again after delay
+                            if (isDashboard && (connectionState == ConnectionState.DISCONNECTED || connectionState == ConnectionState.ERROR)) {
+                                navController.navigate("connection") {
+                                    popUpTo("dashboard") { inclusive = true }
+                                }
                             }
                         }
                     }

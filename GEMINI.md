@@ -25,6 +25,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-10
 - Jetpack DataStore (Preferences storing JSON via GSON) (018-gauge-tick-config)
 - Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore (Preferences), GSON, Kotlin Coroutines (StateFlow) (019-customize-gauge-colors)
 - Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON (023-arc-fill-gauge)
+- Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON, **HiveMQ MQTT Client (v1.3.3)** (025-mqtt-backend-support)
+- Jetpack DataStore (serialized JSON for profiles) (025-mqtt-backend-support)
 
 - Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow/SharedFlow), Hilt (001-hmi-control-panel)
 
@@ -48,9 +50,9 @@ tests/
 Kotlin (Latest stable): Follow standard conventions
 
 ## Recent Changes
+- 025-mqtt-backend-support: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON, **HiveMQ MQTT Client (v1.3.3)**
 - 024-button-switch-indicator: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON
 - 023-arc-fill-gauge: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON
-- 022-industrial-button-shape: Added Kotlin 1.9.22 + Jetpack Compose, Hilt
 
 
 <!-- MANUAL ADDITIONS START -->

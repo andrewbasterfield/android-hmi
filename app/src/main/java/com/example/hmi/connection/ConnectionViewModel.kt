@@ -3,12 +3,14 @@ package com.example.hmi.connection
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hmi.data.DashboardRepository
-import com.example.hmi.data.PlcConnectionProfile
 import com.example.hmi.protocol.ConnectionState
 import com.example.hmi.protocol.PlcCommunicator
+import com.example.hmi.protocol.PlcConnectionProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -41,16 +43,27 @@ class ConnectionViewModel @Inject constructor(
     private val _wasUnexpectedDisconnect = MutableStateFlow(false)
     val wasUnexpectedDisconnect = _wasUnexpectedDisconnect.asStateFlow()
 
+    private val _errorMessage = MutableSharedFlow<String?>(replay = 1)
+    val errorMessage = _errorMessage.asSharedFlow()
+
+    private var isManuallyDisconnecting = false
+
     init {
         viewModelScope.launch {
             var previousState = ConnectionState.DISCONNECTED
             connectionState.collect { state ->
                 // If we transition to ERROR or DISCONNECTED *from* a CONNECTED state,
-                // we consider it an unexpected drop.
+                // we consider it an unexpected drop, unless we are intentionally disconnecting.
                 if (previousState == ConnectionState.CONNECTED && 
-                   (state == ConnectionState.ERROR || state == ConnectionState.DISCONNECTED)) {
+                   (state == ConnectionState.ERROR || state == ConnectionState.DISCONNECTED) &&
+                   !isManuallyDisconnecting) {
                     _wasUnexpectedDisconnect.value = true
                 }
+                
+                if (state == ConnectionState.CONNECTED) {
+                    isManuallyDisconnecting = false
+                }
+                
                 previousState = state
             }
         }
@@ -59,31 +72,42 @@ class ConnectionViewModel @Inject constructor(
     fun attemptAutoConnect(profile: PlcConnectionProfile) {
         if (!_hasAttemptedAutoConnect.value) {
             _hasAttemptedAutoConnect.value = true
-            connect(profile.ipAddress, profile.port)
+            connect(profile)
         }
     }
 
-    fun connect(ipAddress: String, port: Int) {
+    fun connect(profile: PlcConnectionProfile) {
         _wasUnexpectedDisconnect.value = false
+        _errorMessage.tryEmit(null)
         viewModelScope.launch {
-            // Save the parameters immediately so they persist even on failure
-            repository.saveConnectionProfile(PlcConnectionProfile(ipAddress = ipAddress, port = port))
-            plcCommunicator.connect(ipAddress, port)
+            repository.saveConnectionProfile(profile)
+            val result = plcCommunicator.connect(profile)
+            result.onFailure { error ->
+                _errorMessage.emit(formatErrorMessage(error))
+            }
         }
     }
 
     fun connectToDemoServer() {
         _wasUnexpectedDisconnect.value = false
+        _errorMessage.tryEmit(null)
         viewModelScope.launch {
-            // We don't necessarily want to overwrite the "last known" external IP 
-            // when just playing with the demo server, but the spec says "Seamless switch".
-            // For now, we connect directly without persisting to DataStore to preserve the real PLC settings.
-            plcCommunicator.connect(DEMO_SERVER_IP, DEMO_SERVER_PORT)
+            // Demo server uses RAW_TCP on 127.0.0.1:9999
+            val demoProfile = PlcConnectionProfile(
+                name = "Local Demo Server",
+                ipAddress = DEMO_SERVER_IP,
+                port = DEMO_SERVER_PORT
+            )
+            val result = plcCommunicator.connect(demoProfile)
+            result.onFailure { error ->
+                _errorMessage.emit(formatErrorMessage(error))
+            }
         }
     }
 
     fun disconnect() {
         _wasUnexpectedDisconnect.value = false
+        isManuallyDisconnecting = true
         viewModelScope.launch {
             plcCommunicator.disconnect()
         }
@@ -92,6 +116,32 @@ class ConnectionViewModel @Inject constructor(
     fun setKeepScreenOn(enabled: Boolean) {
         viewModelScope.launch {
             repository.saveKeepScreenOn(enabled)
+        }
+    }
+
+    private fun formatErrorMessage(error: Throwable): String {
+        return when {
+            error.message?.contains("timeout", ignoreCase = true) == true ||
+            error.message?.contains("timed out", ignoreCase = true) == true ->
+                "Connection timed out. Check that the server is reachable."
+
+            error.message?.contains("refused", ignoreCase = true) == true ->
+                "Connection refused. Check that the server is running on the specified port."
+
+            error.message?.contains("unreachable", ignoreCase = true) == true ||
+            error.message?.contains("no route", ignoreCase = true) == true ->
+                "Host unreachable. Check the IP address and network connection."
+
+            error.message?.contains("auth", ignoreCase = true) == true ||
+            error.message?.contains("credential", ignoreCase = true) == true ||
+            error.message?.contains("unauthorized", ignoreCase = true) == true ->
+                "Authentication failed. Check your username and password."
+
+            error.message?.contains("resolve", ignoreCase = true) == true ||
+            error.message?.contains("unknown host", ignoreCase = true) == true ->
+                "Could not resolve hostname. Check the broker address."
+
+            else -> error.message ?: "Connection failed"
         }
     }
 

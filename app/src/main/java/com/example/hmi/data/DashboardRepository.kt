@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.hmi.protocol.PlcConnectionProfile
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -21,8 +22,7 @@ open class DashboardRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val DASHBOARD_KEY = stringPreferencesKey("dashboard_layout")
-    private val IP_ADDRESS_KEY = stringPreferencesKey("ip_address")
-    private val PORT_KEY = intPreferencesKey("port")
+    private val CONNECTION_PROFILE_KEY = stringPreferencesKey("connection_profile")
     private val KEEP_SCREEN_ON_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("keep_screen_on")
     private val RECENT_COLORS_KEY = stringPreferencesKey("recent_colors")
     private val gson = Gson()
@@ -77,19 +77,28 @@ open class DashboardRepository @Inject constructor(
     }
 
     val connectionProfileFlow: Flow<PlcConnectionProfile?> = context.dataStore.data.map { preferences ->
-        val ipAddress = preferences[IP_ADDRESS_KEY]
-        val port = preferences[PORT_KEY]
-        if (ipAddress != null && port != null) {
-            PlcConnectionProfile(ipAddress = ipAddress, port = port)
+        val json = preferences[CONNECTION_PROFILE_KEY]
+        if (json.isNullOrEmpty()) {
+            // Migration check: if old keys exist, migrate them
+            val ipAddress = preferences[stringPreferencesKey("ip_address")]
+            val port = preferences[intPreferencesKey("port")]
+            if (ipAddress != null && port != null) {
+                PlcConnectionProfile(ipAddress = ipAddress, port = port)
+            } else {
+                null
+            }
         } else {
-            null
+            try {
+                gson.fromJson(json, PlcConnectionProfile::class.java)
+            } catch (e: Exception) {
+                null
+            }
         }
     }
 
     suspend fun saveConnectionProfile(profile: PlcConnectionProfile) {
         context.dataStore.edit { preferences ->
-            preferences[IP_ADDRESS_KEY] = profile.ipAddress
-            preferences[PORT_KEY] = profile.port
+            preferences[CONNECTION_PROFILE_KEY] = gson.toJson(profile)
         }
     }
 }

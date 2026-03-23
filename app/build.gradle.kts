@@ -47,10 +47,18 @@ android {
     testOptions {
         unitTests.isReturnDefaultValues = true
     }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/io.netty.versions.properties"
+        }
+    }
 }
 
 dependencies {
     implementation(project(":core:ui"))
+    implementation(project(":core:protocol"))
     implementation(project(":feature:diagnostics"))
 
     implementation("androidx.core:core-ktx:1.12.0")

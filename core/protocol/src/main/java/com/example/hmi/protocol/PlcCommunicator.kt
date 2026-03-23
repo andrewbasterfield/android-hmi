@@ -16,10 +16,10 @@ interface PlcCommunicator {
     val connectionState: StateFlow<ConnectionState>
     
     /** 
-     * Connects to the PLC at the given IP and port. 
+     * Connects to the PLC based on the given profile. 
      * @return Result.success if connected, Result.failure on error.
      */
-    suspend fun connect(ipAddress: String, port: Int): Result<Unit>
+    suspend fun connect(profile: PlcConnectionProfile): Result<Unit>
     
     /** Disconnects from the currently connected PLC. */
     suspend fun disconnect()
@@ -42,13 +42,14 @@ interface PlcCommunicator {
     
     /**
      * Writes a value to a specific tag or memory address.
+     * @param shouldRetain If true, the backend (e.g., MQTT broker) should store the last value.
      * @return Result.success if the write was acknowledged, Result.failure otherwise.
      */
-    suspend fun writeTag(tagAddress: String, value: PlcValue): Result<Unit>
+    suspend fun writeTag(tagAddress: String, value: PlcValue, shouldRetain: Boolean = true): Result<Unit>
 }
 
 enum class ConnectionState {
-    DISCONNECTED, CONNECTING, CONNECTED, ERROR
+    DISCONNECTED, CONNECTING, RECONNECTING, CONNECTED, ERROR
 }
 
 sealed class PlcValue {

@@ -23,7 +23,9 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
         extraBufferCapacity = 64
     )
 
-    override suspend fun connect(ipAddress: String, port: Int): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun connect(profile: PlcConnectionProfile): Result<Unit> = withContext(Dispatchers.IO) {
+        val ipAddress = profile.ipAddress
+        val port = profile.port
         _connectionState.value = ConnectionState.CONNECTING
         Log.d("RawTcpPlcCommunicator", "Connecting to $ipAddress:$port")
         try {
@@ -138,7 +140,7 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
             .map { (it.second as? PlcValue.StringValue)?.value ?: "" }
     }
 
-    override suspend fun writeTag(tagAddress: String, value: PlcValue): Result<Unit> = withContext(Dispatchers.IO) {
+    override suspend fun writeTag(tagAddress: String, value: PlcValue, shouldRetain: Boolean): Result<Unit> = withContext(Dispatchers.IO) {
         val currentSocket = socket
         if (currentSocket == null || !currentSocket.isConnected) {
             return@withContext Result.failure(IllegalStateException("Not connected"))

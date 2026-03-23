@@ -13,6 +13,8 @@ fun ButtonWidget(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onPress: () -> Unit = {},
+    onRelease: () -> Unit = {},
     backgroundColor: Long? = null,
     textColor: Long? = null,
     labelFontSizeMultiplier: Float = 1.0f,
@@ -29,6 +31,8 @@ fun ButtonWidget(
 
     IndustrialButton(
         onClick = onClick,
+        onPress = onPress,
+        onRelease = onRelease,
         enabled = isInteractive,
         isChecked = isChecked,
         isInverted = isInverted,

@@ -31,7 +31,7 @@
 
 ### Implementation for User Story 1
 
-- [x] T006 [P] [US1] Create `PlcConnectionProfile` data model in `app/src/main/java/com/example/hmi/data/PlcConnectionProfile.kt`
+- [x] T006 [P] [US1] Create `PlcConnectionProfile` data model in `app/src/main/java/com.example.hmi.protocol.PlcConnectionProfile.kt`
 - [x] T007 [P] [US1] Implement Raw TCP `PlcCommunicator` in `app/src/main/java/com/example/hmi/protocol/RawTcpPlcCommunicator.kt`
 - [x] T008 [US1] Implement `ConnectionViewModel` in `app/src/main/java/com/example/hmi/connection/ConnectionViewModel.kt`
 - [x] T009 [US1] Create Connection screen UI (Compose) in `app/src/main/java/com/example/hmi/connection/ConnectionScreen.kt`

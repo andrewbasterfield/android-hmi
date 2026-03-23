@@ -21,7 +21,9 @@ To verify the **Kinetic Cockpit** integration on physical hardware:
 
 - **Customizable Dashboards**: Switch between "Run Mode" for operation and "Edit Mode" for configuration.
 - **Drag-and-Drop Editor**: Reposition gauges, sliders, and buttons directly on the screen.
-- **Abstracted PLC Protocols**: Support for multiple industrial protocols (Raw TCP, Modbus, etc.) through a unified interface.
+- **Abstracted PLC Protocols**: Support for multiple industrial protocols through a unified interface:
+    - **Raw TCP**: Direct socket communication using `TAG:VALUE` lines.
+    - **MQTT v3.1.1**: Industry-standard IoT protocol with support for JSON payloads, QoS 1 control, and Last Will and Testament (LWT) status signaling.
 - **Real-time Monitoring**: Low-latency UI updates using Kotlin StateFlow and Jetpack Compose.
 - **Accessibility-First**: Built with 48dp minimum touch targets and screen-reader support as a baseline.
 
@@ -51,9 +53,11 @@ As defined in the project [Constitution](.specify/memory/constitution.md):
 
 ### 1. Connection Screen
 The entry point of the application.
-- **IP Address & Port**: Enter the network details of your target PLC (or local test server).
-- **Connect**: Attempts to establish a raw TCP connection. 
-- **Disconnect**: Safely closes the socket. If you navigate back from the dashboard, this is handled automatically.
+- **Protocol Selector**: Choose between Raw TCP and MQTT.
+- **Connection Parameters**: Enter IP/Host and Port.
+- **MQTT Settings**: Configure Client ID, optional Credentials, and Topic Prefix.
+- **Connect**: Establishes the session based on the selected protocol.
+- **Disconnect**: Safely closes the socket or MQTT session.
 
 ### 2. Dashboard: Run Mode (Default)
 Once connected, the app defaults to "Run Mode", which is the live operational state.
@@ -159,8 +163,7 @@ The project follows a modular structure to ensure build performance and clean bo
 - `:app`: Application entry point and navigation.
 - `:core:ui`: The **Kinetic Cockpit** design system, theme tokens, and tactile industrial components (Buttons, Inputs, Cards).
 - `:feature:diagnostics`: Mission-critical telemetry monitoring and peripheral emergency HUD signaling.
-- `:data`: Repositories and local persistence (DataStore).
-- `:protocol`: PLC communication abstractions and implementations.
+- `:core:protocol`: Multi-protocol backend abstractions (Raw TCP, MQTT) and dispatcher.
 
 ## 📄 Documentation
 

@@ -26,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.hmi.core.ui.components.EmergencyHUD
 import com.example.hmi.core.ui.theme.HealthStatus
 import com.example.hmi.core.ui.theme.StitchTheme
+import com.example.hmi.protocol.ConnectionState
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
 import com.example.hmi.widgets.ButtonWidget
@@ -45,6 +46,7 @@ fun DashboardScreen(
     val tagValues by viewModel.tagValues.collectAsState()
     val sessionOverrides by viewModel.sessionOverrides.collectAsState()
     val isEditMode by viewModel.isEditMode.collectAsState()
+    val connectionState by viewModel.connectionState.collectAsState()
 
     var editingWidget by remember { mutableStateOf<WidgetConfiguration?>(null) }
     var showDashboardSettings by remember { mutableStateOf(false) }
@@ -179,13 +181,41 @@ fun DashboardScreen(
             }
         ) { paddingValues ->
             val canvasColor = dashboardLayout.canvasColor?.let { Color(it.toULong()) } ?: MaterialTheme.colorScheme.background
-            
-            Box(
+
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .background(canvasColor)
             ) {
+                // Connection status banner
+                if (connectionState != ConnectionState.CONNECTED) {
+                    val (bannerColor, bannerText) = when (connectionState) {
+                        ConnectionState.RECONNECTING -> Color(0xFFFF9800) to "Reconnecting..."
+                        ConnectionState.CONNECTING -> Color(0xFF2196F3) to "Connecting..."
+                        ConnectionState.ERROR -> Color(0xFFF44336) to "Connection Lost"
+                        ConnectionState.DISCONNECTED -> Color(0xFFF44336) to "Disconnected"
+                        else -> Color(0xFFF44336) to "Not Connected"
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(bannerColor)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        contentAlignment = androidx.compose.ui.Alignment.Center
+                    ) {
+                        Text(
+                            text = bannerText,
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(canvasColor)
+                ) {
                 dashboardLayout.widgets.forEach { widget ->
                     key(widget.id) {
                         val currentValue = tagValues[widget.tagAddress] ?: 0f
@@ -397,7 +427,21 @@ fun DashboardScreen(
                                         
                                         ButtonWidget(
                                             label = resolvedLabel,
-                                            onClick = { viewModel.onButtonPress(widget) },
+                                            onClick = { 
+                                                if (widget.interactionType == com.example.hmi.data.InteractionType.LATCHING) {
+                                                    viewModel.onButtonPress(widget)
+                                                }
+                                            },
+                                            onPress = { 
+                                                if (widget.interactionType == com.example.hmi.data.InteractionType.MOMENTARY) {
+                                                    viewModel.onButtonPress(widget)
+                                                }
+                                            },
+                                            onRelease = { 
+                                                if (widget.interactionType == com.example.hmi.data.InteractionType.MOMENTARY) {
+                                                    viewModel.onButtonRelease(widget)
+                                                }
+                                            },
                                             backgroundColor = resolvedColorLong,
                                             textColor = widget.textColor,
                                             labelFontSizeMultiplier = widget.labelFontSizeMultiplier,
@@ -452,7 +496,8 @@ fun DashboardScreen(
                         }
                     }
                 }
-                
+
+                }
             }
         }
     }

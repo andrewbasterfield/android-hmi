@@ -35,6 +35,8 @@ enum class IndustrialButtonStyle {
 fun IndustrialButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onPress: () -> Unit = {},
+    onRelease: () -> Unit = {},
     enabled: Boolean = true,
     isChecked: Boolean = false,
     isInverted: Boolean = false,
@@ -56,10 +58,17 @@ fun IndustrialButton(
     val logicActive = isPressed || isChecked
     val visualActive = if (isInverted) !logicActive else logicActive
 
-    // Trigger haptic feedback on press
+    // Trigger haptic feedback and press/release callbacks
     LaunchedEffect(isPressed) {
-        if (isPressed && enabled && hapticFeedbackEnabled) {
-            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        if (isPressed) {
+            if (enabled && hapticFeedbackEnabled) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+            onPress()
+        } else {
+            // Important: onRelease is called when the touch is lifted, 
+            // even if the finger moved outside the button area.
+            onRelease()
         }
     }
     
