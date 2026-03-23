@@ -85,6 +85,9 @@ class MainActivity : ComponentActivity() {
                             DashboardScreen(
                                 onNavigateBack = {
                                     connectionViewModel.disconnect()
+                                    navController.navigate("connection") {
+                                        popUpTo("dashboard") { inclusive = true }
+                                    }
                                 }
                             )
                         }

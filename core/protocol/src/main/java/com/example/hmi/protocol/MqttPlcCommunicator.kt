@@ -148,7 +148,34 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
 
     override suspend fun disconnect() {
         Log.d(TAG, "Disconnecting from MQTT broker")
-        client?.disconnect()
+        val mqttClient = client
+        val settings = currentProfile?.mqttSettings
+
+        // Publish offline status before disconnecting (LWT only fires on unexpected disconnect)
+        if (mqttClient != null && settings != null) {
+            try {
+                suspendCancellableCoroutine<Unit> { continuation ->
+                    mqttClient.publishWith()
+                        .topic(settings.statusTopic)
+                        .payload("offline".toByteArray())
+                        .qos(MqttQos.AT_LEAST_ONCE)
+                        .retain(true)
+                        .send()
+                        .whenComplete { _, throwable ->
+                            if (throwable != null) {
+                                Log.w(TAG, "Failed to publish offline status: ${throwable.message}")
+                            } else {
+                                Log.d(TAG, "Published offline status")
+                            }
+                            continuation.resume(Unit)
+                        }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error publishing offline status: ${e.message}")
+            }
+        }
+
+        mqttClient?.disconnect()
         client = null
         currentProfile = null
         _connectionState.value = ConnectionState.DISCONNECTED
