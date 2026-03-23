@@ -126,7 +126,6 @@ fun GaugeWidget(
                         .fillMaxSize()
                         .semantics { trackBackgroundColor = layoutBgColor }
                 ) {
-                    val strokeWidth = 4.dp.toPx()
                     val padding = 8.dp.toPx()
 
                     // Calculate bounding box of visible arc (center can be outside canvas)
@@ -158,6 +157,10 @@ fun GaugeWidget(
                     val maxRadiusForHeight = availableHeight / arcHeight
 
                     val radius = minOf(maxRadiusForWidth, maxRadiusForHeight)
+
+                    // Industrial Scaling: Strokes and ticks scale with radius for legibility (DESIGN-004)
+                    val strokeWidth = radius * 0.05f
+                    val tickStrokeWidth = radius * 0.025f
 
                     // Position center: horizontally centered, arc pinned to top
                     val arcCenterX = (leftX + rightX) / 2f
@@ -227,7 +230,7 @@ fun GaugeWidget(
                             useCenter = false,
                             topLeft = Offset(center.x - radius, center.y - radius),
                             size = Size(radius * 2, radius * 2),
-                            style = Stroke(width = strokeWidth * 2.5f, cap = StrokeCap.Butt)
+                            style = Stroke(width = strokeWidth * 3.0f, cap = StrokeCap.Butt)
                         )
                     }
 
@@ -253,7 +256,7 @@ fun GaugeWidget(
                             color = tickColor,
                             start = Offset(innerX, innerY),
                             end = Offset(outerX, outerY),
-                            strokeWidth = 2.dp.toPx()
+                            strokeWidth = tickStrokeWidth
                         )
                     }
 
@@ -273,7 +276,10 @@ fun GaugeWidget(
                         // Position pointer on the inside of the arc
                         val pointerTipRadius = radius * 0.95f  // Tip points toward arc
                         val pointerBaseRadius = radius * 0.75f // Base sits inside
-                        val pointerWidth = 6.dp.toPx()
+                        
+                        // Fix aspect ratio to 2:1 (Height:Width)
+                        // Height = 0.20 * radius, so full width = 0.10 * radius
+                        val pointerWidth = radius * 0.05f // Half-width for radial offset
 
                         // Calculate pointer tip (pointing outward)
                         val tipX = center.x + pointerTipRadius * cos(pointerAngleRad).toFloat()
