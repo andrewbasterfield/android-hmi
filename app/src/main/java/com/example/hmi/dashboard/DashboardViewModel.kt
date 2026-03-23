@@ -155,9 +155,27 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    fun onButtonPress(tagAddress: String) {
+    fun onButtonPress(widget: WidgetConfiguration) {
         viewModelScope.launch(ioDispatcher) {
-            plcCommunicator.writeTag(tagAddress, PlcValue.BooleanValue(true))
+            when (widget.interactionType) {
+                com.example.hmi.data.InteractionType.MOMENTARY -> {
+                    plcCommunicator.writeTag(widget.tagAddress, PlcValue.BooleanValue(true))
+                }
+                com.example.hmi.data.InteractionType.LATCHING -> {
+                    val currentVal = _tagValues.value[widget.tagAddress] ?: 0f
+                    val newValue = if (currentVal > 0.5f) false else true
+                    
+                    // Optimistic update
+                    _tagValues.value = _tagValues.value.toMutableMap().apply { 
+                        put(widget.tagAddress, if (newValue) 1f else 0f) 
+                    }
+                    
+                    plcCommunicator.writeTag(widget.tagAddress, PlcValue.BooleanValue(newValue))
+                }
+                com.example.hmi.data.InteractionType.INDICATOR -> {
+                    // Indicators are read-only
+                }
+            }
         }
     }
 

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.example.hmi.data.GaugeZone
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
+import com.example.hmi.data.InteractionType
 import com.example.hmi.ui.components.HmiColorPicker
 import com.example.hmi.ui.theme.IndustrialShape
 import com.example.hmi.widgets.ColorUtils
@@ -107,6 +108,9 @@ fun WidgetConfigDialog(
     var isPointerDynamic by remember { mutableStateOf(initialWidget?.isPointerDynamic ?: true) }
     var units by remember { mutableStateOf(initialWidget?.units ?: "") }
     
+    var selectedInteractionType by remember { mutableStateOf(initialWidget?.interactionType ?: InteractionType.MOMENTARY) }
+    var isInverted by remember { mutableStateOf(initialWidget?.isInverted ?: false) }
+    
     val colorZones = remember { mutableStateListOf<GaugeZone>().apply {
         addAll(initialWidget?.colorZones ?: emptyList())
     } }
@@ -189,6 +193,33 @@ fun WidgetConfigDialog(
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                if (selectedType == WidgetType.BUTTON) {
+                    Text("Interaction Mode", style = MaterialTheme.typography.labelSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        InteractionType.values().forEach { mode ->
+                            FilterChip(
+                                selected = selectedInteractionType == mode,
+                                onClick = { selectedInteractionType = mode },
+                                label = { Text(mode.name) }
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Invert Logic (Active Low)", style = MaterialTheme.typography.bodyMedium)
+                        Switch(
+                            checked = isInverted,
+                            onCheckedChange = { isInverted = it }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
                 if (selectedType == WidgetType.SLIDER || selectedType == WidgetType.GAUGE) {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -416,7 +447,9 @@ fun WidgetConfigDialog(
                             pointerColor = pointerColor,
                             isPointerDynamic = isPointerDynamic,
                             units = if (selectedType == WidgetType.BUTTON) null else units.ifBlank { null },
-                            showOutline = showOutline
+                            showOutline = showOutline,
+                            interactionType = if (selectedType == WidgetType.BUTTON) selectedInteractionType else InteractionType.MOMENTARY,
+                            isInverted = if (selectedType == WidgetType.BUTTON) isInverted else false
                         )
                     )
                 },

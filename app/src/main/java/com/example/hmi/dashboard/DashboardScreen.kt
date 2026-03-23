@@ -388,13 +388,23 @@ fun DashboardScreen(
                             ) {
                                 when (widget.type) {
                                     WidgetType.BUTTON -> {
+                                        val isActive = currentValue > 0.5f
+                                        val visualChecked = if (widget.interactionType != com.example.hmi.data.InteractionType.MOMENTARY) {
+                                            isActive
+                                        } else {
+                                            false
+                                        }
+                                        
                                         ButtonWidget(
                                             label = resolvedLabel,
-                                            onClick = { viewModel.onButtonPress(widget.tagAddress) },
+                                            onClick = { viewModel.onButtonPress(widget) },
                                             backgroundColor = resolvedColorLong,
                                             textColor = widget.textColor,
                                             labelFontSizeMultiplier = widget.labelFontSizeMultiplier,
                                             hapticFeedbackEnabled = dashboardLayout.hapticFeedbackEnabled,
+                                            isChecked = visualChecked,
+                                            isInverted = widget.isInverted,
+                                            isInteractive = widget.interactionType != com.example.hmi.data.InteractionType.INDICATOR,
                                             modifier = Modifier.fillMaxSize()
                                         )
                                     }

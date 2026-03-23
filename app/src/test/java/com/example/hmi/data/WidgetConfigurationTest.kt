@@ -11,6 +11,53 @@ class WidgetConfigurationTest {
     private val gson = Gson()
 
     @Test
+    fun `serialization includes interaction type and inversion`() {
+        val config = WidgetConfiguration(
+            type = WidgetType.BUTTON,
+            tagAddress = "TEST_TAG",
+            interactionType = InteractionType.LATCHING,
+            isInverted = true
+        )
+        
+        val json = gson.toJson(config)
+        
+        assertTrue(json.contains("\"interactionType\":\"LATCHING\""))
+        assertTrue(json.contains("\"isInverted\":true"))
+    }
+
+    @Test
+    fun `deserialization handles interaction type and inversion`() {
+        val json = """
+            {
+                "type": "BUTTON",
+                "tagAddress": "TEST_TAG",
+                "interactionType": "INDICATOR",
+                "isInverted": true
+            }
+        """.trimIndent()
+        
+        val config = gson.fromJson(json, WidgetConfiguration::class.java)
+        
+        assertEquals(InteractionType.INDICATOR, config.interactionType)
+        assertTrue(config.isInverted)
+    }
+
+    @Test
+    fun `deserialization handles missing interaction fields with defaults`() {
+        val json = """
+            {
+                "type": "BUTTON",
+                "tagAddress": "TEST_TAG"
+            }
+        """.trimIndent()
+        
+        val config = gson.fromJson(json, WidgetConfiguration::class.java)
+        
+        assertEquals(InteractionType.MOMENTARY, config.interactionType)
+        assertFalse(config.isInverted)
+    }
+
+    @Test
     fun `serialization includes new gauge fields`() {
         val config = WidgetConfiguration(
             type = WidgetType.GAUGE,
@@ -63,7 +110,7 @@ class WidgetConfigurationTest {
         
         assertNull(config.pointerColor)
         assertTrue(config.isPointerDynamic)
-        assertNull(config.gaugeStyle)
+        assertEquals(GaugeStyle.POINTER, config.gaugeStyle) // Updated because I set default to POINTER in data class
         assertNull(config.units)
     }
 }

@@ -16,7 +16,10 @@ fun ButtonWidget(
     backgroundColor: Long? = null,
     textColor: Long? = null,
     labelFontSizeMultiplier: Float = 1.0f,
-    hapticFeedbackEnabled: Boolean = true
+    hapticFeedbackEnabled: Boolean = true,
+    isChecked: Boolean = false,
+    isInteractive: Boolean = true,
+    isInverted: Boolean = false
 ) {
     // Identity color of the button (background in SOLID mode)
     val identityColor = backgroundColor?.let { Color(it.toULong()) } ?: MaterialTheme.colorScheme.primary
@@ -26,6 +29,9 @@ fun ButtonWidget(
 
     IndustrialButton(
         onClick = onClick,
+        enabled = isInteractive,
+        isChecked = isChecked,
+        isInverted = isInverted,
         label = if (labelFontSizeMultiplier > 0.0f) label else "",
         style = IndustrialButtonStyle.SOLID,
         fontSizeMultiplier = labelFontSizeMultiplier,

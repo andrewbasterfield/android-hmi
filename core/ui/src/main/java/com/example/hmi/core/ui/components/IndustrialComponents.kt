@@ -36,6 +36,8 @@ fun IndustrialButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    isChecked: Boolean = false,
+    isInverted: Boolean = false,
     label: String = "",
     style: IndustrialButtonStyle = IndustrialButtonStyle.OUTLINED,
     fontSizeMultiplier: Float = 1.0f,
@@ -48,10 +50,15 @@ fun IndustrialButton(
 ) {
     val haptic = LocalHapticFeedback.current
     val isPressed by interactionSource.collectIsPressedAsState()
+    
+    // Logic Active State (Visual "Pressed" state)
+    // If inverted, the visual state is the opposite of (Pressed OR Checked)
+    val logicActive = isPressed || isChecked
+    val visualActive = if (isInverted) !logicActive else logicActive
 
     // Trigger haptic feedback on press
     LaunchedEffect(isPressed) {
-        if (isPressed && hapticFeedbackEnabled) {
+        if (isPressed && enabled && hapticFeedbackEnabled) {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         }
     }
@@ -65,16 +72,16 @@ fun IndustrialButton(
     val contrastColor = contentColorOverride ?: ColorUtils.getIndustrialContrastColor(identityColor)
 
     if (style == IndustrialButtonStyle.SOLID) {
-        // SOLID style: Simply swap the Identity Pair on press
+        // SOLID style: Simply swap the Identity Pair on press/checked
         // Normal: Identity BG / Contrast Text
         // Pressed: Contrast BG / Identity Text
-        backgroundColor = if (isPressed) {
+        backgroundColor = if (visualActive) {
             pressedFillColor ?: contrastColor
         } else {
             identityColor
         }
         
-        contentColor = if (isPressed) {
+        contentColor = if (visualActive) {
             if (pressedFillColor != null) {
                 ColorUtils.getIndustrialContrastColor(pressedFillColor)
             } else {
@@ -86,12 +93,12 @@ fun IndustrialButton(
         
         // Always maintain a thin bezel of the identity color when pressed
         // to keep the button visible if it swaps to a dark contrast color.
-        borderStroke = if (isPressed) BorderStroke(2.dp, identityColor) else null
+        borderStroke = if (visualActive) BorderStroke(2.dp, identityColor) else null
     } else {
         // OUTLINED style: Invert to solid Identity BG
-        backgroundColor = if (isPressed) identityColor else Color.Transparent
-        contentColor = if (isPressed) contrastColor else identityColor
-        borderStroke = if (isPressed) null else BorderStroke(2.dp, identityColor.copy(alpha = 0.5f))
+        backgroundColor = if (visualActive) identityColor else Color.Transparent
+        contentColor = if (visualActive) contrastColor else identityColor
+        borderStroke = if (visualActive) null else BorderStroke(2.dp, identityColor.copy(alpha = 0.5f))
     }
 
     Surface(
