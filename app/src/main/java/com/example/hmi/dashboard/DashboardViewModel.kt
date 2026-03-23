@@ -93,7 +93,6 @@ class DashboardViewModel @Inject constructor(
                     labelFontSizeMultiplier = migratedLabelMultiplier,
                     metricFontSizeMultiplier = migratedMetricMultiplier,
                     gaugeStyle = widget.gaugeStyle ?: com.example.hmi.data.GaugeStyle.POINTER,
-                    isPointerDynamic = true, // Force to true for all existing/missing cases
                     alarmState = if (widget.alarmState == com.example.hmi.data.AlarmState.Acknowledged) {
                         com.example.hmi.data.AlarmState.Unacknowledged
                     } else {

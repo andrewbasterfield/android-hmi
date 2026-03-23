@@ -126,49 +126,48 @@ fun GaugeWidget(
                         .fillMaxSize()
                         .semantics { trackBackgroundColor = layoutBgColor }
                 ) {
-                    val padding = 8.dp.toPx()
-
-                    // Calculate bounding box of visible arc (center can be outside canvas)
-                    // Arc is centered at 12 o'clock (270°), spanning from startAngle to startAngle + sweepAngle
+                    // 1. Calculate the bounding box of a unit arc centered at 12 o'clock (270°)
                     val halfSweepRad = Math.toRadians((sweepAngle / 2f).toDouble())
-
-                    // For arc centered at 270°: find extent of visible arc relative to center
-                    // Left extent: min x coordinate (at 180° if arc crosses it, else at endpoint)
-                    // Right extent: max x coordinate (at 0°/360° if arc crosses it, else at endpoint)
-                    // Top extent: always -1 (at 270°, the midpoint)
-                    // Bottom extent: max y of endpoints
-
-                    val leftX = if (sweepAngle >= 180f) -1f else -kotlin.math.sin(halfSweepRad).toFloat()
-                    val rightX = if (sweepAngle >= 180f) 1f else kotlin.math.sin(halfSweepRad).toFloat()
+                    val leftX = if (sweepAngle >= 180f) -1f else -sin(halfSweepRad).toFloat()
+                    val rightX = if (sweepAngle >= 180f) 1f else sin(halfSweepRad).toFloat()
                     val topY = -1f  // Arc always reaches 12 o'clock
                     val bottomY = if (sweepAngle > 180f) {
-                        kotlin.math.sin(Math.toRadians((sweepAngle - 180f) / 2.0)).toFloat()
+                        sin(Math.toRadians((sweepAngle - 180f) / 2.0)).toFloat()
                     } else {
-                        -kotlin.math.cos(halfSweepRad).toFloat()  // Bottom of arc for < 180°
+                        -cos(halfSweepRad).toFloat()  // Bottom of arc for < 180°
                     }
 
                     val arcWidth = rightX - leftX
                     val arcHeight = bottomY - topY
 
-                    // Calculate radius to fit the arc bounding box within canvas
-                    val availableWidth = size.width - padding * 2
-                    val availableHeight = size.height - padding * 2
-                    val maxRadiusForWidth = availableWidth / arcWidth
-                    val maxRadiusForHeight = availableHeight / arcHeight
-
-                    val radius = minOf(maxRadiusForWidth, maxRadiusForHeight)
-
-                    // Industrial Scaling: Strokes and ticks scale with radius for legibility (DESIGN-004)
-                    val strokeWidth = radius * 0.05f
+                    // 2. Industrial Scaling Factors (DESIGN-004/005)
+                    // We solve for radius by assuming stroke bleed is 7.5% (maxStrokeWidth/2)
+                    // The arc bounding box + max stroke bleed must fit available space.
+                    val rawWidth = size.width
+                    val rawHeight = size.height
+                    
+                    // Initial rough estimate of radius (assuming zero stroke)
+                    val initialRadius = minOf(rawWidth / arcWidth, rawHeight / arcHeight)
+                    
+                    // Define standard industrial proportions relative to radius
+                    val strokeWidth = initialRadius * 0.05f
+                    val maxStrokeWidth = strokeWidth * 3.0f // ARC_FILL fill weight
+                    val margin = maxStrokeWidth / 2f + 4.dp.toPx() // Bleed + safety gap
+                    
+                    // 3. Final precise radius calculation accounting for margins on all sides
+                    val availableWidth = size.width - margin * 2
+                    val availableHeight = size.height - margin * 2
+                    val radius = minOf(availableWidth / arcWidth, availableHeight / arcHeight)
+                    
                     val tickStrokeWidth = radius * 0.025f
 
-                    // Position center: horizontally centered, arc pinned to top
+                    // 4. Position center: horizontally centered, arc top pinned to margin
                     val arcCenterX = (leftX + rightX) / 2f
                     val centerX = size.width / 2f - arcCenterX * radius
-                    val centerY = padding - topY * radius  // Arc top at padding
+                    val centerY = margin - topY * radius  // Arc top (including bleed) starts at margin
                     val center = Offset(centerX, centerY)
 
-                    // 1. Draw base arc (visible scale line for areas without zones)
+                    // 5. Draw base arc (visible scale line for areas without zones)
                     drawArc(
                         color = contentColor.copy(alpha = 0.3f),
                         startAngle = startAngle,
@@ -179,7 +178,7 @@ fun GaugeWidget(
                         style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
                     )
 
-                    // 1.1 Draw Track Arc for ARC_FILL style (UI-004)
+                    // 5.1 Draw Track Arc for ARC_FILL style (UI-004)
                     if (gaugeStyle == com.example.hmi.data.GaugeStyle.ARC_FILL) {
                         drawArc(
                             color = contentColor.copy(alpha = 0.15f),
@@ -192,7 +191,7 @@ fun GaugeWidget(
                         )
                     }
 
-                    // 2. Draw color zones (reversed so first zone in list draws on top)
+                    // 6. Draw color zones (reversed so first zone in list draws on top)
                     colorZones.reversed().forEach { zone ->
                         val zoneStartValue = zone.startValue.coerceIn(minValue, maxValue)
                         val zoneEndValue = zone.endValue.coerceIn(minValue, maxValue)
@@ -213,32 +212,11 @@ fun GaugeWidget(
                         }
                     }
 
-                    // 2.1 Draw Fill Arc for ARC_FILL style (MUST DRAW AFTER ZONES for Strategy 1)
-                    if (gaugeStyle == com.example.hmi.data.GaugeStyle.ARC_FILL) {
-                        val currentPointerColor = ColorUtils.resolvePointerColor(
-                            currentValue = animatedValue,
-                            isPointerDynamic = isPointerDynamic,
-                            staticPointerColor = pointerColor,
-                            colorZones = colorZones,
-                            defaultColor = contentColor
-                        )
-                        val fillSweepAngle = (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * sweepAngle
-                        drawArc(
-                            color = currentPointerColor,
-                            startAngle = startAngle,
-                            sweepAngle = fillSweepAngle,
-                            useCenter = false,
-                            topLeft = Offset(center.x - radius, center.y - radius),
-                            size = Size(radius * 2, radius * 2),
-                            style = Stroke(width = strokeWidth * 3.0f, cap = StrokeCap.Butt)
-                        )
-                    }
-
-                    // 3. Draw ticks
+                    // 7. Draw ticks
                     val step = ScaleUtils.calculateNiceStep(maxValue - minValue, targetTicks)
                     val ticks = ScaleUtils.generateTicks(minValue, maxValue, step)
                     
-                    val tickInnerRadius = radius * 0.88f // Shortened ticks (60% of original)
+                    val tickInnerRadius = radius * 0.82f // Increased clearance for thicker fill
                     ticks.forEach { tickValue ->
                         val angle = startAngle + (tickValue - minValue) / (maxValue - minValue) * sweepAngle
                         val angleRad = Math.toRadians(angle.toDouble())
@@ -260,7 +238,28 @@ fun GaugeWidget(
                         )
                     }
 
-                    // 4. Draw Pointer (Glass Cockpit style chevron/caret)
+                    // 8. Draw Fill Arc for ARC_FILL style (MUST DRAW AFTER TICKS for Z-Order)
+                    if (gaugeStyle == com.example.hmi.data.GaugeStyle.ARC_FILL) {
+                        val currentPointerColor = ColorUtils.resolvePointerColor(
+                            currentValue = animatedValue,
+                            isPointerDynamic = isPointerDynamic,
+                            staticPointerColor = pointerColor,
+                            colorZones = colorZones,
+                            defaultColor = contentColor
+                        )
+                        val fillSweepAngle = (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * sweepAngle
+                        drawArc(
+                            color = currentPointerColor,
+                            startAngle = startAngle,
+                            sweepAngle = fillSweepAngle,
+                            useCenter = false,
+                            topLeft = Offset(center.x - radius, center.y - radius),
+                            size = Size(radius * 2, radius * 2),
+                            style = Stroke(width = strokeWidth * 3.0f, cap = StrokeCap.Butt)
+                        )
+                    }
+
+                    // 9. Draw Pointer (Glass Cockpit style chevron/caret)
                     if (gaugeStyle == com.example.hmi.data.GaugeStyle.POINTER) {
                         val currentPointerColor = ColorUtils.resolvePointerColor(
                             currentValue = animatedValue,
@@ -274,8 +273,8 @@ fun GaugeWidget(
                         val pointerAngleRad = Math.toRadians(pointerAngle.toDouble())
 
                         // Position pointer on the inside of the arc
-                        val pointerTipRadius = radius * 0.95f  // Tip points toward arc
-                        val pointerBaseRadius = radius * 0.75f // Base sits inside
+                        val pointerTipRadius = radius * 0.90f  // Increased clearance
+                        val pointerBaseRadius = radius * 0.70f // Increased clearance
                         
                         // Fix aspect ratio to 2:1 (Height:Width)
                         // Height = 0.20 * radius, so full width = 0.10 * radius
