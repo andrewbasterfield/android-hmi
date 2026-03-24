@@ -40,6 +40,7 @@ fun WidgetContainer(
     backgroundColor: Long?,
     modifier: Modifier = Modifier,
     isEditMode: Boolean = false,
+    showControls: Boolean = true,
     alpha: Float = 1f,
     textColorOverride: String? = null,
     showOutline: Boolean = false,
@@ -89,7 +90,7 @@ fun WidgetContainer(
                 Box(modifier = Modifier.fillMaxSize()) {
                     content()
                     
-                    if (isEditMode) {
+                    if (isEditMode && showControls) {
                         // Edit/Settings Button
                         IconButton(
                             onClick = onEditClick,

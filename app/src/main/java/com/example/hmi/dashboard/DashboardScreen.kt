@@ -303,6 +303,7 @@ fun DashboardScreen(
                             WidgetContainer(
                                 backgroundColor = null,
                                 isEditMode = true,
+                                showControls = false,
                                 modifier = Modifier
                                     .size(
                                         width = GridSystem.cellToDp(widget.colSpan),
@@ -323,6 +324,7 @@ fun DashboardScreen(
                             WidgetContainer(
                                 backgroundColor = null,
                                 isEditMode = true,
+                                showControls = false,
                                 modifier = Modifier
                                     .size(
                                         width = GridSystem.cellToDp(ghostColSpan),
