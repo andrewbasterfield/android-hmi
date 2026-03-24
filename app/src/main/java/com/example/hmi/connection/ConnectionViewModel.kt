@@ -36,6 +36,12 @@ class ConnectionViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = true
     )
+
+    val savedProfiles = repository.savedProfilesFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
     
     private val _hasAttemptedAutoConnect = MutableStateFlow(false)
     val hasAttemptedAutoConnect = _hasAttemptedAutoConnect.asStateFlow()
@@ -116,6 +122,18 @@ class ConnectionViewModel @Inject constructor(
     fun setKeepScreenOn(enabled: Boolean) {
         viewModelScope.launch {
             repository.saveKeepScreenOn(enabled)
+        }
+    }
+
+    fun saveProfile(profile: PlcConnectionProfile) {
+        viewModelScope.launch {
+            repository.saveToSavedProfiles(profile)
+        }
+    }
+
+    fun deleteProfile(profileName: String) {
+        viewModelScope.launch {
+            repository.deleteFromSavedProfiles(profileName)
         }
     }
 

@@ -17,6 +17,16 @@ import com.example.hmi.protocol.MqttSettings
 import com.example.hmi.protocol.PlcConnectionProfile
 import com.example.hmi.protocol.Protocol
 
+// Built-in read-only profiles
+private val BUILT_IN_PROFILES = listOf(
+    PlcConnectionProfile(
+        name = "Local Demo Server",
+        ipAddress = "127.0.0.1",
+        port = 9999,
+        protocol = Protocol.RAW_TCP
+    )
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectionScreen(
@@ -41,6 +51,55 @@ fun ConnectionScreen(
     
     var loaded by remember { mutableStateOf(false) }
 
+    // Track the originally loaded profile to detect changes
+    var loadedProfile by remember { mutableStateOf<PlcConnectionProfile?>(null) }
+
+    // Check if current profile is a built-in read-only profile
+    val isReadOnlyProfile = BUILT_IN_PROFILES.any { it.name == name }
+
+    // Dialog states
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showOverwriteDialog by remember { mutableStateOf(false) }
+    var pendingProfile by remember { mutableStateOf<PlcConnectionProfile?>(null) }
+
+    // Helper to build current profile from form state
+    fun buildCurrentProfile(): PlcConnectionProfile {
+        val portInt = port.toIntOrNull() ?: (if (protocol == Protocol.MQTT) 1883 else 9999)
+        val mqttSettings = if (protocol == Protocol.MQTT) {
+            MqttSettings(
+                clientId = if (clientId.isBlank()) "hmi-client-" + java.util.UUID.randomUUID().toString().take(8) else clientId,
+                username = if (username.isBlank()) null else username,
+                password = if (password.isBlank()) null else password,
+                rootTopicPrefix = if (topicPrefix.isBlank()) null else topicPrefix
+            )
+        } else null
+        return PlcConnectionProfile(
+            name = name,
+            ipAddress = ipAddress,
+            port = portInt,
+            protocol = protocol,
+            mqttSettings = mqttSettings
+        )
+    }
+
+    // Check if profile has changed from loaded state
+    fun hasProfileChanged(): Boolean {
+        val original = loadedProfile ?: return true // No loaded profile means it's "new"
+        if (name != original.name) return true
+        if (ipAddress != original.ipAddress) return true
+        if (port != original.port.toString()) return true
+        if (protocol != original.protocol) return true
+        if (protocol == Protocol.MQTT) {
+            val originalMqtt = original.mqttSettings
+            if (originalMqtt == null) return clientId.isNotBlank() || username.isNotBlank() || password.isNotBlank() || topicPrefix.isNotBlank()
+            if (clientId != originalMqtt.clientId) return true
+            if (username != (originalMqtt.username ?: "")) return true
+            if (password != (originalMqtt.password ?: "")) return true
+            if (topicPrefix != (originalMqtt.rootTopicPrefix ?: "")) return true
+        }
+        return false
+    }
+
     // Update local state when profile loads from DataStore
     LaunchedEffect(connectionProfile) {
         if (connectionProfile != null && !loaded) {
@@ -48,14 +107,17 @@ fun ConnectionScreen(
             ipAddress = connectionProfile!!.ipAddress
             port = connectionProfile!!.port.toString()
             protocol = connectionProfile!!.protocol
-            
+
             connectionProfile!!.mqttSettings?.let {
                 clientId = it.clientId
                 username = it.username ?: ""
                 password = it.password ?: ""
                 topicPrefix = it.rootTopicPrefix ?: ""
             }
-            
+
+            // Track as loaded profile so Save is disabled until changes are made
+            loadedProfile = connectionProfile
+
             loaded = true
         }
     }
@@ -78,12 +140,98 @@ fun ConnectionScreen(
         Text("Connection Profile", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Profile Name") },
+        // Saved profiles dropdown (user saved + built-in at the end)
+        val savedProfiles by viewModel.savedProfiles.collectAsState()
+        val builtInNames = BUILT_IN_PROFILES.map { it.name }.toSet()
+        val filteredSavedProfiles = savedProfiles.filter { it.name !in builtInNames }
+        val allProfiles = filteredSavedProfiles + BUILT_IN_PROFILES
+        var loadDropdownExpanded by remember { mutableStateOf(false) }
+
+        ExposedDropdownMenuBox(
+            expanded = loadDropdownExpanded,
+            onExpandedChange = { loadDropdownExpanded = !loadDropdownExpanded },
             modifier = Modifier.fillMaxWidth()
-        )
+        ) {
+            OutlinedTextField(
+                value = "Load profile...",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Load") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = loadDropdownExpanded) },
+                modifier = Modifier.menuAnchor().fillMaxWidth()
+            )
+            ExposedDropdownMenu(
+                expanded = loadDropdownExpanded,
+                onDismissRequest = { loadDropdownExpanded = false }
+            ) {
+                allProfiles.forEach { profile ->
+                    val isBuiltIn = BUILT_IN_PROFILES.any { it.name == profile.name }
+                    DropdownMenuItem(
+                        text = {
+                            Text(if (isBuiltIn) "${profile.name} (built-in)" else profile.name)
+                        },
+                        onClick = {
+                            // Populate form fields
+                            name = profile.name
+                            ipAddress = profile.ipAddress
+                            port = profile.port.toString()
+                            protocol = profile.protocol
+                            profile.mqttSettings?.let {
+                                clientId = it.clientId
+                                username = it.username ?: ""
+                                password = it.password ?: ""
+                                topicPrefix = it.rootTopicPrefix ?: ""
+                            } ?: run {
+                                clientId = ""
+                                username = ""
+                                password = ""
+                                topicPrefix = ""
+                            }
+                            loadedProfile = profile
+                            loadDropdownExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Profile Name") },
+                modifier = Modifier.weight(1f)
+            )
+            Button(
+                onClick = {
+                    val profile = buildCurrentProfile()
+                    val existingProfile = savedProfiles.find { it.name == name }
+                    if (existingProfile != null) {
+                        // Profile exists - show overwrite confirmation
+                        pendingProfile = profile
+                        showOverwriteDialog = true
+                    } else {
+                        // New profile - save directly
+                        viewModel.saveProfile(profile)
+                        loadedProfile = profile
+                    }
+                },
+                enabled = name.isNotBlank() && hasProfileChanged() && !isReadOnlyProfile
+            ) {
+                Text("Save")
+            }
+            OutlinedButton(
+                onClick = { showDeleteDialog = true },
+                enabled = name.isNotBlank() && savedProfiles.any { it.name == name } && !isReadOnlyProfile
+            ) {
+                Text("Delete")
+            }
+        }
         Spacer(modifier = Modifier.height(8.dp))
 
         // Protocol Selector
@@ -216,18 +364,6 @@ fun ConnectionScreen(
             Text(if (connectionState == ConnectionState.CONNECTING) "Connecting..." else "Connect")
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        OutlinedButton(
-            onClick = {
-                viewModel.connectToDemoServer()
-            },
-            enabled = connectionState != ConnectionState.CONNECTING && connectionState != ConnectionState.CONNECTED,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Connect to Local Demo Server")
-        }
-
         if (connectionState == ConnectionState.ERROR && errorMessage != null) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(errorMessage!!, color = MaterialTheme.colorScheme.error)
@@ -238,5 +374,61 @@ fun ConnectionScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Text("Disconnected!", color = MaterialTheme.colorScheme.error)
         }
+    }
+
+    // Delete confirmation dialog
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Delete Profile") },
+            text = { Text("Are you sure you want to delete \"$name\"?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteProfile(name)
+                        loadedProfile = null
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Overwrite confirmation dialog
+    if (showOverwriteDialog) {
+        AlertDialog(
+            onDismissRequest = { showOverwriteDialog = false },
+            title = { Text("Overwrite Profile") },
+            text = { Text("A profile named \"$name\" already exists. Overwrite it?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingProfile?.let {
+                            viewModel.saveProfile(it)
+                            loadedProfile = it
+                        }
+                        pendingProfile = null
+                        showOverwriteDialog = false
+                    }
+                ) {
+                    Text("Overwrite")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    pendingProfile = null
+                    showOverwriteDialog = false
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
