@@ -85,6 +85,29 @@ open class DashboardRepository @Inject constructor(
         }
     }
 
+    suspend fun mergeProfiles(newProfiles: List<PlcConnectionProfile>) {
+        context.dataStore.edit { preferences ->
+            val currentJson = preferences[SAVED_PROFILES_KEY]
+            val currentList: MutableList<PlcConnectionProfile> = if (currentJson.isNullOrEmpty()) {
+                mutableListOf()
+            } else {
+                try {
+                    val type = object : TypeToken<List<PlcConnectionProfile>>() {}.type
+                    gson.fromJson<List<PlcConnectionProfile>>(currentJson, type).toMutableList()
+                } catch (e: Exception) {
+                    mutableListOf()
+                }
+            }
+
+            newProfiles.forEach { newProfile ->
+                currentList.removeAll { it.name == newProfile.name }
+                currentList.add(newProfile)
+            }
+
+            preferences[SAVED_PROFILES_KEY] = gson.toJson(currentList)
+        }
+    }
+
     suspend fun deleteFromSavedProfiles(profileName: String) {
         context.dataStore.edit { preferences ->
             val currentJson = preferences[SAVED_PROFILES_KEY]

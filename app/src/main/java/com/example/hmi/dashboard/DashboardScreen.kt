@@ -6,6 +6,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -50,6 +52,16 @@ fun DashboardScreen(
 
     var editingWidget by remember { mutableStateOf<WidgetConfiguration?>(null) }
     var showDashboardSettings by remember { mutableStateOf(false) }
+    var showTransferHub by remember { mutableStateOf(false) }
+
+    if (showTransferHub) {
+        val connectionViewModel: com.example.hmi.connection.ConnectionViewModel = hiltViewModel()
+        SystemTransferDialog(
+            dashboardViewModel = viewModel,
+            connectionViewModel = connectionViewModel,
+            onDismiss = { showTransferHub = false }
+        )
+    }
     
     val draggingOffsets = remember { mutableStateMapOf<String, Offset>() }
     val resizingOffsets = remember { mutableStateMapOf<String, Offset>() }
@@ -160,6 +172,9 @@ fun DashboardScreen(
                     title = { Text(dashboardLayout.name) },
                     actions = {
                         if (isEditMode) {
+                            IconButton(onClick = { showTransferHub = true }) {
+                                Icon(androidx.compose.material.icons.Icons.Default.CloudSync, "System Transfer Center")
+                            }
                             Button(onClick = { showAddWidgetDialog = true }) {
                                 Text("Add Widget")
                             }

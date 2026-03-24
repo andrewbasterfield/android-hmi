@@ -45,6 +45,7 @@ class DashboardViewModelTest {
     }
 
     private lateinit var repository: DashboardRepository
+    private lateinit var transferManager: com.example.hmi.data.ConfigTransferManager
     private lateinit var viewModel: DashboardViewModel
     private val layoutFlow = MutableStateFlow(DashboardLayout(name = "Initial"))
 
@@ -56,6 +57,8 @@ class DashboardViewModelTest {
             on { dashboardLayoutFlow } doReturn layoutFlow
             on { recentColorsFlow } doReturn MutableStateFlow(emptyList())
         }
+
+        transferManager = mock()
         
         // Mock saveLayout to update our flow
         repository.stub {
@@ -65,7 +68,7 @@ class DashboardViewModelTest {
             }
         }
 
-        viewModel = DashboardViewModel(plcCommunicator, repository, testDispatcher)
+        viewModel = DashboardViewModel(plcCommunicator, repository, transferManager, testDispatcher)
     }
 
     @After

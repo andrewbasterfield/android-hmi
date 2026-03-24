@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Full Backup Package",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "layout": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "canvasColor": { "type": ["integer", "null"] },
+        "widgets": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "isDarkThemeMigrated": { "type": "boolean" },
+        "isKineticCockpitMigrated": { "type": "boolean" },
+        "hapticFeedbackEnabled": { "type": "boolean" }
+      },
+      "required": ["id", "name", "widgets"]
+    },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "ipAddress": { "type": "string" },
+          "port": { "type": "integer" },
+          "protocol": { "type": "string", "enum": ["RAW_TCP", "MQTT", "MODBUS_TCP", "OPC_UA"] },
+          "mqttSettings": { "type": ["object", "null"] }
+        },
+        "required": ["id", "name", "ipAddress", "port", "protocol"]
+      }
+    }
+  },
+  "required": ["version"],
+  "anyOf": [
+    { "required": ["layout"] },
+    { "required": ["profiles"] }
+  ]
+}

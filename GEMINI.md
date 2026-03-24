@@ -27,6 +27,10 @@ Auto-generated from all feature plans. Last updated: 2026-03-10
 - Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON (023-arc-fill-gauge)
 - Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON, **HiveMQ MQTT Client (v1.3.3)** (025-mqtt-backend-support)
 - Jetpack DataStore (serialized JSON for profiles) (025-mqtt-backend-support)
+- Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON, Android Storage Access Framework (SAF), Android Intent System. (026-config-file-transfer)
+- Jetpack DataStore (Preferences with JSON serialization), External Filesystem (via SAF). (026-config-file-transfer)
+- Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON, Android SAF, Android Intent System, JSON Schema Validator (e.g., `com.networknt:json-schema-validator`) (026-config-file-transfer)
+- Jetpack DataStore (Preferences), External Files (via SAF) (026-config-file-transfer)
 
 - Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow/SharedFlow), Hilt (001-hmi-control-panel)
 
@@ -50,9 +54,9 @@ tests/
 Kotlin (Latest stable): Follow standard conventions
 
 ## Recent Changes
+- 026-config-file-transfer: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON, Android SAF, Android Intent System, JSON Schema Validator (e.g., `com.networknt:json-schema-validator`)
+- 026-config-file-transfer: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON, Android Storage Access Framework (SAF), Android Intent System.
 - 025-mqtt-backend-support: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON, **HiveMQ MQTT Client (v1.3.3)**
-- 024-button-switch-indicator: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON
-- 023-arc-fill-gauge: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON
 
 
 <!-- MANUAL ADDITIONS START -->

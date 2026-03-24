@@ -2,6 +2,7 @@ package com.example.hmi.connection
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.hmi.data.ConfigTransferManager
 import com.example.hmi.data.DashboardRepository
 import com.example.hmi.protocol.ConnectionState
 import com.example.hmi.protocol.PlcCommunicator
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -19,10 +21,13 @@ import javax.inject.Inject
 @HiltViewModel
 class ConnectionViewModel @Inject constructor(
     private val plcCommunicator: PlcCommunicator,
-    private val repository: DashboardRepository
+    private val repository: DashboardRepository,
+    private val transferManager: ConfigTransferManager
 ) : ViewModel() {
 
     val connectionState = plcCommunicator.connectionState
+
+    val transferEvents = transferManager.events
 
     // Expose the persisted profile to the UI, defaulting to a new instance until loaded
     val connectionProfile = repository.connectionProfileFlow.stateIn(
@@ -134,6 +139,27 @@ class ConnectionViewModel @Inject constructor(
     fun deleteProfile(profileName: String) {
         viewModelScope.launch {
             repository.deleteFromSavedProfiles(profileName)
+        }
+    }
+
+    fun exportProfiles(uri: android.net.Uri) {
+        viewModelScope.launch {
+            transferManager.exportProfiles(uri)
+        }
+    }
+
+    fun importProfiles(uri: android.net.Uri) {
+        viewModelScope.launch {
+            transferManager.importProfiles(uri)
+        }
+    }
+
+    fun shareProfiles(context: android.content.Context) {
+        viewModelScope.launch {
+            val profiles = repository.savedProfilesFlow.first()
+            val backup = com.example.hmi.data.FullBackupPackage(profiles = profiles)
+            val json = com.google.gson.Gson().toJson(backup)
+            transferManager.shareConfig(context, json, "connection_profiles.json")
         }
     }
 

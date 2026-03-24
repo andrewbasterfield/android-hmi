@@ -4,8 +4,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hmi.core.ui.theme.Void
+import com.example.hmi.data.ConfigTransferManager
 import com.example.hmi.data.DashboardLayout
 import com.example.hmi.data.DashboardRepository
+import com.example.hmi.data.TransferEvent
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
 import com.example.hmi.di.IoDispatcher
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -29,6 +32,7 @@ import javax.inject.Inject
 class DashboardViewModel @Inject constructor(
     private val plcCommunicator: PlcCommunicator,
     private val repository: DashboardRepository,
+    private val transferManager: ConfigTransferManager,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
@@ -48,6 +52,8 @@ class DashboardViewModel @Inject constructor(
 
     private val _importResult = MutableSharedFlow<Result<Unit>>(replay = 0)
     val importResult: SharedFlow<Result<Unit>> = _importResult
+
+    val transferEvents: SharedFlow<TransferEvent> = transferManager.events
 
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
@@ -280,6 +286,39 @@ class DashboardViewModel @Inject constructor(
         val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
         _dashboardLayout.value = newLayout
         viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+    }
+
+    fun exportLayout(uri: android.net.Uri) {
+        viewModelScope.launch(ioDispatcher) {
+            transferManager.exportLayout(uri)
+        }
+    }
+
+    fun importLayout(uri: android.net.Uri) {
+        viewModelScope.launch(ioDispatcher) {
+            transferManager.importLayout(uri)
+        }
+    }
+
+    fun exportFullBackup(uri: android.net.Uri) {
+        viewModelScope.launch(ioDispatcher) {
+            transferManager.exportFullBackup(uri)
+        }
+    }
+
+    fun executeImport(backup: com.example.hmi.data.FullBackupPackage, importLayout: Boolean, importProfiles: Boolean) {
+        viewModelScope.launch(ioDispatcher) {
+            transferManager.executeImport(backup, importLayout, importProfiles)
+        }
+    }
+
+    fun shareLayout(context: android.content.Context) {
+        viewModelScope.launch(ioDispatcher) {
+            val layout = repository.dashboardLayoutFlow.first()
+            val backup = com.example.hmi.data.FullBackupPackage(layout = layout)
+            val json = gson.toJson(backup)
+            transferManager.shareConfig(context, json, "dashboard_layout.json")
+        }
     }
 
     fun exportLayoutToJson(): String {
