@@ -391,26 +391,28 @@ fun WidgetConfigDialog(
                     Text("Gauge Color Zones", style = MaterialTheme.typography.titleSmall)
 
                     colorZones.forEachIndexed { index, zone ->
-                        ZoneEditCard(
-                            zone = zone,
-                            index = index,
-                            isFirst = index == 0,
-                            isLast = index == colorZones.lastIndex,
-                            onZoneChanged = { colorZones[index] = it },
-                            onMoveUp = {
-                                if (index > 0) {
-                                    val item = colorZones.removeAt(index)
-                                    colorZones.add(index - 1, item)
-                                }
-                            },
-                            onMoveDown = {
-                                if (index < colorZones.lastIndex) {
-                                    val item = colorZones.removeAt(index)
-                                    colorZones.add(index + 1, item)
-                                }
-                            },
-                            onDelete = { colorZones.removeAt(index) }
-                        )
+                        key(zone.id) {
+                            ZoneEditCard(
+                                zone = zone,
+                                index = index,
+                                isFirst = index == 0,
+                                isLast = index == colorZones.lastIndex,
+                                onZoneChanged = { colorZones[index] = it },
+                                onMoveUp = {
+                                    if (index > 0) {
+                                        val item = colorZones.removeAt(index)
+                                        colorZones.add(index - 1, item)
+                                    }
+                                },
+                                onMoveDown = {
+                                    if (index < colorZones.lastIndex) {
+                                        val item = colorZones.removeAt(index)
+                                        colorZones.add(index + 1, item)
+                                    }
+                                },
+                                onDelete = { colorZones.removeAt(index) }
+                            )
+                        }
                     }
 
                     OutlinedButton(
