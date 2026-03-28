@@ -83,21 +83,43 @@ fun ConnectionScreen(
     }
 
     // Check if profile has changed from loaded state
-    fun hasProfileChanged(): Boolean {
-        val original = loadedProfile ?: return true // No loaded profile means it's "new"
-        if (name != original.name) return true
-        if (ipAddress != original.ipAddress) return true
-        if (port != original.port.toString()) return true
-        if (protocol != original.protocol) return true
-        if (protocol == Protocol.MQTT) {
-            val originalMqtt = original.mqttSettings
-            if (originalMqtt == null) return clientId.isNotBlank() || username.isNotBlank() || password.isNotBlank() || topicPrefix.isNotBlank()
-            if (clientId != originalMqtt.clientId) return true
-            if (username != (originalMqtt.username ?: "")) return true
-            if (password != (originalMqtt.password ?: "")) return true
-            if (topicPrefix != (originalMqtt.rootTopicPrefix ?: "")) return true
+    val hasProfileChanged by remember(name, ipAddress, port, protocol, clientId, username, password, topicPrefix, loadedProfile) {
+        derivedStateOf {
+            val original = loadedProfile ?: return@derivedStateOf true
+            
+            val nameChanged = name != original.name
+            val ipChanged = ipAddress != original.ipAddress
+            val portChanged = port != original.port.toString()
+            val protocolChanged = protocol != original.protocol
+            
+            if (nameChanged || ipChanged || portChanged || protocolChanged) return@derivedStateOf true
+            
+            if (protocol == Protocol.MQTT) {
+                val originalMqtt = original.mqttSettings
+                val currentClientId = clientId.ifBlank { "" }
+                val currentUsername = username.ifBlank { "" }
+                val currentPassword = password.ifBlank { "" }
+                val currentTopicPrefix = topicPrefix.ifBlank { "" }
+                
+                if (originalMqtt == null) {
+                    currentClientId.isNotBlank() || currentUsername.isNotBlank() || 
+                    currentPassword.isNotBlank() || currentTopicPrefix.isNotBlank()
+                } else {
+                    currentClientId != originalMqtt.clientId ||
+                    currentUsername != (originalMqtt.username ?: "") ||
+                    currentPassword != (originalMqtt.password ?: "") ||
+                    currentTopicPrefix != (originalMqtt.rootTopicPrefix ?: "")
+                }
+            } else {
+                false
+            }
         }
-        return false
+    }
+
+    val isInputValid by remember(name, ipAddress, port) {
+        derivedStateOf {
+            name.isNotBlank() && ipAddress.isNotBlank() && port.toIntOrNull() != null
+        }
     }
 
     // Update local state when profile loads from DataStore
@@ -221,7 +243,7 @@ fun ConnectionScreen(
                         loadedProfile = profile
                     }
                 },
-                enabled = name.isNotBlank() && hasProfileChanged() && !isReadOnlyProfile
+                enabled = isInputValid && hasProfileChanged && !isReadOnlyProfile
             ) {
                 Text("Save")
             }

@@ -7,7 +7,10 @@ import com.example.hmi.data.DashboardRepository
 import com.example.hmi.protocol.ConnectionState
 import com.example.hmi.protocol.PlcCommunicator
 import com.example.hmi.protocol.PlcConnectionProfile
+import com.example.hmi.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,7 +28,8 @@ class ConnectionViewModel @Inject constructor(
     private val plcCommunicator: PlcCommunicator,
     private val repository: DashboardRepository,
     private val transferManager: ConfigTransferManager,
-    private val json: Json
+    private val json: Json,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     val connectionState = plcCommunicator.connectionState
@@ -63,9 +67,14 @@ class ConnectionViewModel @Inject constructor(
     private var isManuallyDisconnecting = false
 
     init {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             var previousState = ConnectionState.DISCONNECTED
             connectionState.collect { state ->
+                // Debounce state detection slightly to avoid flickering during rapid error loops
+                if (state == ConnectionState.ERROR || state == ConnectionState.DISCONNECTED) {
+                    delay(100)
+                }
+
                 // If we transition to ERROR or DISCONNECTED *from* a CONNECTED state,
                 // we consider it an unexpected drop, unless we are intentionally disconnecting.
                 if (previousState == ConnectionState.CONNECTED && 
@@ -93,7 +102,7 @@ class ConnectionViewModel @Inject constructor(
     fun connect(profile: PlcConnectionProfile) {
         _wasUnexpectedDisconnect.value = false
         _errorMessage.tryEmit(null)
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             repository.saveConnectionProfile(profile)
             val result = plcCommunicator.connect(profile)
             result.onFailure { error ->
@@ -105,7 +114,7 @@ class ConnectionViewModel @Inject constructor(
     fun connectToDemoServer() {
         _wasUnexpectedDisconnect.value = false
         _errorMessage.tryEmit(null)
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             // Demo server uses RAW_TCP on 127.0.0.1:9999
             val demoProfile = PlcConnectionProfile(
                 name = "Local Demo Server",
@@ -122,25 +131,25 @@ class ConnectionViewModel @Inject constructor(
     fun disconnect() {
         _wasUnexpectedDisconnect.value = false
         isManuallyDisconnecting = true
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             plcCommunicator.disconnect()
         }
     }
 
     fun setKeepScreenOn(enabled: Boolean) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             repository.saveKeepScreenOn(enabled)
         }
     }
 
     fun saveProfile(profile: PlcConnectionProfile) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             repository.saveToSavedProfiles(profile)
         }
     }
 
     fun deleteProfile(profileName: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             repository.deleteFromSavedProfiles(profileName)
         }
     }
