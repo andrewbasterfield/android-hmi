@@ -32,10 +32,21 @@ class LayoutMigrationManager @Inject constructor() {
                     widget.metricFontSizeMultiplier
                 }
 
+                // Migrate legacy gaugeStyle to decoupled axis/indicator
+                val (migratedAxis, migratedIndicator) = if (widget.gaugeAxis == GaugeAxis.ARC && widget.gaugeIndicator == GaugeIndicator.POINTER) {
+                    when (widget.gaugeStyle) {
+                        GaugeStyle.ARC_FILL -> GaugeAxis.ARC to GaugeIndicator.FILL
+                        else -> GaugeAxis.ARC to GaugeIndicator.POINTER
+                    }
+                } else {
+                    widget.gaugeAxis to widget.gaugeIndicator
+                }
+
                 widget.copy(
                     labelFontSizeMultiplier = migratedLabelMultiplier,
                     metricFontSizeMultiplier = migratedMetricMultiplier,
-                    gaugeStyle = widget.gaugeStyle ?: GaugeStyle.POINTER,
+                    gaugeAxis = migratedAxis,
+                    gaugeIndicator = migratedIndicator,
                     alarmState = if (widget.alarmState == AlarmState.Acknowledged) {
                         AlarmState.Unacknowledged
                     } else {

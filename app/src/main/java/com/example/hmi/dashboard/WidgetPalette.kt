@@ -20,6 +20,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.example.hmi.data.GaugeZone
+import com.example.hmi.data.GaugeAxis
+import com.example.hmi.data.GaugeIndicator
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
 import com.example.hmi.data.WidgetOrientation
@@ -108,7 +110,8 @@ fun WidgetConfigDialog(
     var maxValue by remember { mutableStateOf(initialWidget?.maxValue?.toString() ?: "100") }
     var targetTicks by remember { mutableFloatStateOf(initialWidget?.targetTicks?.toFloat() ?: 6f) }
     var arcSweep by remember { mutableFloatStateOf(initialWidget?.arcSweep ?: 180f) }
-    var selectedGaugeStyle by remember { mutableStateOf(initialWidget?.gaugeStyle ?: com.example.hmi.data.GaugeStyle.POINTER) }
+    var selectedGaugeAxis by remember { mutableStateOf(initialWidget?.gaugeAxis ?: GaugeAxis.ARC) }
+    var selectedGaugeIndicator by remember { mutableStateOf(initialWidget?.gaugeIndicator ?: GaugeIndicator.POINTER) }
     var pointerColor by remember { mutableStateOf(initialWidget?.pointerColor) }
     var isPointerDynamic by remember { mutableStateOf(initialWidget?.isPointerDynamic ?: true) }
     var units by remember { mutableStateOf(initialWidget?.units.orEmpty()) }
@@ -342,13 +345,25 @@ fun WidgetConfigDialog(
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Display Style", style = MaterialTheme.typography.labelSmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        com.example.hmi.data.GaugeStyle.values().forEach { style ->
+                    Text("Gauge Axis", style = MaterialTheme.typography.labelSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        GaugeAxis.entries.forEach { axis ->
                             FilterChip(
-                                selected = selectedGaugeStyle == style,
-                                onClick = { selectedGaugeStyle = style },
-                                label = { Text(style.name) }
+                                selected = selectedGaugeAxis == axis,
+                                onClick = { selectedGaugeAxis = axis },
+                                label = { Text(axis.name.replace("LINEAR_", "")) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Gauge Indicator", style = MaterialTheme.typography.labelSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GaugeIndicator.entries.forEach { indicator ->
+                            FilterChip(
+                                selected = selectedGaugeIndicator == indicator,
+                                onClick = { selectedGaugeIndicator = indicator },
+                                label = { Text(indicator.name) }
                             )
                         }
                     }
@@ -473,7 +488,8 @@ fun WidgetConfigDialog(
                             maxValue = maxValue.toFloatOrNull(),
                             targetTicks = targetTicks.toInt(),
                             arcSweep = arcSweep,
-                            gaugeStyle = selectedGaugeStyle,
+                            gaugeAxis = selectedGaugeAxis,
+                            gaugeIndicator = selectedGaugeIndicator,
                             colorZones = colorZones.toList(),
                             pointerColor = pointerColor,
                             isPointerDynamic = isPointerDynamic,

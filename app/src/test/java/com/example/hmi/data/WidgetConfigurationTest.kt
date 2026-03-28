@@ -107,6 +107,8 @@ class WidgetConfigurationTest {
             tagAddress = "TEST_TAG",
             pointerColor = 0xFFFF0000L,
             isPointerDynamic = true,
+            gaugeAxis = GaugeAxis.LINEAR_VERTICAL,
+            gaugeIndicator = GaugeIndicator.FILL,
             gaugeStyle = GaugeStyle.ARC_FILL,
             units = "PSI"
         )
@@ -115,6 +117,8 @@ class WidgetConfigurationTest {
         
         assertTrue(jsonStr.contains("\"pointerColor\":4294901760"))
         assertTrue(jsonStr.contains("\"isPointerDynamic\":true"))
+        assertTrue(jsonStr.contains("\"gaugeAxis\":\"LINEAR_VERTICAL\""))
+        assertTrue(jsonStr.contains("\"gaugeIndicator\":\"FILL\""))
         assertTrue(jsonStr.contains("\"gaugeStyle\":\"ARC_FILL\""))
         assertTrue(jsonStr.contains("\"units\":\"PSI\""))
     }
@@ -127,6 +131,8 @@ class WidgetConfigurationTest {
                 "tagAddress": "TEST_TAG",
                 "pointerColor": 4294901760,
                 "isPointerDynamic": true,
+                "gaugeAxis": "LINEAR_VERTICAL",
+                "gaugeIndicator": "FILL",
                 "gaugeStyle": "ARC_FILL",
                 "units": "PSI"
             }
@@ -136,6 +142,8 @@ class WidgetConfigurationTest {
         
         assertEquals(0xFFFF0000L, config.pointerColor)
         assertTrue(config.isPointerDynamic)
+        assertEquals(GaugeAxis.LINEAR_VERTICAL, config.gaugeAxis)
+        assertEquals(GaugeIndicator.FILL, config.gaugeIndicator)
         assertEquals(GaugeStyle.ARC_FILL, config.gaugeStyle)
         assertEquals("PSI", config.units)
     }
@@ -153,7 +161,9 @@ class WidgetConfigurationTest {
         
         assertNull(config.pointerColor)
         assertTrue(config.isPointerDynamic)
-        assertEquals(GaugeStyle.POINTER, config.gaugeStyle) // Updated because I set default to POINTER in data class
+        assertEquals(GaugeAxis.ARC, config.gaugeAxis)
+        assertEquals(GaugeIndicator.POINTER, config.gaugeIndicator)
+        assertEquals(GaugeStyle.POINTER, config.gaugeStyle)
         assertNull(config.units)
     }
 }

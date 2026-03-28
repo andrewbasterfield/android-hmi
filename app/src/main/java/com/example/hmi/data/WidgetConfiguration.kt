@@ -7,6 +7,12 @@ import java.util.UUID
 enum class WidgetType { BUTTON, SLIDER, GAUGE }
 
 @Serializable
+enum class GaugeAxis { ARC, LINEAR_HORIZONTAL, LINEAR_VERTICAL }
+
+@Serializable
+enum class GaugeIndicator { POINTER, FILL }
+
+@Serializable
 enum class GaugeStyle { POINTER, ARC_FILL }
 
 @Serializable
@@ -43,6 +49,8 @@ data class WidgetConfiguration(
     val colorZones: List<GaugeZone> = emptyList(),
     val pointerColor: Long? = null,
     val isPointerDynamic: Boolean = true,
+    val gaugeAxis: GaugeAxis = GaugeAxis.ARC,
+    val gaugeIndicator: GaugeIndicator = GaugeIndicator.POINTER,
     val gaugeStyle: GaugeStyle = GaugeStyle.POINTER,
     val units: String? = null,
     val alarmState: AlarmState = AlarmState.Normal,

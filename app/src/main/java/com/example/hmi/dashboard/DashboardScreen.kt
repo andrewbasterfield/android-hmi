@@ -669,7 +669,8 @@ private fun WidgetRenderingNode(
                         colorZones = widget.colorZones,
                         pointerColor = widget.pointerColor,
                         isPointerDynamic = widget.isPointerDynamic,
-                        gaugeStyle = widget.gaugeStyle,
+                        gaugeAxis = widget.gaugeAxis,
+                        gaugeIndicator = widget.gaugeIndicator,
                         units = widget.units,
                         pulseState = when (widget.alarmState) {
                             com.example.hmi.data.AlarmState.Normal -> com.example.hmi.core.ui.components.PulseState.NORMAL
