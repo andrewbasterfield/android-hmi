@@ -19,12 +19,14 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -55,6 +57,9 @@ class DashboardViewModel @Inject constructor(
     val importResult: SharedFlow<Result<Unit>> = _importResult
 
     val transferEvents: SharedFlow<TransferEvent> = transferManager.events
+
+    // Track active tag observation jobs to prevent duplicates and enable cleanup
+    private val activeTagObservations = mutableMapOf<String, Job>()
 
     init {
         viewModelScope.launch(ioDispatcher) {
@@ -144,7 +149,12 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun observeTag(tagAddress: String) {
-        viewModelScope.launch(ioDispatcher) {
+        // Skip if already observing this tag
+        if (tagAddress.isBlank() || activeTagObservations[tagAddress]?.isActive == true) {
+            return
+        }
+
+        val job = viewModelScope.launch(ioDispatcher) {
             plcCommunicator.observeTag(tagAddress).collect { value ->
                 when (value) {
                     is PlcValue.FloatValue -> {
@@ -159,6 +169,25 @@ class DashboardViewModel @Inject constructor(
                     is PlcValue.StringValue -> {}
                 }
             }
+        }
+        activeTagObservations[tagAddress] = job
+    }
+
+    /**
+     * Synchronizes active tag observations with the current widget list.
+     * Cancels observations for tags no longer in use.
+     */
+    fun syncTagObservations(currentTagAddresses: Set<String>) {
+        // Cancel observations for tags no longer needed
+        val tagsToRemove = activeTagObservations.keys - currentTagAddresses
+        tagsToRemove.forEach { tagAddress ->
+            activeTagObservations[tagAddress]?.cancel()
+            activeTagObservations.remove(tagAddress)
+        }
+
+        // Start observations for new tags
+        currentTagAddresses.forEach { tagAddress ->
+            observeTag(tagAddress)
         }
     }
 
@@ -206,92 +235,100 @@ class DashboardViewModel @Inject constructor(
     }
     
     fun updateWidgetPosition(widgetId: String, column: Int, row: Int) {
-        val currentWidgets = _dashboardLayout.value.widgets.toMutableList()
-        val index = currentWidgets.indexOfFirst { it.id == widgetId }
-        if (index != -1) {
-            val widget = currentWidgets[index]
-            val maxZOrder = currentWidgets.maxOfOrNull { it.zOrder } ?: 0
-            currentWidgets[index] = widget.copy(
-                column = column,
-                row = row,
-                zOrder = maxZOrder + 1
-            )
-            val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
-            _dashboardLayout.value = newLayout
-            viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+        _dashboardLayout.update { layout ->
+            val index = layout.widgets.indexOfFirst { it.id == widgetId }
+            if (index != -1) {
+                val widget = layout.widgets[index]
+                val maxZOrder = layout.widgets.maxOfOrNull { it.zOrder } ?: 0
+                val updatedWidgets = layout.widgets.toMutableList().apply {
+                    this[index] = widget.copy(column = column, row = row, zOrder = maxZOrder + 1)
+                }
+                layout.copy(widgets = updatedWidgets).also { newLayout ->
+                    viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+                }
+            } else layout
         }
     }
 
     fun updateWidgetSize(widgetId: String, colSpan: Int, rowSpan: Int) {
-        val currentWidgets = _dashboardLayout.value.widgets.toMutableList()
-        val index = currentWidgets.indexOfFirst { it.id == widgetId }
-        if (index != -1) {
-            val widget = currentWidgets[index]
-            currentWidgets[index] = widget.copy(colSpan = colSpan, rowSpan = rowSpan)
-            val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
-            _dashboardLayout.value = newLayout
-            viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+        _dashboardLayout.update { layout ->
+            val index = layout.widgets.indexOfFirst { it.id == widgetId }
+            if (index != -1) {
+                val widget = layout.widgets[index]
+                val updatedWidgets = layout.widgets.toMutableList().apply {
+                    this[index] = widget.copy(colSpan = colSpan, rowSpan = rowSpan)
+                }
+                layout.copy(widgets = updatedWidgets).also { newLayout ->
+                    viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+                }
+            } else layout
         }
     }
 
     fun updateWidgetConfig(updatedWidget: WidgetConfiguration) {
-        val currentWidgets = _dashboardLayout.value.widgets.toMutableList()
-        val index = currentWidgets.indexOfFirst { it.id == updatedWidget.id }
-        if (index != -1) {
-            currentWidgets[index] = updatedWidget
-            val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
-            _dashboardLayout.value = newLayout
-            viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+        _dashboardLayout.update { layout ->
+            val index = layout.widgets.indexOfFirst { it.id == updatedWidget.id }
+            if (index != -1) {
+                val updatedWidgets = layout.widgets.toMutableList().apply {
+                    this[index] = updatedWidget
+                }
+                layout.copy(widgets = updatedWidgets).also { newLayout ->
+                    viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+                }
+            } else layout
         }
     }
 
     fun deleteWidget(widgetId: String) {
-        val currentWidgets = _dashboardLayout.value.widgets.filter { it.id != widgetId }
-        val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
-        _dashboardLayout.value = newLayout
-        viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
-    }
-    
-    fun acknowledgeAlarm(tagAddress: String) {
-        val currentWidgets = _dashboardLayout.value.widgets.toMutableList()
-        var changed = false
-        for (i in currentWidgets.indices) {
-            val widget = currentWidgets[i]
-            if (widget.tagAddress == tagAddress && widget.alarmState == com.example.hmi.data.AlarmState.Unacknowledged) {
-                currentWidgets[i] = widget.copy(alarmState = com.example.hmi.data.AlarmState.Acknowledged)
-                changed = true
+        _dashboardLayout.update { layout ->
+            layout.copy(widgets = layout.widgets.filter { it.id != widgetId }).also { newLayout ->
+                viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
             }
         }
-        if (changed) {
-            val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
-            _dashboardLayout.value = newLayout
-            viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+    }
+
+    fun acknowledgeAlarm(tagAddress: String) {
+        _dashboardLayout.update { layout ->
+            val updatedWidgets = layout.widgets.map { widget ->
+                if (widget.tagAddress == tagAddress && widget.alarmState == com.example.hmi.data.AlarmState.Unacknowledged) {
+                    widget.copy(alarmState = com.example.hmi.data.AlarmState.Acknowledged)
+                } else widget
+            }
+            if (updatedWidgets != layout.widgets) {
+                layout.copy(widgets = updatedWidgets).also { newLayout ->
+                    viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+                }
+            } else layout
         }
     }
-    
+
     fun updateDashboardSettings(name: String, canvasColor: Long?, hapticFeedbackEnabled: Boolean, orientationMode: com.example.hmi.data.OrientationMode) {
-        val newLayout = _dashboardLayout.value.copy(
-            name = name, 
-            canvasColor = canvasColor,
-            hapticFeedbackEnabled = hapticFeedbackEnabled,
-            orientationMode = orientationMode
-        )
-        _dashboardLayout.value = newLayout
-        viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+        _dashboardLayout.update { layout ->
+            layout.copy(
+                name = name,
+                canvasColor = canvasColor,
+                hapticFeedbackEnabled = hapticFeedbackEnabled,
+                orientationMode = orientationMode
+            ).also { newLayout ->
+                viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+            }
+        }
     }
 
     fun updateOrientationMode(mode: com.example.hmi.data.OrientationMode) {
-        val newLayout = _dashboardLayout.value.copy(orientationMode = mode)
-        _dashboardLayout.value = newLayout
-        viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+        _dashboardLayout.update { layout ->
+            layout.copy(orientationMode = mode).also { newLayout ->
+                viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+            }
+        }
     }
 
     fun addWidget(widget: WidgetConfiguration) {
-        val currentWidgets = _dashboardLayout.value.widgets.toMutableList()
-        currentWidgets.add(widget)
-        val newLayout = _dashboardLayout.value.copy(widgets = currentWidgets)
-        _dashboardLayout.value = newLayout
-        viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+        _dashboardLayout.update { layout ->
+            layout.copy(widgets = layout.widgets + widget).also { newLayout ->
+                viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+            }
+        }
     }
 
     fun exportLayout(uri: android.net.Uri) {

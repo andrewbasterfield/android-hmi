@@ -99,9 +99,8 @@ fun DashboardScreen(
     }
 
     LaunchedEffect(dashboardLayout.widgets) {
-        dashboardLayout.widgets.forEach { widget ->
-            viewModel.observeTag(widget.tagAddress)
-        }
+        val currentTags = dashboardLayout.widgets.map { it.tagAddress }.toSet()
+        viewModel.syncTagObservations(currentTags)
     }
 
     val globalStatus by remember(tagValues, dashboardLayout.widgets) {

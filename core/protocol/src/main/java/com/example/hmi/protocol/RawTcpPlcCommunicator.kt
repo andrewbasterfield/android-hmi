@@ -28,21 +28,23 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
         val port = profile.port
         _connectionState.value = ConnectionState.CONNECTING
         Log.d("RawTcpPlcCommunicator", "Connecting to $ipAddress:$port")
+        val newSocket = Socket()
         try {
-            val newSocket = Socket()
             // Set a 5-second timeout for the connection attempt
             newSocket.connect(InetSocketAddress(ipAddress, port), 5000)
             socket = newSocket
-            
+
             _connectionState.value = ConnectionState.CONNECTED
             Log.d("RawTcpPlcCommunicator", "Connected to $ipAddress:$port")
-            
+
             // Start background listening loop
             startListening(newSocket)
-            
+
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e("RawTcpPlcCommunicator", "Connection failed: ${e.message}")
+            // Close socket to prevent file descriptor leak on failed connection
+            try { newSocket.close() } catch (_: Exception) {}
             _connectionState.value = ConnectionState.ERROR
             Result.failure(e)
         }
