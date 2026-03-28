@@ -33,6 +33,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-10
 - Jetpack DataStore (Preferences), External Files (via SAF) (026-config-file-transfer)
 - Kotlin 1.9.22 + Jetpack Compose, Kotlin Coroutines, Hilt, Jetpack DataStore, GSON (027-orientation-management)
 - Jetpack DataStore (Preferences with GSON serialization) (027-orientation-management)
+- Kotlin 1.9.22 + Jetpack Compose, Hilt, Kotlin Coroutines (StateFlow), Jetpack DataStore, GSON (028-duplicate-widget)
+- Jetpack DataStore (Preferences with JSON serialization via GSON) (028-duplicate-widget)
 
 - Kotlin (Latest stable) + Jetpack Compose, Kotlin Coroutines (StateFlow/SharedFlow), Hilt (001-hmi-control-panel)
 
@@ -56,9 +58,9 @@ tests/
 Kotlin (Latest stable): Follow standard conventions
 
 ## Recent Changes
+- 028-duplicate-widget: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Kotlin Coroutines (StateFlow), Jetpack DataStore, GSON
+- 028-duplicate-widget: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Kotlin Coroutines (StateFlow), Jetpack DataStore, GSON
 - 027-orientation-management: Added Kotlin 1.9.22 + Jetpack Compose, Kotlin Coroutines, Hilt, Jetpack DataStore, GSON
-- 026-config-file-transfer: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON, Android SAF, Android Intent System, JSON Schema Validator (e.g., `com.networknt:json-schema-validator`)
-- 026-config-file-transfer: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Jetpack DataStore, GSON, Android Storage Access Framework (SAF), Android Intent System.
 
 
 <!-- MANUAL ADDITIONS START -->

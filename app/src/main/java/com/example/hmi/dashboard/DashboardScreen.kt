@@ -19,7 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
@@ -52,6 +54,14 @@ fun DashboardScreen(
     val isEditMode by viewModel.isEditMode.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
     val globalStatus by viewModel.globalStatus.collectAsState()
+    
+    var srAnnouncement by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        viewModel.announcements.collect { message ->
+            srAnnouncement = message
+        }
+    }
 
     var editingWidget by remember { mutableStateOf<WidgetConfiguration?>(null) }
     var showDashboardSettings by remember { mutableStateOf(false) }
@@ -115,6 +125,12 @@ fun DashboardScreen(
             onDelete = {
                 editingWidget?.let { viewModel.deleteWidget(it.id) }
                 editingWidget = null
+            },
+            onDuplicate = {
+                editingWidget?.let { 
+                    viewModel.duplicateWidget(it.id)
+                }
+                editingWidget = null
             }
         )
     }
@@ -150,6 +166,19 @@ fun DashboardScreen(
     }
 
     EmergencyHUD(status = globalStatus) {
+        // Hidden element for screen reader announcements
+        if (srAnnouncement.isNotEmpty()) {
+            Text(
+                text = srAnnouncement,
+                modifier = Modifier
+                    .size(1.dp)
+                    .semantics { 
+                        liveRegion = LiveRegionMode.Polite 
+                        invisibleToUser()
+                    }
+            )
+        }
+
         Scaffold(
             topBar = {
                 TopAppBar(

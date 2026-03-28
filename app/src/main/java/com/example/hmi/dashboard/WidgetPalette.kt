@@ -74,7 +74,8 @@ fun WidgetConfigDialog(
     initialWidget: WidgetConfiguration? = null,
     onDismiss: () -> Unit,
     onConfirm: (WidgetConfiguration) -> Unit,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    onDuplicate: (() -> Unit)? = null
 ) {
     var selectedType by remember { mutableStateOf(initialWidget?.type ?: WidgetType.BUTTON) }
     // Use orEmpty() to handle Gson setting non-null String fields to null at runtime
@@ -470,6 +471,15 @@ fun WidgetConfigDialog(
                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) {
                         Text("Delete")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                if (onDuplicate != null) {
+                    TextButton(
+                        onClick = onDuplicate,
+                        modifier = Modifier.heightIn(min = 48.dp) // A11Y-001
+                    ) {
+                        Text("Duplicate")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                 }

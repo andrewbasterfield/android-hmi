@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -82,6 +83,9 @@ class DashboardViewModel @Inject constructor(
 
     private val _importResult = MutableSharedFlow<Result<Unit>>(replay = 0)
     val importResult: SharedFlow<Result<Unit>> = _importResult
+
+    private val _announcements = MutableSharedFlow<String>(replay = 0)
+    val announcements: SharedFlow<String> = _announcements.asSharedFlow()
 
     val transferEvents: SharedFlow<TransferEvent> = transferManager.events
 
@@ -246,6 +250,31 @@ class DashboardViewModel @Inject constructor(
                     viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
                 }
             } else layout
+        }
+    }
+
+    fun duplicateWidget(widgetId: String) {
+        _dashboardLayout.update { layout ->
+            val source = layout.widgets.find { it.id == widgetId }
+            if (source != null) {
+                val maxZOrder = layout.widgets.maxOfOrNull { it.zOrder } ?: 0
+                val duplicate = source.copy(
+                    id = java.util.UUID.randomUUID().toString(),
+                    column = source.column + 1,
+                    row = source.row + 1,
+                    zOrder = maxZOrder + 1
+                )
+                val newWidgets = layout.widgets + duplicate
+                val newLayout = layout.copy(widgets = newWidgets)
+                
+                viewModelScope.launch(ioDispatcher) {
+                    repository.saveLayout(newLayout)
+                    _announcements.emit("Widget duplicated")
+                }
+                newLayout
+            } else {
+                layout
+            }
         }
     }
 

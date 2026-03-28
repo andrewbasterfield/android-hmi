@@ -188,4 +188,33 @@ class DashboardViewModelTest {
         assertTrue(result.isFailure)
         assertTrue(result.exceptionOrNull()?.message?.contains("name cannot be blank") == true)
     }
+
+    @Test
+    fun `duplicateWidget creates copy with offset and new ID`() = testScope.runTest {
+        val sourceWidget = WidgetConfiguration(
+            id = "source-id",
+            type = WidgetType.BUTTON,
+            column = 2,
+            row = 3,
+            zOrder = 5,
+            tagAddress = "TAG_1"
+        )
+        layoutFlow.value = DashboardLayout(widgets = listOf(sourceWidget))
+        runCurrent() // Ensure ViewModel collects the initial layout
+        
+        viewModel.duplicateWidget("source-id")
+        runCurrent()
+
+        val widgets = viewModel.dashboardLayout.value.widgets
+        assertEquals(2, widgets.size)
+        
+        val duplicate = widgets.find { it.id != "source-id" }
+        assertTrue("Duplicate should exist", duplicate != null)
+        assertEquals(sourceWidget.type, duplicate?.type)
+        assertEquals(sourceWidget.tagAddress, duplicate?.tagAddress)
+        assertEquals(sourceWidget.column + 1, duplicate?.column)
+        assertEquals(sourceWidget.row + 1, duplicate?.row)
+        assertTrue("Duplicate should have higher zOrder", (duplicate?.zOrder ?: 0) > sourceWidget.zOrder)
+        assertTrue("Duplicate should have new UUID", duplicate?.id?.length ?: 0 > 0 && duplicate?.id != "source-id")
+    }
 }
