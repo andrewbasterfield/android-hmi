@@ -176,28 +176,32 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun observeTag(tagAddress: String) {
-        // Skip if already observing this tag
-        if (tagAddress.isBlank() || activeTagObservations[tagAddress]?.isActive == true) {
-            return
-        }
+        if (tagAddress.isBlank()) return
 
-        val job = viewModelScope.launch(ioDispatcher) {
-            plcCommunicator.observeTag(tagAddress).collect { value ->
-                when (value) {
-                    is PlcValue.FloatValue -> {
-                        _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value.value) }
+        synchronized(activeTagObservations) {
+            // Skip if already observing this tag
+            if (activeTagObservations[tagAddress]?.isActive == true) {
+                return
+            }
+
+            val job = viewModelScope.launch(ioDispatcher) {
+                plcCommunicator.observeTag(tagAddress).collect { value ->
+                    when (value) {
+                        is PlcValue.FloatValue -> {
+                            _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value.value) }
+                        }
+                        is PlcValue.IntValue -> {
+                            _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value.value.toFloat()) }
+                        }
+                        is PlcValue.BooleanValue -> {
+                            _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, if (value.value) 1f else 0f) }
+                        }
+                        is PlcValue.StringValue -> {}
                     }
-                    is PlcValue.IntValue -> {
-                        _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value.value.toFloat()) }
-                    }
-                    is PlcValue.BooleanValue -> {
-                        _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, if (value.value) 1f else 0f) }
-                    }
-                    is PlcValue.StringValue -> {}
                 }
             }
+            activeTagObservations[tagAddress] = job
         }
-        activeTagObservations[tagAddress] = job
     }
 
     /**
@@ -205,16 +209,18 @@ class DashboardViewModel @Inject constructor(
      * Cancels observations for tags no longer in use.
      */
     fun syncTagObservations(currentTagAddresses: Set<String>) {
-        // Cancel observations for tags no longer needed
-        val tagsToRemove = activeTagObservations.keys - currentTagAddresses
-        tagsToRemove.forEach { tagAddress ->
-            activeTagObservations[tagAddress]?.cancel()
-            activeTagObservations.remove(tagAddress)
-        }
+        synchronized(activeTagObservations) {
+            // Cancel observations for tags no longer needed
+            val tagsToRemove = activeTagObservations.keys - currentTagAddresses
+            tagsToRemove.forEach { tagAddress ->
+                activeTagObservations[tagAddress]?.cancel()
+                activeTagObservations.remove(tagAddress)
+            }
 
-        // Start observations for new tags
-        currentTagAddresses.forEach { tagAddress ->
-            observeTag(tagAddress)
+            // Start observations for new tags
+            currentTagAddresses.forEach { tagAddress ->
+                observeTag(tagAddress)
+            }
         }
     }
 

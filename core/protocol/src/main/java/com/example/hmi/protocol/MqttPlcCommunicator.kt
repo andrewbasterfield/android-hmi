@@ -10,6 +10,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient
 import com.hivemq.client.mqtt.mqtt3.Mqtt3Client
+import com.hivemq.client.mqtt.mqtt3.exceptions.Mqtt3DisconnectException
 import com.hivemq.client.mqtt.mqtt3.message.connect.connack.Mqtt3ConnAck
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
@@ -86,10 +87,10 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
                 _connectionState.value = ConnectionState.CONNECTED
             }
             .addDisconnectedListener { context ->
-                // context.cause returns an Optional-like object from HiveMQ
-                // Check if it has a value by examining toString() representation
+                // Check if disconnection was unexpected (BUG-014 fix)
+                // In HiveMQ MQTT 3, Mqtt3DisconnectException represents an intentional disconnect.
                 val cause = context.cause
-                val hasError = !cause.toString().contains("Optional.empty")
+                val hasError = cause !is Mqtt3DisconnectException
                 if (hasError) {
                     // Only reset attempts if we had a stable connection (5+ seconds)
                     val connectionDuration = System.currentTimeMillis() - lastConnectedTime

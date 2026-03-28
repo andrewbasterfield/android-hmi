@@ -38,6 +38,37 @@
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
 -keepclassmembers class kotlinx.coroutines.** { volatile <fields>; }
 
-# Netty (for MQTT)
+# --- CRITICAL FIX FOR HIVEMQ / NETTY / JCTOOLS ---
+# These libraries use AtomicFieldUpdaters which access fields by string name.
+# R8 must not rename or strip these fields.
+
+# 1. Protect the specific field names used in concurrent queues
+-keepclassmembers class * {
+    volatile long producerIndex;
+    volatile long consumerIndex;
+    volatile int producerIndex;
+    volatile int consumerIndex;
+}
+
+# 2. Broader protection for HiveMQ internals
+-dontwarn com.hivemq.client.**
+-keep class com.hivemq.client.** { *; }
+-keep class com.hivemq.client.internal.** {
+    volatile <fields>;
+}
+
+# 3. Broader protection for Netty internals
 -dontwarn io.netty.**
 -keep class io.netty.** { *; }
+-keepclassmembers class io.netty.util.internal.** {
+    volatile <fields>;
+}
+
+# 4. JCTools (often shaded or used internally by HiveMQ/Netty)
+-dontwarn org.jctools.**
+-keep class org.jctools.** { *; }
+-keepclassmembers class org.jctools.** {
+    volatile <fields>;
+}
+
+# --- END CRITICAL FIX ---
