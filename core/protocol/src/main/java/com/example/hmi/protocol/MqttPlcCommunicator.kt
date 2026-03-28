@@ -1,8 +1,13 @@
 package com.example.hmi.protocol
 
 import android.util.Log
-import com.google.gson.JsonParser
 import com.hivemq.client.mqtt.datatypes.MqttQos
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.floatOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient
 import com.hivemq.client.mqtt.mqtt3.Mqtt3Client
 import com.hivemq.client.mqtt.mqtt3.message.connect.connack.Mqtt3ConnAck
@@ -215,14 +220,14 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
     private fun parsePayload(payload: String, settings: MqttSettings, topic: String? = null): PlcValue {
         return if (settings.payloadFormat == MqttPayloadFormat.JSON && settings.jsonKey != null) {
             try {
-                val jsonObject = JsonParser.parseString(payload).asJsonObject
-                val valueElement = jsonObject.get(settings.jsonKey)
-                if (valueElement != null && valueElement.isJsonPrimitive) {
-                    val primitive = valueElement.asJsonPrimitive
+                val jsonElement = Json.parseToJsonElement(payload)
+                val valueElement = jsonElement.jsonObject[settings.jsonKey]
+                if (valueElement != null && valueElement is JsonPrimitive) {
+                    val primitive = valueElement.jsonPrimitive
                     when {
-                        primitive.isBoolean -> PlcValue.BooleanValue(primitive.asBoolean)
-                        primitive.isNumber -> PlcValue.FloatValue(primitive.asFloat)
-                        else -> PlcValue.StringValue(primitive.asString)
+                        primitive.booleanOrNull != null -> PlcValue.BooleanValue(primitive.booleanOrNull!!)
+                        primitive.floatOrNull != null -> PlcValue.FloatValue(primitive.floatOrNull!!)
+                        else -> PlcValue.StringValue(primitive.content)
                     }
                 } else {
                     Log.w(TAG, "JSON key '${settings.jsonKey}' not found or not primitive in payload from ${topic ?: "unknown"}: $payload")

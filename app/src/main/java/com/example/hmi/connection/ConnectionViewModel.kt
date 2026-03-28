@@ -16,13 +16,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
 @HiltViewModel
 class ConnectionViewModel @Inject constructor(
     private val plcCommunicator: PlcCommunicator,
     private val repository: DashboardRepository,
-    private val transferManager: ConfigTransferManager
+    private val transferManager: ConfigTransferManager,
+    private val json: Json
 ) : ViewModel() {
 
     val connectionState = plcCommunicator.connectionState
@@ -158,8 +161,8 @@ class ConnectionViewModel @Inject constructor(
         viewModelScope.launch {
             val profiles = repository.savedProfilesFlow.first()
             val backup = com.example.hmi.data.FullBackupPackage(profiles = profiles)
-            val json = com.google.gson.Gson().toJson(backup)
-            transferManager.shareConfig(context, json, "connection_profiles.json")
+            val jsonStr = json.encodeToString(backup)
+            transferManager.shareConfig(context, jsonStr, "connection_profiles.json")
         }
     }
 

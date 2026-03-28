@@ -5,18 +5,33 @@
 
 # Compose
 -dontwarn androidx.compose.**
--keep class androidx.compose.** { *; }
 
 # Hilt
 -dontwarn dagger.hilt.**
 -keep class dagger.hilt.** { *; }
 -keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
 
-# Gson
--keepattributes Signature
--keepattributes *Annotation*
--keep class com.google.gson.** { *; }
--keep class com.example.hmi.data.** { *; }
+# kotlinx.serialization
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+-keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
+-keepclasseswithmembers class kotlinx.serialization.json.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-keep,includedescriptorclasses class com.example.hmi.data.**$$serializer { *; }
+-keepclassmembers class com.example.hmi.data.** {
+    *** Companion;
+}
+-keepclasseswithmembers class com.example.hmi.data.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-keep,includedescriptorclasses class com.example.hmi.protocol.**$$serializer { *; }
+-keepclassmembers class com.example.hmi.protocol.** {
+    *** Companion;
+}
+-keepclasseswithmembers class com.example.hmi.protocol.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
 
 # Coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
@@ -26,15 +41,3 @@
 # Netty (for MQTT)
 -dontwarn io.netty.**
 -keep class io.netty.** { *; }
-
-# Keep all data classes for Gson serialization (preserve field names)
--keep class com.example.hmi.data.** { *; }
--keepclassmembers class com.example.hmi.data.** {
-    <fields>;
-    <init>(...);
-}
-
-# Prevent R8 from stripping default values
--keepclassmembers,allowobfuscation class * {
-    @com.google.gson.annotations.SerializedName <fields>;
-}

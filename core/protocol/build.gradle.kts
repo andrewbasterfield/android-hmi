@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.22"
 }
 
 android {
@@ -36,8 +37,8 @@ dependencies {
     // MQTT Client
     implementation("com.hivemq:hivemq-mqtt-client:1.3.3")
 
-    // GSON
-    implementation("com.google.code.gson:gson:2.10.1")
+    // Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
 
     // Hilt
     implementation("com.google.dagger:hilt-android:2.50")

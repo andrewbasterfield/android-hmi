@@ -15,9 +15,9 @@ import com.example.hmi.protocol.ConnectionState
 import com.example.hmi.protocol.PlcCommunicator
 import com.example.hmi.protocol.PlcValue
 import com.example.hmi.widgets.ColorUtils
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +33,7 @@ class DashboardViewModel @Inject constructor(
     private val plcCommunicator: PlcCommunicator,
     private val repository: DashboardRepository,
     private val transferManager: ConfigTransferManager,
+    private val json: Json,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
@@ -54,8 +55,6 @@ class DashboardViewModel @Inject constructor(
     val importResult: SharedFlow<Result<Unit>> = _importResult
 
     val transferEvents: SharedFlow<TransferEvent> = transferManager.events
-
-    private val gson = GsonBuilder().setPrettyPrinting().create()
 
     init {
         viewModelScope.launch(ioDispatcher) {
@@ -323,24 +322,24 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             val layout = repository.dashboardLayoutFlow.first()
             val backup = com.example.hmi.data.FullBackupPackage(layout = layout)
-            val json = gson.toJson(backup)
-            transferManager.shareConfig(context, json, "dashboard_layout.json")
+            val jsonStr = json.encodeToString(backup)
+            transferManager.shareConfig(context, jsonStr, "dashboard_layout.json")
         }
     }
 
     fun exportLayoutToJson(): String {
-        return gson.toJson(_dashboardLayout.value)
+        return json.encodeToString(_dashboardLayout.value)
     }
 
-    fun importLayoutFromJson(json: String) {
+    fun importLayoutFromJson(jsonStr: String) {
         viewModelScope.launch(ioDispatcher) {
             try {
-                val newLayout = gson.fromJson(json, DashboardLayout::class.java)
-                if (newLayout == null || newLayout.name.isBlank()) {
+                val newLayout = json.decodeFromString<DashboardLayout>(jsonStr)
+                if (newLayout.name.isBlank()) {
                     _importResult.emit(Result.failure(Exception("Invalid layout or name cannot be blank")))
                     return@launch
                 }
-                
+
                 val safeLayout = ensureNonNullFields(newLayout)
                 _dashboardLayout.value = safeLayout
                 repository.saveLayout(safeLayout)

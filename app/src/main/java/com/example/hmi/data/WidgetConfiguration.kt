@@ -1,15 +1,21 @@
 package com.example.hmi.data
 
+import kotlinx.serialization.Serializable
 import java.util.UUID
 
+@Serializable
 enum class WidgetType { BUTTON, SLIDER, GAUGE }
 
+@Serializable
 enum class GaugeStyle { POINTER, ARC_FILL }
 
+@Serializable
 enum class AlarmState { Normal, Unacknowledged, Acknowledged }
 
+@Serializable
 enum class InteractionType { MOMENTARY, LATCHING, INDICATOR }
 
+@Serializable
 data class WidgetConfiguration(
     val id: String = UUID.randomUUID().toString(),
     val type: WidgetType = WidgetType.BUTTON,

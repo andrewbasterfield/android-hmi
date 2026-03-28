@@ -8,11 +8,11 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.hmi.protocol.PlcConnectionProfile
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,23 +20,22 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "da
 
 @Singleton
 open class DashboardRepository @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val json: Json
 ) {
     private val DASHBOARD_KEY = stringPreferencesKey("dashboard_layout")
     private val CONNECTION_PROFILE_KEY = stringPreferencesKey("connection_profile")
     private val SAVED_PROFILES_KEY = stringPreferencesKey("saved_profiles")
     private val KEEP_SCREEN_ON_KEY = androidx.datastore.preferences.core.booleanPreferencesKey("keep_screen_on")
     private val RECENT_COLORS_KEY = stringPreferencesKey("recent_colors")
-    private val gson = Gson()
 
     val recentColorsFlow: Flow<List<Long>> = context.dataStore.data.map { preferences ->
-        val json = preferences[RECENT_COLORS_KEY]
-        if (json.isNullOrEmpty()) {
+        val jsonStr = preferences[RECENT_COLORS_KEY]
+        if (jsonStr.isNullOrEmpty()) {
             emptyList()
         } else {
             try {
-                val type = object : com.google.gson.reflect.TypeToken<List<Long>>() {}.type
-                gson.fromJson(json, type)
+                json.decodeFromString<List<Long>>(jsonStr)
             } catch (e: Exception) {
                 emptyList()
             }
@@ -45,18 +44,17 @@ open class DashboardRepository @Inject constructor(
 
     suspend fun saveRecentColors(colors: List<Long>) {
         context.dataStore.edit { preferences ->
-            preferences[RECENT_COLORS_KEY] = gson.toJson(colors)
+            preferences[RECENT_COLORS_KEY] = json.encodeToString(colors)
         }
     }
 
     val savedProfilesFlow: Flow<List<PlcConnectionProfile>> = context.dataStore.data.map { preferences ->
-        val json = preferences[SAVED_PROFILES_KEY]
-        if (json.isNullOrEmpty()) {
+        val jsonStr = preferences[SAVED_PROFILES_KEY]
+        if (jsonStr.isNullOrEmpty()) {
             emptyList()
         } else {
             try {
-                val type = object : TypeToken<List<PlcConnectionProfile>>() {}.type
-                gson.fromJson(json, type)
+                json.decodeFromString<List<PlcConnectionProfile>>(jsonStr)
             } catch (e: Exception) {
                 emptyList()
             }
@@ -70,8 +68,7 @@ open class DashboardRepository @Inject constructor(
                 mutableListOf()
             } else {
                 try {
-                    val type = object : TypeToken<List<PlcConnectionProfile>>() {}.type
-                    gson.fromJson<List<PlcConnectionProfile>>(currentJson, type).toMutableList()
+                    json.decodeFromString<List<PlcConnectionProfile>>(currentJson).toMutableList()
                 } catch (e: Exception) {
                     mutableListOf()
                 }
@@ -81,7 +78,7 @@ open class DashboardRepository @Inject constructor(
             currentList.removeAll { it.name == profile.name }
             currentList.add(profile)
 
-            preferences[SAVED_PROFILES_KEY] = gson.toJson(currentList)
+            preferences[SAVED_PROFILES_KEY] = json.encodeToString(currentList)
         }
     }
 
@@ -92,8 +89,7 @@ open class DashboardRepository @Inject constructor(
                 mutableListOf()
             } else {
                 try {
-                    val type = object : TypeToken<List<PlcConnectionProfile>>() {}.type
-                    gson.fromJson<List<PlcConnectionProfile>>(currentJson, type).toMutableList()
+                    json.decodeFromString<List<PlcConnectionProfile>>(currentJson).toMutableList()
                 } catch (e: Exception) {
                     mutableListOf()
                 }
@@ -104,7 +100,7 @@ open class DashboardRepository @Inject constructor(
                 currentList.add(newProfile)
             }
 
-            preferences[SAVED_PROFILES_KEY] = gson.toJson(currentList)
+            preferences[SAVED_PROFILES_KEY] = json.encodeToString(currentList)
         }
     }
 
@@ -113,11 +109,10 @@ open class DashboardRepository @Inject constructor(
             val currentJson = preferences[SAVED_PROFILES_KEY]
             if (!currentJson.isNullOrEmpty()) {
                 try {
-                    val type = object : TypeToken<List<PlcConnectionProfile>>() {}.type
                     val currentList: MutableList<PlcConnectionProfile> =
-                        gson.fromJson<List<PlcConnectionProfile>>(currentJson, type).toMutableList()
+                        json.decodeFromString<List<PlcConnectionProfile>>(currentJson).toMutableList()
                     currentList.removeAll { it.name == profileName }
-                    preferences[SAVED_PROFILES_KEY] = gson.toJson(currentList)
+                    preferences[SAVED_PROFILES_KEY] = json.encodeToString(currentList)
                 } catch (e: Exception) {
                     // Ignore parse errors
                 }
@@ -136,12 +131,12 @@ open class DashboardRepository @Inject constructor(
     }
 
     open val dashboardLayoutFlow: Flow<DashboardLayout> = context.dataStore.data.map { preferences ->
-        val json = preferences[DASHBOARD_KEY]
-        if (json.isNullOrEmpty()) {
+        val jsonStr = preferences[DASHBOARD_KEY]
+        if (jsonStr.isNullOrEmpty()) {
             DashboardLayout()
         } else {
             try {
-                gson.fromJson(json, DashboardLayout::class.java)
+                json.decodeFromString<DashboardLayout>(jsonStr)
             } catch (e: Exception) {
                 DashboardLayout()
             }
@@ -150,13 +145,13 @@ open class DashboardRepository @Inject constructor(
 
     open suspend fun saveLayout(layout: DashboardLayout) {
         context.dataStore.edit { preferences ->
-            preferences[DASHBOARD_KEY] = gson.toJson(layout)
+            preferences[DASHBOARD_KEY] = json.encodeToString(layout)
         }
     }
 
     val connectionProfileFlow: Flow<PlcConnectionProfile?> = context.dataStore.data.map { preferences ->
-        val json = preferences[CONNECTION_PROFILE_KEY]
-        if (json.isNullOrEmpty()) {
+        val jsonStr = preferences[CONNECTION_PROFILE_KEY]
+        if (jsonStr.isNullOrEmpty()) {
             // Migration check: if old keys exist, migrate them
             val ipAddress = preferences[stringPreferencesKey("ip_address")]
             val port = preferences[intPreferencesKey("port")]
@@ -167,7 +162,7 @@ open class DashboardRepository @Inject constructor(
             }
         } else {
             try {
-                gson.fromJson(json, PlcConnectionProfile::class.java)
+                json.decodeFromString<PlcConnectionProfile>(jsonStr)
             } catch (e: Exception) {
                 null
             }
@@ -176,7 +171,7 @@ open class DashboardRepository @Inject constructor(
 
     suspend fun saveConnectionProfile(profile: PlcConnectionProfile) {
         context.dataStore.edit { preferences ->
-            preferences[CONNECTION_PROFILE_KEY] = gson.toJson(profile)
+            preferences[CONNECTION_PROFILE_KEY] = json.encodeToString(profile)
         }
     }
 }
