@@ -47,10 +47,11 @@ fun DashboardScreen(
     onNavigateBack: () -> Unit
 ) {
     val dashboardLayout by viewModel.dashboardLayout.collectAsState()
-    val tagValues by viewModel.tagValues.collectAsState()
-    val sessionOverrides by viewModel.sessionOverrides.collectAsState()
+    val tagValuesState = viewModel.tagValues.collectAsState()
+    val sessionOverridesState = viewModel.sessionOverrides.collectAsState()
     val isEditMode by viewModel.isEditMode.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
+    val globalStatus by viewModel.globalStatus.collectAsState()
 
     var editingWidget by remember { mutableStateOf<WidgetConfiguration?>(null) }
     var showDashboardSettings by remember { mutableStateOf(false) }
@@ -99,26 +100,8 @@ fun DashboardScreen(
     }
 
     LaunchedEffect(dashboardLayout.widgets) {
-        dashboardLayout.widgets.forEach { widget ->
-            viewModel.observeTag(widget.tagAddress)
-        }
-    }
-
-    val globalStatus by remember(tagValues, dashboardLayout.widgets) {
-        derivedStateOf {
-            val widgetStatuses = dashboardLayout.widgets.map { widget ->
-                val currentValue = tagValues[widget.tagAddress] ?: 0f
-                val zone = widget.colorZones.find { currentValue in it.startValue..it.endValue }
-                when (zone?.label) {
-                    "CRITICAL" -> HealthStatus.CRITICAL
-                    "CAUTION" -> HealthStatus.CAUTION
-                    else -> HealthStatus.NORMAL
-                }
-            }
-            if (widgetStatuses.any { it == HealthStatus.CRITICAL }) HealthStatus.CRITICAL
-            else if (widgetStatuses.any { it == HealthStatus.CAUTION }) HealthStatus.CAUTION
-            else HealthStatus.NORMAL
-        }
+        val currentTags = dashboardLayout.widgets.map { it.tagAddress }.toSet()
+        viewModel.syncTagObservations(currentTags)
     }
 
     if (editingWidget != null) {
@@ -332,8 +315,8 @@ fun DashboardScreen(
                                 animatedPageOffsetY = animatedPageOffsetY.value,
                                 viewportCols = viewportCols,
                                 viewportRows = viewportRows,
-                                tagValues = tagValues,
-                                sessionOverrides = sessionOverrides,
+                                tagValuesState = tagValuesState,
+                                sessionOverridesState = sessionOverridesState,
                                 isEditMode = isEditMode,
                                 hapticEnabled = dashboardLayout.hapticFeedbackEnabled,
                                 draggingOffsets = draggingOffsets,
@@ -364,8 +347,8 @@ private fun WidgetRenderingNode(
     animatedPageOffsetY: Float,
     viewportCols: Int,
     viewportRows: Int,
-    tagValues: Map<String, Float>,
-    sessionOverrides: Map<String, Map<String, String>>,
+    tagValuesState: State<Map<String, Float>>,
+    sessionOverridesState: State<Map<String, Map<String, String>>>,
     isEditMode: Boolean,
     hapticEnabled: Boolean,
     draggingOffsets: MutableMap<String, Offset>,
@@ -377,10 +360,16 @@ private fun WidgetRenderingNode(
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    
-    val currentValue = tagValues[widget.tagAddress] ?: 0f
-    val tagOverrides = sessionOverrides[widget.tagAddress]
-    val resolvedLabel = tagOverrides?.get("label") ?: widget.customLabel ?: widget.tagAddress
+
+    // Use derivedStateOf to isolate recomposition - only recompose when THIS widget's tag value changes
+    val tagAddress = widget.tagAddress.orEmpty()
+    val currentValue by remember(tagAddress) {
+        derivedStateOf { tagValuesState.value[tagAddress] ?: 0f }
+    }
+    val tagOverrides by remember(tagAddress) {
+        derivedStateOf { sessionOverridesState.value[tagAddress] }
+    }
+    val resolvedLabel = tagOverrides?.get("label") ?: widget.customLabel ?: tagAddress
     val resolvedColorLong = tagOverrides?.get("color")?.let { 
         com.example.hmi.widgets.ColorUtils.parseHexColor(it) 
     } ?: widget.backgroundColor
@@ -441,10 +430,22 @@ private fun WidgetRenderingNode(
 
     val visualWidth = if (isBeingResized) (gestureStartStates[widget.id]?.second?.width ?: animatableSize.value.width).toFloat() + resizeOffset!!.x 
                       else animatableSize.value.width.toFloat()
-    val visualHeight = if (isBeingResized) (gestureStartStates[widget.id]?.second?.height ?: animatableSize.value.height).toFloat() + resizeOffset!!.y 
+    val visualHeight = if (isBeingResized) (gestureStartStates[widget.id]?.second?.height ?: animatableSize.value.width).toFloat() + resizeOffset!!.y 
                        else animatableSize.value.height.toFloat()
 
+    // Calculate snap ghost position
+    val snapCol = with(density) { GridSystem.dpToCell(visualX.toDp()) }
+    val snapRow = with(density) { GridSystem.dpToCell(visualY.toDp()) }
+    val snapColSpan = with(density) { GridSystem.dpToCell(visualWidth.toDp()) }.coerceAtLeast(1)
+    val snapRowSpan = with(density) { GridSystem.dpToCell(visualHeight.toDp()) }.coerceAtLeast(1)
+
+    val snapX = with(density) { GridSystem.cellToDp(snapCol).toPx() }
+    val snapY = with(density) { GridSystem.cellToDp(snapRow).toPx() }
+    val snapWidth = with(density) { GridSystem.cellToDp(snapColSpan).toPx() }
+    val snapHeight = with(density) { GridSystem.cellToDp(snapRowSpan).toPx() }
+
     val currentOnDragEnd by rememberUpdatedState {
+
         scope.launch {
             val startState = gestureStartStates[widget.id]
             val latestVisualX = (startState?.first?.x ?: animatableOffset.value.x) + (draggingOffsets[widget.id]?.x ?: 0f)
@@ -476,14 +477,14 @@ private fun WidgetRenderingNode(
     Box(
         modifier = Modifier
             .size(
-                width = with(density) { visualWidth.toDp() },
-                height = with(density) { visualHeight.toDp() }
+                width = with(density) { maxOf(visualWidth, snapWidth).toDp() },
+                height = with(density) { maxOf(visualHeight, snapHeight).toDp() }
             )
             .offset {
-                // Apply the page-relative offset
+                // Outer box is positioned at the min(visual, snap) to contain both
                 IntOffset(
-                    (visualX - pageOffsetX).roundToInt(),
-                    (visualY - pageOffsetY).roundToInt()
+                    (minOf(visualX, snapX) - pageOffsetX).roundToInt(),
+                    (minOf(visualY, snapY) - pageOffsetY).roundToInt()
                 )
             }
             .zIndex(widget.zOrder.toFloat() + if (isBeingDragged || isBeingResized) 10000f else 0f)
@@ -492,11 +493,53 @@ private fun WidgetRenderingNode(
             com.example.hmi.core.ui.theme.Primary.value.toLong()
         } else null
 
-        WidgetContainer(
-            backgroundColor = containerColor,
-            isEditMode = isEditMode,
-            textColorOverride = widget.textColorOverride,
-            showOutline = widget.showOutline,
+        // Render snap ghost (translucent background)
+        if (isBeingDragged || isBeingResized) {
+            Box(
+                modifier = Modifier
+                    .size(
+                        width = with(density) { snapWidth.toDp() },
+                        height = with(density) { snapHeight.toDp() }
+                    )
+                    .offset {
+                        IntOffset(
+                            (snapX - minOf(visualX, snapX)).roundToInt(),
+                            (snapY - minOf(visualY, snapY)).roundToInt()
+                        )
+                    }
+            ) {
+                WidgetContainer(
+                    backgroundColor = containerColor,
+                    isEditMode = true,
+                    showControls = false,
+                    alpha = 0.2f,
+                    showOutline = true,
+                    onEditClick = {},
+                    onResize = {},
+                    onResizeEnd = {}
+                ) {}
+            }
+        }
+
+        // Render active widget
+        Box(
+            modifier = Modifier
+                .size(
+                    width = with(density) { visualWidth.toDp() },
+                    height = with(density) { visualHeight.toDp() }
+                )
+                .offset {
+                    IntOffset(
+                        (visualX - minOf(visualX, snapX)).roundToInt(),
+                        (visualY - minOf(visualY, snapY)).roundToInt()
+                    )
+                }
+        ) {
+            WidgetContainer(
+                backgroundColor = containerColor,
+                isEditMode = isEditMode,
+                textColorOverride = widget.textColorOverride,
+                showOutline = widget.showOutline,
             moveModifier = if (isEditMode) {
                 Modifier.pointerInput(widget.id) {
                     detectDragGestures(
@@ -551,6 +594,7 @@ private fun WidgetRenderingNode(
             onEditClick = { onEditClick(widget) }
         ) {
             // Widget content (Button, Slider, Gauge)
+
             when (widget.type) {
                 WidgetType.BUTTON -> {
                     ButtonWidget(
@@ -609,4 +653,5 @@ private fun WidgetRenderingNode(
             }
         }
     }
+}
 }

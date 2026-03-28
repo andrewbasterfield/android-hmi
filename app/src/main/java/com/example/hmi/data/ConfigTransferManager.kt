@@ -2,18 +2,18 @@ package com.example.hmi.data
 
 import android.content.Context
 import android.net.Uri
-import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.everit.json.schema.Schema
 import org.everit.json.schema.ValidationException
 import org.everit.json.schema.loader.SchemaLoader
 import org.json.JSONObject
 import org.json.JSONTokener
-import java.io.InputStreamReader
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,7 +27,7 @@ sealed class TransferEvent {
 @Singleton
 class ConfigTransferManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val gson: Gson,
+    private val json: Json,
     private val repository: DashboardRepository
 ) {
     private val _events = MutableSharedFlow<TransferEvent>()
@@ -44,9 +44,9 @@ class ConfigTransferManager @Inject constructor(
         try {
             val layout = repository.dashboardLayoutFlow.first()
             val backup = FullBackupPackage(layout = layout)
-            val json = gson.toJson(backup)
+            val jsonStr = json.encodeToString(backup)
             context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                outputStream.write(json.toByteArray())
+                outputStream.write(jsonStr.toByteArray())
             }
             _events.emit(TransferEvent.Success("Layout exported successfully"))
         } catch (e: Exception) {
@@ -56,12 +56,12 @@ class ConfigTransferManager @Inject constructor(
 
     suspend fun importLayout(uri: Uri) {
         try {
-            val json = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            val jsonStr = context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 inputStream.bufferedReader().use { it.readText() }
             } ?: throw Exception("Failed to open file")
 
-            if (validateJson(json)) {
-                val backup = gson.fromJson(json, FullBackupPackage::class.java)
+            if (validateJson(jsonStr)) {
+                val backup = json.decodeFromString<FullBackupPackage>(jsonStr)
                 backup.layout?.let { layout ->
                     repository.saveLayout(layout)
                     _events.emit(TransferEvent.Success("Layout imported successfully"))
@@ -80,9 +80,9 @@ class ConfigTransferManager @Inject constructor(
         try {
             val profiles = repository.savedProfilesFlow.first()
             val backup = FullBackupPackage(profiles = profiles)
-            val json = gson.toJson(backup)
+            val jsonStr = json.encodeToString(backup)
             context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                outputStream.write(json.toByteArray())
+                outputStream.write(jsonStr.toByteArray())
             }
             _events.emit(TransferEvent.Success("Profiles exported successfully"))
         } catch (e: Exception) {
@@ -92,12 +92,12 @@ class ConfigTransferManager @Inject constructor(
 
     suspend fun importProfiles(uri: Uri) {
         try {
-            val json = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            val jsonStr = context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 inputStream.bufferedReader().use { it.readText() }
             } ?: throw Exception("Failed to open file")
 
-            if (validateJson(json)) {
-                val backup = gson.fromJson(json, FullBackupPackage::class.java)
+            if (validateJson(jsonStr)) {
+                val backup = json.decodeFromString<FullBackupPackage>(jsonStr)
                 backup.profiles?.let { profiles ->
                     repository.mergeProfiles(profiles)
                     _events.emit(TransferEvent.Success("Profiles imported successfully"))
@@ -142,9 +142,9 @@ class ConfigTransferManager @Inject constructor(
                 layout = layout,
                 profiles = profiles
             )
-            val json = gson.toJson(backup)
+            val jsonStr = json.encodeToString(backup)
             context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                outputStream.write(json.toByteArray())
+                outputStream.write(jsonStr.toByteArray())
             }
             _events.emit(TransferEvent.Success("Full backup exported successfully"))
         } catch (e: Exception) {
@@ -154,13 +154,13 @@ class ConfigTransferManager @Inject constructor(
 
     suspend fun importFullBackup(uri: Uri) {
         try {
-            val json = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            val jsonStr = context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 inputStream.bufferedReader().use { it.readText() }
             } ?: throw Exception("Failed to open file")
 
-            if (validateJson(json)) {
-                val backup = gson.fromJson(json, FullBackupPackage::class.java)
-                
+            if (validateJson(jsonStr)) {
+                val backup = json.decodeFromString<FullBackupPackage>(jsonStr)
+
                 // FR-014: Schema versioning and compatibility
                 if (backup.version > CURRENT_VERSION) {
                     _events.emit(TransferEvent.Error("Backup version (${backup.version}) is newer than app version ($CURRENT_VERSION). Please update the app."))
@@ -193,9 +193,9 @@ class ConfigTransferManager @Inject constructor(
         }
     }
 
-    internal suspend fun validateJson(json: String): Boolean {
+    internal suspend fun validateJson(jsonStr: String): Boolean {
         return try {
-            val jsonObject = JSONObject(json)
+            val jsonObject = JSONObject(jsonStr)
             schema.validate(jsonObject)
             true
         } catch (e: ValidationException) {

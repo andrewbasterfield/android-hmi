@@ -1,20 +1,31 @@
 package com.example.hmi.protocol
 
 import android.util.Log
-import com.google.gson.JsonParser
 import com.hivemq.client.mqtt.datatypes.MqttQos
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.floatOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient
 import com.hivemq.client.mqtt.mqtt3.Mqtt3Client
+import com.hivemq.client.mqtt.mqtt3.exceptions.Mqtt3DisconnectException
 import com.hivemq.client.mqtt.mqtt3.message.connect.connack.Mqtt3ConnAck
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,6 +38,7 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
         private const val TAG = "MqttPlcCommunicator"
         private const val MAX_RECONNECT_ATTEMPTS = 5
         private const val STABLE_CONNECTION_MS = 5000L
+        private const val SUBSCRIPTION_GRACE_PERIOD_MS = 5000L
     }
 
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
@@ -39,6 +51,11 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
 
     private val _attributeUpdates = MutableSharedFlow<Triple<String, String, String>>(replay = 16, extraBufferCapacity = 64)
     override val attributeUpdates: Flow<Triple<String, String, String>> = _attributeUpdates.asSharedFlow()
+
+    // Cache for shared subscriptions (Reference Counting via shareIn)
+    private val tagFlows = mutableMapOf<String, Flow<PlcValue>>()
+    private val attributeFlows = mutableMapOf<String, Flow<String>>()
+    private val communicatorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private fun getFullTopic(tagAddress: String): String {
         val prefix = currentProfile?.mqttSettings?.rootTopicPrefix ?: ""
@@ -53,6 +70,10 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
         val settings = profile.mqttSettings ?: MqttSettings()
         currentProfile = profile
         
+        // Reset state for new connection
+        synchronized(tagFlows) { tagFlows.clear() }
+        synchronized(attributeFlows) { attributeFlows.clear() }
+        
         val clientBuilder = Mqtt3Client.builder()
             .identifier(settings.clientId)
             .serverHost(profile.ipAddress)
@@ -66,10 +87,10 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
                 _connectionState.value = ConnectionState.CONNECTED
             }
             .addDisconnectedListener { context ->
-                // context.cause returns an Optional-like object from HiveMQ
-                // Check if it has a value by examining toString() representation
+                // Check if disconnection was unexpected (BUG-014 fix)
+                // In HiveMQ MQTT 3, Mqtt3DisconnectException represents an intentional disconnect.
                 val cause = context.cause
-                val hasError = !cause.toString().contains("Optional.empty")
+                val hasError = cause !is Mqtt3DisconnectException
                 if (hasError) {
                     // Only reset attempts if we had a stable connection (5+ seconds)
                     val connectionDuration = System.currentTimeMillis() - lastConnectedTime
@@ -179,50 +200,65 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
         client = null
         currentProfile = null
         _connectionState.value = ConnectionState.DISCONNECTED
+        
+        // Clear flows to ensure new connection starts fresh
+        synchronized(tagFlows) { tagFlows.clear() }
+        synchronized(attributeFlows) { attributeFlows.clear() }
     }
 
-    override fun observeTag(tagAddress: String): Flow<PlcValue> = callbackFlow {
-        val mqttClient = client ?: run {
-            Log.w(TAG, "Cannot observe tag '$tagAddress': not connected")
-            return@callbackFlow
-        }
+    override fun observeTag(tagAddress: String): Flow<PlcValue> {
         val fullTopic = getFullTopic(tagAddress)
-        val settings = currentProfile?.mqttSettings ?: MqttSettings()
+        return synchronized(tagFlows) {
+            tagFlows.getOrPut(fullTopic) {
+                val settings = currentProfile?.mqttSettings ?: MqttSettings()
+                callbackFlow {
+                    val mqttClient = client ?: run {
+                        Log.w(TAG, "Cannot observe tag '$tagAddress': not connected")
+                        close()
+                        return@callbackFlow
+                    }
 
-        Log.d(TAG, "Subscribing to tag: $fullTopic")
-        mqttClient.subscribeWith()
-            .topicFilter(fullTopic)
-            .qos(MqttQos.AT_MOST_ONCE)
-            .callback { publish ->
-                val payload = String(publish.payloadAsBytes)
-                val value = parsePayload(payload, settings, fullTopic)
-                trySend(value)
-            }
-            .send()
-            .whenComplete { _, throwable ->
-                if (throwable != null) {
-                    Log.e(TAG, "Failed to subscribe to tag '$fullTopic': ${throwable.message}", throwable)
-                    close(throwable)
-                }
-            }
+                    Log.d(TAG, "Shared Subscription: Subscribing to $fullTopic")
+                    mqttClient.subscribeWith()
+                        .topicFilter(fullTopic)
+                        .qos(MqttQos.AT_MOST_ONCE)
+                        .callback { publish ->
+                            val payload = String(publish.payloadAsBytes)
+                            val value = parsePayload(payload, settings, fullTopic)
+                            trySend(value)
+                        }
+                        .send()
+                        .whenComplete { _, throwable ->
+                            if (throwable != null) {
+                                Log.e(TAG, "Failed to subscribe to tag '$fullTopic': ${throwable.message}", throwable)
+                                close(throwable)
+                            }
+                        }
 
-        awaitClose {
-            Log.d(TAG, "Unsubscribing from tag: $fullTopic")
-            mqttClient.unsubscribeWith().topicFilter(fullTopic).send()
+                    awaitClose {
+                        Log.d(TAG, "Shared Subscription: Unsubscribing from $fullTopic")
+                        mqttClient.unsubscribeWith().topicFilter(fullTopic).send()
+                    }
+                }.shareIn(
+                    scope = communicatorScope,
+                    started = SharingStarted.WhileSubscribed(stopTimeoutMillis = SUBSCRIPTION_GRACE_PERIOD_MS),
+                    replay = 1
+                )
+            }
         }
     }
 
     private fun parsePayload(payload: String, settings: MqttSettings, topic: String? = null): PlcValue {
         return if (settings.payloadFormat == MqttPayloadFormat.JSON && settings.jsonKey != null) {
             try {
-                val jsonObject = JsonParser.parseString(payload).asJsonObject
-                val valueElement = jsonObject.get(settings.jsonKey)
-                if (valueElement != null && valueElement.isJsonPrimitive) {
-                    val primitive = valueElement.asJsonPrimitive
+                val jsonElement = Json.parseToJsonElement(payload)
+                val valueElement = jsonElement.jsonObject[settings.jsonKey]
+                if (valueElement != null && valueElement is JsonPrimitive) {
+                    val primitive = valueElement.jsonPrimitive
                     when {
-                        primitive.isBoolean -> PlcValue.BooleanValue(primitive.asBoolean)
-                        primitive.isNumber -> PlcValue.FloatValue(primitive.asFloat)
-                        else -> PlcValue.StringValue(primitive.asString)
+                        primitive.booleanOrNull != null -> PlcValue.BooleanValue(primitive.booleanOrNull!!)
+                        primitive.floatOrNull != null -> PlcValue.FloatValue(primitive.floatOrNull!!)
+                        else -> PlcValue.StringValue(primitive.content)
                     }
                 } else {
                     Log.w(TAG, "JSON key '${settings.jsonKey}' not found or not primitive in payload from ${topic ?: "unknown"}: $payload")
@@ -245,33 +281,44 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
         }
     }
 
-    override fun observeAttribute(tagAddress: String, attribute: String): Flow<String> = callbackFlow {
-        val mqttClient = client ?: run {
-            Log.w(TAG, "Cannot observe attribute '$tagAddress/$attribute': not connected")
-            return@callbackFlow
-        }
+    override fun observeAttribute(tagAddress: String, attribute: String): Flow<String> {
         val fullTopic = getFullTopic(tagAddress) + "/" + attribute
+        return synchronized(attributeFlows) {
+            attributeFlows.getOrPut(fullTopic) {
+                callbackFlow {
+                    val mqttClient = client ?: run {
+                        Log.w(TAG, "Cannot observe attribute '$tagAddress/$attribute': not connected")
+                        close()
+                        return@callbackFlow
+                    }
 
-        Log.d(TAG, "Subscribing to attribute: $fullTopic")
-        mqttClient.subscribeWith()
-            .topicFilter(fullTopic)
-            .qos(MqttQos.AT_MOST_ONCE)
-            .callback { publish ->
-                val payload = String(publish.payloadAsBytes)
-                trySend(payload)
-                _attributeUpdates.tryEmit(Triple(tagAddress, attribute, payload))
-            }
-            .send()
-            .whenComplete { _, throwable ->
-                if (throwable != null) {
-                    Log.e(TAG, "Failed to subscribe to attribute '$fullTopic': ${throwable.message}", throwable)
-                    close(throwable)
-                }
-            }
+                    Log.d(TAG, "Shared Subscription: Subscribing to $fullTopic")
+                    mqttClient.subscribeWith()
+                        .topicFilter(fullTopic)
+                        .qos(MqttQos.AT_MOST_ONCE)
+                        .callback { publish ->
+                            val payload = String(publish.payloadAsBytes)
+                            trySend(payload)
+                            _attributeUpdates.tryEmit(Triple(tagAddress, attribute, payload))
+                        }
+                        .send()
+                        .whenComplete { _, throwable ->
+                            if (throwable != null) {
+                                Log.e(TAG, "Failed to subscribe to attribute '$fullTopic': ${throwable.message}", throwable)
+                                close(throwable)
+                            }
+                        }
 
-        awaitClose {
-            Log.d(TAG, "Unsubscribing from attribute: $fullTopic")
-            mqttClient.unsubscribeWith().topicFilter(fullTopic).send()
+                    awaitClose {
+                        Log.d(TAG, "Shared Subscription: Unsubscribing from $fullTopic")
+                        mqttClient.unsubscribeWith().topicFilter(fullTopic).send()
+                    }
+                }.shareIn(
+                    scope = communicatorScope,
+                    started = SharingStarted.WhileSubscribed(stopTimeoutMillis = SUBSCRIPTION_GRACE_PERIOD_MS),
+                    replay = 1
+                )
+            }
         }
     }
 

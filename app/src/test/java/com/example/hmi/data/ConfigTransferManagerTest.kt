@@ -4,7 +4,8 @@ import android.content.Context
 import android.content.res.AssetManager
 import com.example.hmi.protocol.PlcConnectionProfile
 import com.example.hmi.protocol.Protocol
-import com.google.gson.Gson
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
@@ -17,7 +18,11 @@ import java.io.ByteArrayInputStream
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConfigTransferManagerTest {
 
-    private val gson = Gson()
+    private val json = Json { 
+        ignoreUnknownKeys = true 
+        encodeDefaults = true
+        prettyPrint = true
+    }
     private lateinit var context: Context
     private lateinit var repository: DashboardRepository
     private lateinit var transferManager: ConfigTransferManager
@@ -43,15 +48,28 @@ class ConfigTransferManagerTest {
             on { assets } doReturn assetManager
         }
         repository = mock()
-        transferManager = ConfigTransferManager(context, gson, repository)
+        transferManager = ConfigTransferManager(context, json, repository)
     }
 
     @Test
     fun `validateJson returns true for valid backup`() = runTest {
-        val backup = FullBackupPackage(version = 1, layout = DashboardLayout(name = "Test"))
-        val json = gson.toJson(backup)
+        val backup = FullBackupPackage(
+            version = 1,
+            layout = DashboardLayout(
+                id = "test-id",
+                name = "Test",
+                canvasColor = null,
+                widgets = emptyList(),
+                isDarkThemeMigrated = true,
+                isKineticCockpitMigrated = true,
+                hapticFeedbackEnabled = true,
+                orientationMode = OrientationMode.AUTO
+            ),
+            profiles = emptyList()
+        )
+        val jsonStr = json.encodeToString(backup)
         
-        val result = transferManager.validateJson(json)
+        val result = transferManager.validateJson(jsonStr)
         
         assertTrue(result)
     }

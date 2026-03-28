@@ -21,6 +21,8 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -37,6 +39,11 @@ class DashboardViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private val testScope = TestScope(testDispatcher)
+    private val json = Json { 
+        ignoreUnknownKeys = true 
+        encodeDefaults = true
+        prettyPrint = true
+    }
 
     private val plcCommunicator = mock<PlcCommunicator> {
         on { connectionState } doReturn MutableStateFlow(ConnectionState.DISCONNECTED)
@@ -59,6 +66,7 @@ class DashboardViewModelTest {
         }
 
         transferManager = mock()
+        val migrationManager = com.example.hmi.data.LayoutMigrationManager()
         
         // Mock saveLayout to update our flow
         repository.stub {
@@ -68,7 +76,7 @@ class DashboardViewModelTest {
             }
         }
 
-        viewModel = DashboardViewModel(plcCommunicator, repository, transferManager, testDispatcher)
+        viewModel = DashboardViewModel(plcCommunicator, repository, transferManager, migrationManager, json, testDispatcher)
     }
 
     @After
@@ -81,14 +89,15 @@ class DashboardViewModelTest {
         val layout = DashboardLayout(name = "Export Test", widgets = listOf(
             WidgetConfiguration(type = WidgetType.BUTTON, tagAddress = "TEST_TAG")
         ))
-        layoutFlow.value = layout
+        val layoutJson = json.encodeToString(layout)
+        viewModel.importLayoutFromJson(layoutJson)
         
-        runCurrent()
+        testDispatcher.scheduler.advanceUntilIdle()
 
-        val json = viewModel.exportLayoutToJson()
-        assertTrue(json.contains("Export Test"))
-        assertTrue(json.contains("TEST_TAG"))
-        assertTrue(json.contains("BUTTON"))
+        val jsonResult = viewModel.exportLayoutToJson()
+        assertTrue(jsonResult.contains("Export Test"))
+        assertTrue(jsonResult.contains("TEST_TAG"))
+        assertTrue(jsonResult.contains("BUTTON"))
     }
 
     @Test(timeout = 5000)

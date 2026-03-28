@@ -77,8 +77,9 @@ fun WidgetConfigDialog(
     onDelete: (() -> Unit)? = null
 ) {
     var selectedType by remember { mutableStateOf(initialWidget?.type ?: WidgetType.BUTTON) }
-    var tagAddress by remember { mutableStateOf(initialWidget?.tagAddress ?: "") }
-    var customLabel by remember { mutableStateOf(initialWidget?.customLabel ?: "") }
+    // Use orEmpty() to handle Gson setting non-null String fields to null at runtime
+    var tagAddress by remember { mutableStateOf(initialWidget?.tagAddress.orEmpty()) }
+    var customLabel by remember { mutableStateOf(initialWidget?.customLabel.orEmpty()) }
     var selectedColor by remember { mutableStateOf(initialWidget?.backgroundColor) }
     
     // Migrate legacy textColorOverride to new textColor picker
@@ -106,7 +107,7 @@ fun WidgetConfigDialog(
     var selectedGaugeStyle by remember { mutableStateOf(initialWidget?.gaugeStyle ?: com.example.hmi.data.GaugeStyle.POINTER) }
     var pointerColor by remember { mutableStateOf(initialWidget?.pointerColor) }
     var isPointerDynamic by remember { mutableStateOf(initialWidget?.isPointerDynamic ?: true) }
-    var units by remember { mutableStateOf(initialWidget?.units ?: "") }
+    var units by remember { mutableStateOf(initialWidget?.units.orEmpty()) }
     
     var selectedInteractionType by remember { mutableStateOf(initialWidget?.interactionType ?: InteractionType.MOMENTARY) }
     var isInverted by remember { mutableStateOf(initialWidget?.isInverted ?: false) }

@@ -17,6 +17,7 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
     override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
     private var socket: Socket? = null
+    private var heartbeatJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val _tagUpdates = MutableSharedFlow<Pair<String, PlcValue>>(
         replay = 16,
@@ -24,27 +25,60 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
     )
 
     override suspend fun connect(profile: PlcConnectionProfile): Result<Unit> = withContext(Dispatchers.IO) {
+        // Close existing connection if any (BUG-015 fix)
+        disconnect()
+
         val ipAddress = profile.ipAddress
         val port = profile.port
         _connectionState.value = ConnectionState.CONNECTING
         Log.d("RawTcpPlcCommunicator", "Connecting to $ipAddress:$port")
+        val newSocket = Socket()
         try {
-            val newSocket = Socket()
             // Set a 5-second timeout for the connection attempt
             newSocket.connect(InetSocketAddress(ipAddress, port), 5000)
-            socket = newSocket
             
+            // ARCH-3.1: Detection of half-open connections
+            newSocket.soTimeout = 10000 // 10s Read timeout
+            newSocket.keepAlive = true
+            
+            socket = newSocket
+
             _connectionState.value = ConnectionState.CONNECTED
             Log.d("RawTcpPlcCommunicator", "Connected to $ipAddress:$port")
-            
+
             // Start background listening loop
             startListening(newSocket)
             
+            // Start active heartbeat probe
+            startHeartbeat(newSocket)
+
             Result.success(Unit)
         } catch (e: Exception) {
             Log.e("RawTcpPlcCommunicator", "Connection failed: ${e.message}")
+            // Close socket to prevent file descriptor leak on failed connection
+            try { newSocket.close() } catch (_: Exception) {}
             _connectionState.value = ConnectionState.ERROR
             Result.failure(e)
+        }
+    }
+
+    private fun startHeartbeat(socket: Socket) {
+        heartbeatJob?.cancel()
+        heartbeatJob = scope.launch {
+            while (isActive && !socket.isClosed) {
+                delay(5000) // 5s probe interval
+                try {
+                    // Send a "No-Op" newline to trigger a socket error if the link is dead
+                    socket.getOutputStream().write("\n".toByteArray())
+                    socket.getOutputStream().flush()
+                } catch (e: Exception) {
+                    if (socket == this@RawTcpPlcCommunicator.socket) {
+                        Log.w("RawTcpPlcCommunicator", "Heartbeat failed: ${e.message}")
+                        disconnect()
+                    }
+                    break
+                }
+            }
         }
     }
 
@@ -107,6 +141,7 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
     }
 
     override suspend fun disconnect(): Unit = withContext(Dispatchers.IO) {
+        heartbeatJob?.cancel()
         val currentSocket = socket
         socket = null // Set to null first to prevent loop from re-triggering ERROR
         Log.d("RawTcpPlcCommunicator", "Disconnecting")

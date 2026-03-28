@@ -1,13 +1,16 @@
 package com.example.hmi.data
 
+import kotlinx.serialization.Serializable
 import java.util.UUID
 
+@Serializable
 enum class OrientationMode {
     AUTO,
     FORCE_LANDSCAPE,
     FORCE_PORTRAIT
 }
 
+@Serializable
 data class DashboardLayout(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "Default Layout",

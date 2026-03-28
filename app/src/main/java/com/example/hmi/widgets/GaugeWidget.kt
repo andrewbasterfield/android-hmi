@@ -4,9 +4,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,26 +19,47 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.hmi.core.ui.theme.StitchTheme
+import com.example.hmi.core.ui.components.AlarmPulse
+import com.example.hmi.core.ui.components.PulseState
+import com.example.hmi.core.ui.utils.SiFormatter
 import com.example.hmi.data.GaugeZone
 import kotlin.math.cos
 import kotlin.math.sin
 
-import androidx.compose.foundation.clickable
-import com.example.hmi.core.ui.components.AlarmPulse
-import com.example.hmi.core.ui.components.PulseState
-import com.example.hmi.core.ui.utils.SiFormatter
-
 val PointerColorKey = SemanticsPropertyKey<Color>("PointerColor")
 var SemanticsPropertyReceiver.pointerColor by PointerColorKey
+
+private data class TickData(
+    val start: Offset,
+    val end: Offset,
+    val color: Color
+)
+
+private data class ZoneData(
+    val startAngle: Float,
+    val sweepAngle: Float,
+    val color: Color
+)
+
+private data class GaugeGeometry(
+    val center: Offset,
+    val radius: Float,
+    val strokeWidth: Float,
+    val tickStrokeWidth: Float,
+    val ticks: List<TickData>,
+    val zones: List<ZoneData>,
+    val pointerPath: Path,
+    val startAngle: Float,
+    val sweepAngle: Float
+)
 
 @Composable
 fun GaugeWidget(
@@ -71,9 +93,6 @@ fun GaugeWidget(
     )
 
     val contentColor = LocalContentColor.current
-    val sweepAngle = arcSweep.coerceIn(90f, 270f)
-    val startAngle = 270f - (sweepAngle / 2f)  // Centered at 12 o'clock
-    
     val metricText = SiFormatter.formatMetric(value, units)
 
     AlarmPulse(
@@ -121,11 +140,15 @@ fun GaugeWidget(
                 contentAlignment = Alignment.Center
             ) {
                 val layoutBgColor = MaterialTheme.colorScheme.background
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .semantics { trackBackgroundColor = layoutBgColor }
-                ) {
+                var canvasSize by remember { mutableStateOf(Size.Zero) }
+                val density = LocalDensity.current
+                
+                val geometry = remember(canvasSize, minValue, maxValue, arcSweep, targetTicks, colorZones, contentColor, density) {
+                    if (canvasSize.width <= 0f || canvasSize.height <= 0f) return@remember null
+                    
+                    val sweepAngle = arcSweep.coerceIn(90f, 270f)
+                    val startAngle = 270f - (sweepAngle / 2f)
+
                     // 1. Calculate the bounding box of a unit arc centered at 12 o'clock (270°)
                     val halfSweepRad = Math.toRadians((sweepAngle / 2f).toDouble())
                     val leftX = if (sweepAngle >= 180f) -1f else -sin(halfSweepRad).toFloat()
@@ -140,127 +163,131 @@ fun GaugeWidget(
                     val arcWidth = rightX - leftX
                     val arcHeight = bottomY - topY
 
-                    // 2. Industrial Scaling Factors (DESIGN-004/005)
-                    // We solve for radius by assuming stroke bleed is 7.5% (maxStrokeWidth/2)
-                    // The arc bounding box + max stroke bleed must fit available space.
-                    val rawWidth = size.width
-                    val rawHeight = size.height
-                    
-                    // Initial rough estimate of radius (assuming zero stroke)
-                    val initialRadius = minOf(rawWidth / arcWidth, rawHeight / arcHeight)
-                    
-                    // Define standard industrial proportions relative to radius
+                    // 2. Industrial Scaling Factors
+                    val initialRadius = minOf(canvasSize.width / arcWidth, canvasSize.height / arcHeight)
                     val strokeWidth = initialRadius * 0.05f
-                    val maxStrokeWidth = strokeWidth * 3.0f // ARC_FILL fill weight
-                    val margin = maxStrokeWidth / 2f + 4.dp.toPx() // Bleed + safety gap
+                    val maxStrokeWidth = strokeWidth * 3.0f
+                    val margin = maxStrokeWidth / 2f + with(density) { 4.dp.toPx() }
                     
-                    // 3. Final precise radius calculation accounting for margins on all sides
-                    val availableWidth = size.width - margin * 2
-                    val availableHeight = size.height - margin * 2
+                    val availableWidth = canvasSize.width - margin * 2
+                    val availableHeight = canvasSize.height - margin * 2
                     val radius = minOf(availableWidth / arcWidth, availableHeight / arcHeight)
-                    
                     val tickStrokeWidth = radius * 0.025f
 
-                    // 4. Position center: horizontally centered, arc top pinned to margin
+                    // 3. Position center
                     val arcCenterX = (leftX + rightX) / 2f
-                    val centerX = size.width / 2f - arcCenterX * radius
-                    val centerY = margin - topY * radius  // Arc top (including bleed) starts at margin
+                    val centerX = canvasSize.width / 2f - arcCenterX * radius
+                    val centerY = margin - topY * radius
                     val center = Offset(centerX, centerY)
 
-                    // 5. Draw base arc (visible scale line for areas without zones)
-                    drawArc(
-                        color = contentColor.copy(alpha = 0.3f),
-                        startAngle = startAngle,
-                        sweepAngle = sweepAngle,
-                        useCenter = false,
-                        topLeft = Offset(center.x - radius, center.y - radius),
-                        size = Size(radius * 2, radius * 2),
-                        style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
-                    )
-
-                    // 5.1 Draw Track Arc for ARC_FILL style (UI-004)
-                    if (gaugeStyle == com.example.hmi.data.GaugeStyle.ARC_FILL) {
-                        drawArc(
-                            color = contentColor.copy(alpha = 0.15f),
-                            startAngle = startAngle,
-                            sweepAngle = sweepAngle,
-                            useCenter = false,
-                            topLeft = Offset(center.x - radius, center.y - radius),
-                            size = Size(radius * 2, radius * 2),
-                            style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
-                        )
-                    }
-
-                    // 6. Draw color zones (reversed so first zone in list draws on top)
-                    colorZones.reversed().forEach { zone ->
+                    // 4. Pre-calculate zones
+                    val zones = colorZones.reversed().mapNotNull { zone ->
                         val zoneStartValue = zone.startValue.coerceIn(minValue, maxValue)
                         val zoneEndValue = zone.endValue.coerceIn(minValue, maxValue)
                         
                         if (zoneEndValue > zoneStartValue) {
                             val zoneStartAngle = startAngle + (zoneStartValue - minValue) / (maxValue - minValue) * sweepAngle
                             val zoneSweepAngle = (zoneEndValue - zoneStartValue) / (maxValue - minValue) * sweepAngle
-                            
-                            drawArc(
-                                color = ColorUtils.toColor(zone.color),
-                                startAngle = zoneStartAngle,
-                                sweepAngle = zoneSweepAngle,
-                                useCenter = false,
-                                topLeft = Offset(center.x - radius, center.y - radius),
-                                size = Size(radius * 2, radius * 2),
-                                style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
-                            )
-                        }
+                            ZoneData(zoneStartAngle, zoneSweepAngle, ColorUtils.toColor(zone.color))
+                        } else null
                     }
 
-                    // 7. Draw ticks
+                    // 5. Pre-calculate ticks
                     val step = ScaleUtils.calculateNiceStep(maxValue - minValue, targetTicks)
-                    val ticks = ScaleUtils.generateTicks(minValue, maxValue, step)
-                    
-                    val tickInnerRadius = radius * 0.82f // Increased clearance for thicker fill
-                    ticks.forEach { tickValue ->
+                    val ticks = ScaleUtils.generateTicks(minValue, maxValue, step).map { tickValue ->
                         val angle = startAngle + (tickValue - minValue) / (maxValue - minValue) * sweepAngle
                         val angleRad = Math.toRadians(angle.toDouble())
 
                         val outerX = center.x + radius * cos(angleRad).toFloat()
                         val outerY = center.y + radius * sin(angleRad).toFloat()
-                        val innerX = center.x + tickInnerRadius * cos(angleRad).toFloat()
-                        val innerY = center.y + tickInnerRadius * sin(angleRad).toFloat()
+                        val innerX = center.x + (radius * 0.82f) * cos(angleRad).toFloat()
+                        val innerY = center.y + (radius * 0.82f) * sin(angleRad).toFloat()
 
-                        // Color tick based on zone it falls within (first zone in list wins)
                         val tickZone = colorZones.find { tickValue >= it.startValue && tickValue <= it.endValue }
-                        val tickColor = tickZone?.let { ColorUtils.toColor(it.color) } ?: contentColor.copy(alpha = 0.8f)
+                        val color = tickZone?.let { ColorUtils.toColor(it.color) } ?: contentColor.copy(alpha = 0.8f)
 
-                        drawLine(
-                            color = tickColor,
-                            start = Offset(innerX, innerY),
-                            end = Offset(outerX, outerY),
-                            strokeWidth = tickStrokeWidth
-                        )
+                        TickData(Offset(innerX, innerY), Offset(outerX, outerY), color)
                     }
 
-                    // 8. Draw Fill Arc for ARC_FILL style (MUST DRAW AFTER TICKS for Z-Order)
-                    if (gaugeStyle == com.example.hmi.data.GaugeStyle.ARC_FILL) {
-                        val currentPointerColor = ColorUtils.resolvePointerColor(
-                            currentValue = animatedValue,
-                            isPointerDynamic = isPointerDynamic,
-                            staticPointerColor = pointerColor,
-                            colorZones = colorZones,
-                            defaultColor = contentColor
-                        )
-                        val fillSweepAngle = (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * sweepAngle
+                    // 6. Pre-calculate pointer path (at 0 degrees relative to center)
+                    val pointerTipRadius = radius * 0.90f
+                    val pointerBaseRadius = radius * 0.70f
+                    val pointerWidth = radius * 0.05f
+                    
+                    val pointerPath = Path().apply {
+                        moveTo(center.x + pointerTipRadius, center.y)
+                        lineTo(center.x + pointerBaseRadius, center.y + pointerWidth)
+                        lineTo(center.x + pointerBaseRadius, center.y - pointerWidth)
+                        close()
+                    }
+
+                    GaugeGeometry(
+                        center = center,
+                        radius = radius,
+                        strokeWidth = strokeWidth,
+                        tickStrokeWidth = tickStrokeWidth,
+                        ticks = ticks,
+                        zones = zones,
+                        pointerPath = pointerPath,
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle
+                    )
+                }
+
+                Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onSizeChanged { canvasSize = Size(it.width.toFloat(), it.height.toFloat()) }
+                        .semantics { trackBackgroundColor = layoutBgColor }
+                ) {
+                    geometry?.let { geo ->
+                        // 1. Draw base arc
                         drawArc(
-                            color = currentPointerColor,
-                            startAngle = startAngle,
-                            sweepAngle = fillSweepAngle,
+                            color = contentColor.copy(alpha = 0.3f),
+                            startAngle = geo.startAngle,
+                            sweepAngle = geo.sweepAngle,
                             useCenter = false,
-                            topLeft = Offset(center.x - radius, center.y - radius),
-                            size = Size(radius * 2, radius * 2),
-                            style = Stroke(width = strokeWidth * 3.0f, cap = StrokeCap.Butt)
+                            topLeft = Offset(geo.center.x - geo.radius, geo.center.y - geo.radius),
+                            size = Size(geo.radius * 2, geo.radius * 2),
+                            style = Stroke(width = geo.strokeWidth, cap = StrokeCap.Butt)
                         )
-                    }
 
-                    // 9. Draw Pointer (Glass Cockpit style chevron/caret)
-                    if (gaugeStyle == com.example.hmi.data.GaugeStyle.POINTER) {
+                        if (gaugeStyle == com.example.hmi.data.GaugeStyle.ARC_FILL) {
+                            drawArc(
+                                color = contentColor.copy(alpha = 0.15f),
+                                startAngle = geo.startAngle,
+                                sweepAngle = geo.sweepAngle,
+                                useCenter = false,
+                                topLeft = Offset(geo.center.x - geo.radius, geo.center.y - geo.radius),
+                                size = Size(geo.radius * 2, geo.radius * 2),
+                                style = Stroke(width = geo.strokeWidth, cap = StrokeCap.Butt)
+                            )
+                        }
+
+                        // 2. Draw color zones
+                        geo.zones.forEach { zone ->
+                            drawArc(
+                                color = zone.color,
+                                startAngle = zone.startAngle,
+                                sweepAngle = zone.sweepAngle,
+                                useCenter = false,
+                                topLeft = Offset(geo.center.x - geo.radius, geo.center.y - geo.radius),
+                                size = Size(geo.radius * 2, geo.radius * 2),
+                                style = Stroke(width = geo.strokeWidth, cap = StrokeCap.Butt)
+                            )
+                        }
+
+                        // 3. Draw pre-calculated ticks
+                        geo.ticks.forEach { tick ->
+                            drawLine(
+                                color = tick.color,
+                                start = tick.start,
+                                end = tick.end,
+                                strokeWidth = geo.tickStrokeWidth
+                            )
+                        }
+
+                        // 4. Draw dynamic components
                         val currentPointerColor = ColorUtils.resolvePointerColor(
                             currentValue = animatedValue,
                             isPointerDynamic = isPointerDynamic,
@@ -269,42 +296,29 @@ fun GaugeWidget(
                             defaultColor = contentColor
                         )
 
-                        val pointerAngle = startAngle + (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * sweepAngle
-                        val pointerAngleRad = Math.toRadians(pointerAngle.toDouble())
-
-                        // Position pointer on the inside of the arc
-                        val pointerTipRadius = radius * 0.90f  // Increased clearance
-                        val pointerBaseRadius = radius * 0.70f // Increased clearance
-                        
-                        // Fix aspect ratio to 2:1 (Height:Width)
-                        // Height = 0.20 * radius, so full width = 0.10 * radius
-                        val pointerWidth = radius * 0.05f // Half-width for radial offset
-
-                        // Calculate pointer tip (pointing outward)
-                        val tipX = center.x + pointerTipRadius * cos(pointerAngleRad).toFloat()
-                        val tipY = center.y + pointerTipRadius * sin(pointerAngleRad).toFloat()
-
-                        // Calculate base corners (perpendicular to radial direction)
-                        val perpAngle = pointerAngleRad + Math.PI / 2
-                        val baseX = center.x + pointerBaseRadius * cos(pointerAngleRad).toFloat()
-                        val baseY = center.y + pointerBaseRadius * sin(pointerAngleRad).toFloat()
-
-                        val corner1X = baseX + pointerWidth * cos(perpAngle).toFloat()
-                        val corner1Y = baseY + pointerWidth * sin(perpAngle).toFloat()
-                        val corner2X = baseX - pointerWidth * cos(perpAngle).toFloat()
-                        val corner2Y = baseY - pointerWidth * sin(perpAngle).toFloat()
-
-                        val pointerPath = Path().apply {
-                            moveTo(tipX, tipY)
-                            lineTo(corner1X, corner1Y)
-                            lineTo(corner2X, corner2Y)
-                            close()
+                        if (gaugeStyle == com.example.hmi.data.GaugeStyle.ARC_FILL) {
+                            val fillSweepAngle = (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * geo.sweepAngle
+                            drawArc(
+                                color = currentPointerColor,
+                                startAngle = geo.startAngle,
+                                sweepAngle = fillSweepAngle,
+                                useCenter = false,
+                                topLeft = Offset(geo.center.x - geo.radius, geo.center.y - geo.radius),
+                                size = Size(geo.radius * 2, geo.radius * 2),
+                                style = Stroke(width = geo.strokeWidth * 3.0f, cap = StrokeCap.Butt)
+                            )
                         }
-                        drawPath(path = pointerPath, color = currentPointerColor)
+
+                        if (gaugeStyle == com.example.hmi.data.GaugeStyle.POINTER) {
+                            val pointerAngle = geo.startAngle + (animatedValue.coerceIn(minValue, maxValue) - minValue) / (maxValue - minValue) * geo.sweepAngle
+                            rotate(degrees = pointerAngle, pivot = geo.center) {
+                                drawPath(path = geo.pointerPath, color = currentPointerColor)
+                            }
+                        }
                     }
                 }
 
-                // Metric display at bottom, below the arc
+                // Metric display at bottom
                 if (metricFontSizeMultiplier > 0.0f) {
                     Text(
                         text = metricText,
