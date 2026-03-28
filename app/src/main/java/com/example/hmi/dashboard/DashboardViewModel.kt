@@ -270,12 +270,19 @@ class DashboardViewModel @Inject constructor(
         }
     }
     
-    fun updateDashboardSettings(name: String, canvasColor: Long?, hapticFeedbackEnabled: Boolean) {
+    fun updateDashboardSettings(name: String, canvasColor: Long?, hapticFeedbackEnabled: Boolean, orientationMode: com.example.hmi.data.OrientationMode) {
         val newLayout = _dashboardLayout.value.copy(
             name = name, 
             canvasColor = canvasColor,
-            hapticFeedbackEnabled = hapticFeedbackEnabled
+            hapticFeedbackEnabled = hapticFeedbackEnabled,
+            orientationMode = orientationMode
         )
+        _dashboardLayout.value = newLayout
+        viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+    }
+
+    fun updateOrientationMode(mode: com.example.hmi.data.OrientationMode) {
+        val newLayout = _dashboardLayout.value.copy(orientationMode = mode)
         _dashboardLayout.value = newLayout
         viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
     }

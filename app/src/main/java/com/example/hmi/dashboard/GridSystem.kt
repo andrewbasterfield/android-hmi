@@ -15,6 +15,17 @@ object GridSystem {
     const val SNAP_STIFFNESS = Spring.StiffnessLow
     const val SNAP_DAMPING = Spring.DampingRatioMediumBouncy
 
+    // Fixed page range constants for 2D paging
+    // Using a fixed range avoids recalculation when toggling edit mode
+    const val PAGE_OFFSET = 20  // logical page 0 = pager index 20
+    const val TOTAL_PAGES = 2 * PAGE_OFFSET + 1  // 41 pages total (-20 to +20)
+
+    /** Converts a pager index to a logical page coordinate */
+    fun pagerIndexToLogicalPage(pagerIndex: Int): Int = pagerIndex - PAGE_OFFSET
+
+    /** Converts a logical page coordinate to a pager index */
+    fun logicalPageToPagerIndex(logicalPage: Int): Int = logicalPage + PAGE_OFFSET
+
     /**
      * Converts a DP value to the nearest grid cell index.
      */

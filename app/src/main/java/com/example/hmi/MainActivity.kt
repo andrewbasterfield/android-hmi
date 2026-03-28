@@ -23,6 +23,9 @@ import com.example.hmi.dashboard.DashboardScreen
 import com.example.hmi.dashboard.ImportSelectionDialog
 import com.example.hmi.data.ConfigTransferManager
 import com.example.hmi.data.TransferEvent
+import com.example.hmi.data.DashboardRepository
+import com.example.hmi.data.DashboardLayout
+import com.example.hmi.data.OrientationMode
 import com.example.hmi.protocol.ConnectionState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -34,11 +37,25 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var transferManager: ConfigTransferManager
 
+    @Inject
+    lateinit var repository: DashboardRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleIntent(intent)
         setContent {
             StitchTheme {
+                val layout by repository.dashboardLayoutFlow.collectAsState(initial = DashboardLayout())
+
+                // Enforce Orientation based on the layout setting
+                LaunchedEffect(layout.orientationMode) {
+                    requestedOrientation = when (layout.orientationMode) {
+                        OrientationMode.AUTO -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        OrientationMode.FORCE_LANDSCAPE -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                        OrientationMode.FORCE_PORTRAIT -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                    }
+                }
+
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -85,7 +102,6 @@ class MainActivity : ComponentActivity() {
                                     transferManager.executeImport(pendingBackup!!, importLayout, importProfiles)
                                     pendingBackup = null
                                     
-                                    // FR-013: Redirect to dashboard on successful import
                                     if (importLayout) {
                                         navController.navigate("dashboard") {
                                             popUpTo("connection") { inclusive = true }

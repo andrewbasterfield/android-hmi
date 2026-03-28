@@ -19,13 +19,15 @@ fun DashboardSettingsDialog(
     initialName: String,
     initialCanvasColor: Long?,
     initialHapticEnabled: Boolean,
+    initialOrientationMode: com.example.hmi.data.OrientationMode,
     viewModel: DashboardViewModel = hiltViewModel(),
     onDismiss: () -> Unit,
-    onConfirm: (String, Long?, Boolean) -> Unit
+    onConfirm: (String, Long?, Boolean, com.example.hmi.data.OrientationMode) -> Unit
 ) {
     var name by remember { mutableStateOf(initialName) }
     var selectedColor by remember { mutableStateOf<Long?>(initialCanvasColor) }
     var hapticEnabled by remember { mutableStateOf(initialHapticEnabled) }
+    var orientationMode by remember { mutableStateOf(initialOrientationMode) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -56,6 +58,24 @@ fun DashboardSettingsDialog(
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
+                Text("Orientation Mode", style = MaterialTheme.typography.labelSmall)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    com.example.hmi.data.OrientationMode.values().forEach { mode ->
+                        val isSelected = orientationMode == mode
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { orientationMode = mode },
+                            label = { Text(mode.name) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -72,7 +92,7 @@ fun DashboardSettingsDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onConfirm(name, selectedColor, hapticEnabled)
+                    onConfirm(name, selectedColor, hapticEnabled, orientationMode)
                 }
             ) {
                 Text("Save Settings")
