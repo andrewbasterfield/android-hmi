@@ -58,9 +58,10 @@ class ThemeMigrationTest {
         whenever(repository.recentColorsFlow).thenReturn(flowOf(emptyList()))
 
         val transferManager: com.example.hmi.data.ConfigTransferManager = mock()
+        val migrationManager = com.example.hmi.data.LayoutMigrationManager()
 
         // Act: Initialize the ViewModel to trigger migration logic
-        DashboardViewModel(plcCommunicator, repository, transferManager, json, testDispatcher)
+        DashboardViewModel(plcCommunicator, repository, transferManager, migrationManager, json, testDispatcher)
         
         // Let the init block run
         testDispatcher.scheduler.advanceUntilIdle()

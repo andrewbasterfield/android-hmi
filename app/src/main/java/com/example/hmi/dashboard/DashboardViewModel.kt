@@ -3,10 +3,10 @@ package com.example.hmi.dashboard
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.hmi.core.ui.theme.Void
 import com.example.hmi.data.ConfigTransferManager
 import com.example.hmi.data.DashboardLayout
 import com.example.hmi.data.DashboardRepository
+import com.example.hmi.data.LayoutMigrationManager
 import com.example.hmi.data.TransferEvent
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
@@ -14,7 +14,6 @@ import com.example.hmi.di.IoDispatcher
 import com.example.hmi.protocol.ConnectionState
 import com.example.hmi.protocol.PlcCommunicator
 import com.example.hmi.protocol.PlcValue
-import com.example.hmi.widgets.ColorUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -39,6 +38,7 @@ class DashboardViewModel @Inject constructor(
     private val plcCommunicator: PlcCommunicator,
     private val repository: DashboardRepository,
     private val transferManager: ConfigTransferManager,
+    private val migrationManager: LayoutMigrationManager,
     private val json: Json,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
@@ -73,7 +73,7 @@ class DashboardViewModel @Inject constructor(
         initialValue = HealthStatus.NORMAL
     )
 
-    
+
     private val _isEditMode = MutableStateFlow(false)
     val isEditMode: StateFlow<Boolean> = _isEditMode.asStateFlow()
 
@@ -91,17 +91,16 @@ class DashboardViewModel @Inject constructor(
     init {
         viewModelScope.launch(ioDispatcher) {
             repository.dashboardLayoutFlow.collect { layout ->
-                val safeLayout = ensureNonNullFields(layout)
-                
+                val safeLayout = migrationManager.ensureNonNullFields(layout)
+
                 if (!safeLayout.isKineticCockpitMigrated) {
-                    val migrated = migrateToKineticCockpit(safeLayout)
+                    val migrated = migrationManager.migrateToKineticCockpit(safeLayout)
                     repository.saveLayout(migrated)
                     return@collect
                 }
                 _dashboardLayout.value = safeLayout
             }
         }
-
         viewModelScope.launch(ioDispatcher) {
             plcCommunicator.attributeUpdates.collect { (tag, attr, value) ->
                 val current = _sessionOverrides.value.toMutableMap()
@@ -111,68 +110,6 @@ class DashboardViewModel @Inject constructor(
                 _sessionOverrides.value = current
             }
         }
-    }
-
-    private fun ensureNonNullFields(layout: DashboardLayout?): DashboardLayout {
-        if (layout == null) return DashboardLayout()
-        return layout.copy(
-            widgets = layout.widgets.map { widget ->
-                val migratedLabelMultiplier = if (widget.fontSizeMultiplier != null && widget.fontSizeMultiplier > 0.05f && widget.labelFontSizeMultiplier == 1.0f) {
-                    widget.fontSizeMultiplier
-                } else {
-                    widget.labelFontSizeMultiplier
-                }
-
-                val migratedMetricMultiplier = if (widget.fontSizeMultiplier != null && widget.fontSizeMultiplier > 0.05f && widget.metricFontSizeMultiplier == 1.0f) {
-                    widget.fontSizeMultiplier
-                } else {
-                    widget.metricFontSizeMultiplier
-                }
-
-                widget.copy(
-                    labelFontSizeMultiplier = migratedLabelMultiplier,
-                    metricFontSizeMultiplier = migratedMetricMultiplier,
-                    gaugeStyle = widget.gaugeStyle ?: com.example.hmi.data.GaugeStyle.POINTER,
-                    alarmState = if (widget.alarmState == com.example.hmi.data.AlarmState.Acknowledged) {
-                        com.example.hmi.data.AlarmState.Unacknowledged
-                    } else {
-                        widget.alarmState
-                    }
-                )
-            }
-        )
-    }
-
-    /**
-     * FR-011: Automatically migrate existing layouts to the "Void" background
-     * and sanitize colors to high-contrast Kinetic tokens.
-     */
-    private fun migrateToKineticCockpit(layout: DashboardLayout): DashboardLayout {
-        return layout.copy(
-            canvasColor = Void.value.toLong(),
-            isKineticCockpitMigrated = true,
-            isDarkThemeMigrated = true,
-            widgets = layout.widgets.map { widget ->
-                val legacyColor = widget.backgroundColor?.let { ColorUtils.toColor(it) }
-                val sanitized = if (legacyColor != null) {
-                    ColorUtils.sanitizeColor(legacyColor).value.toLong()
-                } else if (widget.type == WidgetType.BUTTON) {
-                    // Force buttons to Primary identity if they had no color
-                    com.example.hmi.core.ui.theme.Primary.value.toLong()
-                } else {
-                    // Sliders and Gauges use null to auto-follow theme background
-                    null
-                }
-
-                // FR-013/RATIONALIZE: Ensure typography scale doesn't start below baseline (unless 0.0 to hide)
-                val zoom = if (widget.labelFontSizeMultiplier > 0.0f && widget.labelFontSizeMultiplier < 1.0f) 1.0f else widget.labelFontSizeMultiplier
-                widget.copy(
-                    backgroundColor = sanitized,
-                    labelFontSizeMultiplier = zoom,
-                    metricFontSizeMultiplier = 1.0f
-                )
-            }
-        )
     }
 
     fun observeTag(tagAddress: String) {
@@ -410,7 +347,7 @@ class DashboardViewModel @Inject constructor(
                     return@launch
                 }
 
-                val safeLayout = ensureNonNullFields(newLayout)
+                val safeLayout = migrationManager.ensureNonNullFields(newLayout)
                 _dashboardLayout.value = safeLayout
                 repository.saveLayout(safeLayout)
                 _importResult.emit(Result.success(Unit))

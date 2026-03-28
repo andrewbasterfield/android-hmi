@@ -66,6 +66,7 @@ class DashboardViewModelTest {
         }
 
         transferManager = mock()
+        val migrationManager = com.example.hmi.data.LayoutMigrationManager()
         
         // Mock saveLayout to update our flow
         repository.stub {
@@ -75,7 +76,7 @@ class DashboardViewModelTest {
             }
         }
 
-        viewModel = DashboardViewModel(plcCommunicator, repository, transferManager, json, testDispatcher)
+        viewModel = DashboardViewModel(plcCommunicator, repository, transferManager, migrationManager, json, testDispatcher)
     }
 
     @After
