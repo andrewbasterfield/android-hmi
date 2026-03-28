@@ -28,6 +28,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
+import com.example.hmi.core.ui.theme.HealthStatus
 import javax.inject.Inject
 
 @HiltViewModel
@@ -46,6 +50,29 @@ class DashboardViewModel @Inject constructor(
 
     private val _tagValues = MutableStateFlow<Map<String, Float>>(emptyMap())
     val tagValues: StateFlow<Map<String, Float>> = _tagValues.asStateFlow()
+
+    val globalStatus: StateFlow<HealthStatus> = combine(_dashboardLayout, _tagValues) { layout, values ->
+        val widgetStatuses = layout.widgets.map { widget ->
+            val currentValue = values[widget.tagAddress] ?: 0f
+            val zone = widget.colorZones.find { currentValue in it.startValue..it.endValue }
+            when (zone?.label) {
+                "CRITICAL" -> HealthStatus.CRITICAL
+                "CAUTION" -> HealthStatus.CAUTION
+                else -> HealthStatus.NORMAL
+            }
+        }
+
+        when {
+            widgetStatuses.any { it == HealthStatus.CRITICAL } -> HealthStatus.CRITICAL
+            widgetStatuses.any { it == HealthStatus.CAUTION } -> HealthStatus.CAUTION
+            else -> HealthStatus.NORMAL
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = HealthStatus.NORMAL
+    )
+
     
     private val _isEditMode = MutableStateFlow(false)
     val isEditMode: StateFlow<Boolean> = _isEditMode.asStateFlow()

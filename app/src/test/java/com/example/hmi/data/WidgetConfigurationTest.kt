@@ -1,6 +1,7 @@
 package com.example.hmi.data
 
-import com.google.gson.Gson
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
@@ -8,7 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WidgetConfigurationTest {
-    private val gson = Gson()
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true; encodeDefaults = true }
 
     @Test
     fun `serialization includes interaction type and inversion`() {
@@ -19,15 +20,15 @@ class WidgetConfigurationTest {
             isInverted = true
         )
         
-        val json = gson.toJson(config)
+        val jsonStr = json.encodeToString(config)
         
-        assertTrue(json.contains("\"interactionType\":\"LATCHING\""))
-        assertTrue(json.contains("\"isInverted\":true"))
+        assertTrue(jsonStr.contains("\"interactionType\":\"LATCHING\""))
+        assertTrue(jsonStr.contains("\"isInverted\":true"))
     }
 
     @Test
     fun `deserialization handles interaction type and inversion`() {
-        val json = """
+        val jsonStr = """
             {
                 "type": "BUTTON",
                 "tagAddress": "TEST_TAG",
@@ -36,7 +37,7 @@ class WidgetConfigurationTest {
             }
         """.trimIndent()
         
-        val config = gson.fromJson(json, WidgetConfiguration::class.java)
+        val config = json.decodeFromString<WidgetConfiguration>(jsonStr)
         
         assertEquals(InteractionType.INDICATOR, config.interactionType)
         assertTrue(config.isInverted)
@@ -44,14 +45,14 @@ class WidgetConfigurationTest {
 
     @Test
     fun `deserialization handles missing interaction fields with defaults`() {
-        val json = """
+        val jsonStr = """
             {
                 "type": "BUTTON",
                 "tagAddress": "TEST_TAG"
             }
         """.trimIndent()
         
-        val config = gson.fromJson(json, WidgetConfiguration::class.java)
+        val config = json.decodeFromString<WidgetConfiguration>(jsonStr)
         
         assertEquals(InteractionType.MOMENTARY, config.interactionType)
         assertFalse(config.isInverted)
@@ -68,17 +69,17 @@ class WidgetConfigurationTest {
             units = "PSI"
         )
         
-        val json = gson.toJson(config)
+        val jsonStr = json.encodeToString(config)
         
-        assertTrue(json.contains("\"pointerColor\":4294901760"))
-        assertTrue(json.contains("\"isPointerDynamic\":true"))
-        assertTrue(json.contains("\"gaugeStyle\":\"ARC_FILL\""))
-        assertTrue(json.contains("\"units\":\"PSI\""))
+        assertTrue(jsonStr.contains("\"pointerColor\":4294901760"))
+        assertTrue(jsonStr.contains("\"isPointerDynamic\":true"))
+        assertTrue(jsonStr.contains("\"gaugeStyle\":\"ARC_FILL\""))
+        assertTrue(jsonStr.contains("\"units\":\"PSI\""))
     }
 
     @Test
     fun `deserialization handles new gauge fields`() {
-        val json = """
+        val jsonStr = """
             {
                 "type": "GAUGE",
                 "tagAddress": "TEST_TAG",
@@ -89,7 +90,7 @@ class WidgetConfigurationTest {
             }
         """.trimIndent()
         
-        val config = gson.fromJson(json, WidgetConfiguration::class.java)
+        val config = json.decodeFromString<WidgetConfiguration>(jsonStr)
         
         assertEquals(0xFFFF0000L, config.pointerColor)
         assertTrue(config.isPointerDynamic)
@@ -99,14 +100,14 @@ class WidgetConfigurationTest {
 
     @Test
     fun `deserialization handles missing fields with defaults`() {
-        val json = """
+        val jsonStr = """
             {
                 "type": "GAUGE",
                 "tagAddress": "TEST_TAG"
             }
         """.trimIndent()
         
-        val config = gson.fromJson(json, WidgetConfiguration::class.java)
+        val config = json.decodeFromString<WidgetConfiguration>(jsonStr)
         
         assertNull(config.pointerColor)
         assertTrue(config.isPointerDynamic)

@@ -15,6 +15,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.json.Json
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -28,6 +29,7 @@ class ThemeMigrationTest {
     private val testDispatcher = StandardTestDispatcher()
     private val repository: DashboardRepository = mock()
     private val plcCommunicator: PlcCommunicator = mock()
+    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     @Before
     fun setUp() {
@@ -58,7 +60,7 @@ class ThemeMigrationTest {
         val transferManager: com.example.hmi.data.ConfigTransferManager = mock()
 
         // Act: Initialize the ViewModel to trigger migration logic
-        DashboardViewModel(plcCommunicator, repository, transferManager, testDispatcher)
+        DashboardViewModel(plcCommunicator, repository, transferManager, json, testDispatcher)
         
         // Let the init block run
         testDispatcher.scheduler.advanceUntilIdle()

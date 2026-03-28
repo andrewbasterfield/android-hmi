@@ -51,6 +51,7 @@ fun DashboardScreen(
     val sessionOverridesState = viewModel.sessionOverrides.collectAsState()
     val isEditMode by viewModel.isEditMode.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
+    val globalStatus by viewModel.globalStatus.collectAsState()
 
     var editingWidget by remember { mutableStateOf<WidgetConfiguration?>(null) }
     var showDashboardSettings by remember { mutableStateOf(false) }
@@ -101,24 +102,6 @@ fun DashboardScreen(
     LaunchedEffect(dashboardLayout.widgets) {
         val currentTags = dashboardLayout.widgets.map { it.tagAddress }.toSet()
         viewModel.syncTagObservations(currentTags)
-    }
-
-    val globalStatus by remember(dashboardLayout.widgets) {
-        derivedStateOf {
-            val tagValues = tagValuesState.value
-            val widgetStatuses = dashboardLayout.widgets.map { widget ->
-                val currentValue = tagValues[widget.tagAddress] ?: 0f
-                val zone = widget.colorZones.find { currentValue in it.startValue..it.endValue }
-                when (zone?.label) {
-                    "CRITICAL" -> HealthStatus.CRITICAL
-                    "CAUTION" -> HealthStatus.CAUTION
-                    else -> HealthStatus.NORMAL
-                }
-            }
-            if (widgetStatuses.any { it == HealthStatus.CRITICAL }) HealthStatus.CRITICAL
-            else if (widgetStatuses.any { it == HealthStatus.CAUTION }) HealthStatus.CAUTION
-            else HealthStatus.NORMAL
-        }
     }
 
     if (editingWidget != null) {
