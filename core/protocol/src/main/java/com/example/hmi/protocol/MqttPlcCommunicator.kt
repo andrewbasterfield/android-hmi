@@ -85,6 +85,7 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
                 lastConnectedTime = System.currentTimeMillis()
                 Log.d(TAG, "Connected")
                 _connectionState.value = ConnectionState.CONNECTED
+                publishOnlineStatus()
             }
             .addDisconnectedListener { context ->
                 // Check if disconnection was unexpected (BUG-014 fix)
@@ -145,15 +146,6 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
                 if (throwable == null) {
                     Log.i(TAG, "Connected to MQTT broker at ${profile.ipAddress}:${profile.port}")
                     _connectionState.value = ConnectionState.CONNECTED
-
-                    // Publish online status
-                    mqttClient.publishWith()
-                        .topic(settings.statusTopic)
-                        .payload("online".toByteArray())
-                        .qos(MqttQos.AT_LEAST_ONCE)
-                        .retain(true)
-                        .send()
-
                     continuation.resume(Result.success(Unit))
                 } else {
                     Log.e(TAG, "Failed to connect to MQTT broker: ${throwable.message}", throwable)
@@ -245,6 +237,26 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
                     replay = 1
                 )
             }
+        }
+    }
+
+    private fun publishOnlineStatus() {
+        val mqttClient = client
+        val settings = currentProfile?.mqttSettings
+        if (mqttClient != null && settings != null) {
+            mqttClient.publishWith()
+                .topic(settings.statusTopic)
+                .payload("online".toByteArray())
+                .qos(MqttQos.AT_LEAST_ONCE)
+                .retain(true)
+                .send()
+                .whenComplete { _, throwable ->
+                    if (throwable != null) {
+                        Log.w(TAG, "Failed to publish online status: ${throwable.message}")
+                    } else {
+                        Log.d(TAG, "Published online status")
+                    }
+                }
         }
     }
 
