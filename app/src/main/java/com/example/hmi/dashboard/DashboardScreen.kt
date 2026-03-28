@@ -47,8 +47,8 @@ fun DashboardScreen(
     onNavigateBack: () -> Unit
 ) {
     val dashboardLayout by viewModel.dashboardLayout.collectAsState()
-    val tagValues by viewModel.tagValues.collectAsState()
-    val sessionOverrides by viewModel.sessionOverrides.collectAsState()
+    val tagValuesState = viewModel.tagValues.collectAsState()
+    val sessionOverridesState = viewModel.sessionOverrides.collectAsState()
     val isEditMode by viewModel.isEditMode.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
 
@@ -103,8 +103,9 @@ fun DashboardScreen(
         viewModel.syncTagObservations(currentTags)
     }
 
-    val globalStatus by remember(tagValues, dashboardLayout.widgets) {
+    val globalStatus by remember(dashboardLayout.widgets) {
         derivedStateOf {
+            val tagValues = tagValuesState.value
             val widgetStatuses = dashboardLayout.widgets.map { widget ->
                 val currentValue = tagValues[widget.tagAddress] ?: 0f
                 val zone = widget.colorZones.find { currentValue in it.startValue..it.endValue }
@@ -331,8 +332,8 @@ fun DashboardScreen(
                                 animatedPageOffsetY = animatedPageOffsetY.value,
                                 viewportCols = viewportCols,
                                 viewportRows = viewportRows,
-                                tagValues = tagValues,
-                                sessionOverrides = sessionOverrides,
+                                tagValuesState = tagValuesState,
+                                sessionOverridesState = sessionOverridesState,
                                 isEditMode = isEditMode,
                                 hapticEnabled = dashboardLayout.hapticFeedbackEnabled,
                                 draggingOffsets = draggingOffsets,
@@ -363,8 +364,8 @@ private fun WidgetRenderingNode(
     animatedPageOffsetY: Float,
     viewportCols: Int,
     viewportRows: Int,
-    tagValues: Map<String, Float>,
-    sessionOverrides: Map<String, Map<String, String>>,
+    tagValuesState: State<Map<String, Float>>,
+    sessionOverridesState: State<Map<String, Map<String, String>>>,
     isEditMode: Boolean,
     hapticEnabled: Boolean,
     draggingOffsets: MutableMap<String, Offset>,
@@ -376,11 +377,16 @@ private fun WidgetRenderingNode(
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    
-    val currentValue = tagValues[widget.tagAddress.orEmpty()] ?: 0f
-    val tagOverrides = sessionOverrides[widget.tagAddress.orEmpty()]
-    // Handle Gson potentially setting non-null String fields to null at runtime
-    val resolvedLabel = tagOverrides?.get("label") ?: widget.customLabel ?: widget.tagAddress.orEmpty()
+
+    // Use derivedStateOf to isolate recomposition - only recompose when THIS widget's tag value changes
+    val tagAddress = widget.tagAddress.orEmpty()
+    val currentValue by remember(tagAddress) {
+        derivedStateOf { tagValuesState.value[tagAddress] ?: 0f }
+    }
+    val tagOverrides by remember(tagAddress) {
+        derivedStateOf { sessionOverridesState.value[tagAddress] }
+    }
+    val resolvedLabel = tagOverrides?.get("label") ?: widget.customLabel ?: tagAddress
     val resolvedColorLong = tagOverrides?.get("color")?.let { 
         com.example.hmi.widgets.ColorUtils.parseHexColor(it) 
     } ?: widget.backgroundColor
