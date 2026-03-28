@@ -247,20 +247,47 @@ fun DashboardScreen(
                                     val thresholdX = viewportWidthPx * 0.2f
                                     val thresholdY = viewportHeightPx * 0.2f
 
+                                    // Helper to check if any widget overlaps a given page
+                                    fun pageHasWidgetOverlap(targetPageX: Int, targetPageY: Int): Boolean {
+                                        val pageColStart = targetPageX * viewportCols
+                                        val pageColEnd = pageColStart + viewportCols
+                                        val pageRowStart = targetPageY * viewportRows
+                                        val pageRowEnd = pageRowStart + viewportRows
+
+                                        return dashboardLayout.widgets.any { widget ->
+                                            val widgetColEnd = widget.column + widget.colSpan
+                                            val widgetRowEnd = widget.row + widget.rowSpan
+                                            widget.column < pageColEnd && widgetColEnd > pageColStart &&
+                                            widget.row < pageRowEnd && widgetRowEnd > pageRowStart
+                                        }
+                                    }
+
                                     // Determine which axis had more movement
                                     if (abs(swipeAccumulatorX) > abs(swipeAccumulatorY)) {
                                         // Horizontal swipe dominates
-                                        if (swipeAccumulatorX > thresholdX && currentLogicalPageX > -GridSystem.PAGE_OFFSET) {
-                                            currentLogicalPageX -= 1
-                                        } else if (swipeAccumulatorX < -thresholdX && currentLogicalPageX < GridSystem.PAGE_OFFSET) {
-                                            currentLogicalPageX += 1
+                                        val targetPageX = when {
+                                            swipeAccumulatorX > thresholdX -> currentLogicalPageX - 1
+                                            swipeAccumulatorX < -thresholdX -> currentLogicalPageX + 1
+                                            else -> currentLogicalPageX
+                                        }
+                                        if (targetPageX != currentLogicalPageX &&
+                                            targetPageX >= -GridSystem.PAGE_OFFSET &&
+                                            targetPageX <= GridSystem.PAGE_OFFSET &&
+                                            pageHasWidgetOverlap(targetPageX, currentLogicalPageY)) {
+                                            currentLogicalPageX = targetPageX
                                         }
                                     } else {
                                         // Vertical swipe dominates
-                                        if (swipeAccumulatorY > thresholdY && currentLogicalPageY > -GridSystem.PAGE_OFFSET) {
-                                            currentLogicalPageY -= 1
-                                        } else if (swipeAccumulatorY < -thresholdY && currentLogicalPageY < GridSystem.PAGE_OFFSET) {
-                                            currentLogicalPageY += 1
+                                        val targetPageY = when {
+                                            swipeAccumulatorY > thresholdY -> currentLogicalPageY - 1
+                                            swipeAccumulatorY < -thresholdY -> currentLogicalPageY + 1
+                                            else -> currentLogicalPageY
+                                        }
+                                        if (targetPageY != currentLogicalPageY &&
+                                            targetPageY >= -GridSystem.PAGE_OFFSET &&
+                                            targetPageY <= GridSystem.PAGE_OFFSET &&
+                                            pageHasWidgetOverlap(currentLogicalPageX, targetPageY)) {
+                                            currentLogicalPageY = targetPageY
                                         }
                                     }
 
