@@ -60,7 +60,6 @@ Kotlin (Latest stable): Follow standard conventions
 ## Recent Changes
 - 028-duplicate-widget: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Kotlin Coroutines (StateFlow), Jetpack DataStore, GSON
 - 028-duplicate-widget: Added Kotlin 1.9.22 + Jetpack Compose, Hilt, Kotlin Coroutines (StateFlow), Jetpack DataStore, GSON
-- 027-orientation-management: Added Kotlin 1.9.22 + Jetpack Compose, Kotlin Coroutines, Hilt, Jetpack DataStore, GSON
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -16,9 +16,13 @@ enum class AlarmState { Normal, Unacknowledged, Acknowledged }
 enum class InteractionType { MOMENTARY, LATCHING, INDICATOR }
 
 @Serializable
+enum class WidgetOrientation { HORIZONTAL, VERTICAL }
+
+@Serializable
 data class WidgetConfiguration(
     val id: String = UUID.randomUUID().toString(),
     val type: WidgetType = WidgetType.BUTTON,
+    val orientation: WidgetOrientation = WidgetOrientation.HORIZONTAL,
     val column: Int = 0,
     val row: Int = 0,
     val colSpan: Int = 1,

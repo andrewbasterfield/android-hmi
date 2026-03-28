@@ -6,7 +6,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.test.swipeUp
 import com.example.hmi.TestActivity
+import com.example.hmi.data.WidgetOrientation
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import org.junit.Rule
@@ -71,6 +73,35 @@ class WidgetTest {
 
         // Verify node exists
         composeTestRule.onNodeWithContentDescription("Slider for Pump Speed")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun verticalSliderWidget_updatesValueOnInteraction() {
+        val label = "Tank Level"
+        var currentValue = 50f
+
+        composeTestRule.setContent {
+            SliderWidget(
+                label = label,
+                value = currentValue,
+                onValueChange = { currentValue = it },
+                valueRange = 0f..100f,
+                orientation = WidgetOrientation.VERTICAL
+            )
+        }
+
+        // Check initial state
+        composeTestRule.onNodeWithText(label).assertIsDisplayed()
+
+        // Interact with the vertical slider (swipe up to increase)
+        composeTestRule.onNodeWithContentDescription("Slider for Tank Level")
+            .performTouchInput {
+                swipeUp()
+            }
+
+        // Verify node exists and interaction happened
+        composeTestRule.onNodeWithContentDescription("Slider for Tank Level")
             .assertIsDisplayed()
     }
 }

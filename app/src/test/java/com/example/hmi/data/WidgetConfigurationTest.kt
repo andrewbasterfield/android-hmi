@@ -12,6 +12,48 @@ class WidgetConfigurationTest {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; encodeDefaults = true }
 
     @Test
+    fun `serialization includes orientation`() {
+        val config = WidgetConfiguration(
+            type = WidgetType.SLIDER,
+            tagAddress = "TEST_TAG",
+            orientation = WidgetOrientation.VERTICAL
+        )
+        
+        val jsonStr = json.encodeToString(config)
+        
+        assertTrue(jsonStr.contains("\"orientation\":\"VERTICAL\""))
+    }
+
+    @Test
+    fun `deserialization handles orientation`() {
+        val jsonStr = """
+            {
+                "type": "SLIDER",
+                "tagAddress": "TEST_TAG",
+                "orientation": "VERTICAL"
+            }
+        """.trimIndent()
+        
+        val config = json.decodeFromString<WidgetConfiguration>(jsonStr)
+        
+        assertEquals(WidgetOrientation.VERTICAL, config.orientation)
+    }
+
+    @Test
+    fun `deserialization handles missing orientation with default`() {
+        val jsonStr = """
+            {
+                "type": "SLIDER",
+                "tagAddress": "TEST_TAG"
+            }
+        """.trimIndent()
+        
+        val config = json.decodeFromString<WidgetConfiguration>(jsonStr)
+        
+        assertEquals(WidgetOrientation.HORIZONTAL, config.orientation)
+    }
+
+    @Test
     fun `serialization includes interaction type and inversion`() {
         val config = WidgetConfiguration(
             type = WidgetType.BUTTON,

@@ -651,6 +651,7 @@ private fun WidgetRenderingNode(
                         labelFontSizeMultiplier = widget.labelFontSizeMultiplier,
                         metricFontSizeMultiplier = widget.metricFontSizeMultiplier,
                         units = widget.units,
+                        orientation = widget.orientation,
                         modifier = Modifier.fillMaxSize().padding(8.dp)
                     )
                 }

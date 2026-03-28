@@ -22,6 +22,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.hmi.data.GaugeZone
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
+import com.example.hmi.data.WidgetOrientation
 import com.example.hmi.data.InteractionType
 import com.example.hmi.ui.components.HmiColorPicker
 import com.example.hmi.ui.theme.IndustrialShape
@@ -83,6 +84,7 @@ fun WidgetConfigDialog(
     var tagAddress by remember { mutableStateOf(initialWidget?.tagAddress.orEmpty()) }
     var customLabel by remember { mutableStateOf(initialWidget?.customLabel.orEmpty()) }
     var selectedColor by remember { mutableStateOf(initialWidget?.backgroundColor) }
+    var selectedOrientation by remember { mutableStateOf(initialWidget?.orientation ?: WidgetOrientation.HORIZONTAL) }
     
     // Migrate legacy textColorOverride to new textColor picker
     val migratedTextColor = remember {
@@ -221,6 +223,28 @@ fun WidgetConfigDialog(
                             checked = isInverted,
                             onCheckedChange = { isInverted = it }
                         )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                if (selectedType == WidgetType.SLIDER) {
+                    Text("Orientation", style = MaterialTheme.typography.labelSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        WidgetOrientation.values().forEach { mode ->
+                            FilterChip(
+                                selected = selectedOrientation == mode,
+                                onClick = { 
+                                    if (selectedOrientation != mode) {
+                                        selectedOrientation = mode
+                                        // Auto-swap dimensions when orientation changes
+                                        val temp = colSpan
+                                        colSpan = rowSpan
+                                        rowSpan = temp
+                                    }
+                                },
+                                label = { Text(mode.name) }
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
@@ -439,6 +463,7 @@ fun WidgetConfigDialog(
                             tagAddress = tagAddress,
                             customLabel = customLabel.ifBlank { null },
                             backgroundColor = selectedColor,
+                            orientation = if (selectedType == WidgetType.SLIDER) selectedOrientation else WidgetOrientation.HORIZONTAL,
                             textColor = selectedTextColor,
                             labelFontSizeMultiplier = labelFontSizeMultiplier,
                             metricFontSizeMultiplier = metricFontSizeMultiplier,
