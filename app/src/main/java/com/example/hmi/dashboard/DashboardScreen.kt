@@ -378,9 +378,10 @@ private fun WidgetRenderingNode(
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     
-    val currentValue = tagValues[widget.tagAddress] ?: 0f
-    val tagOverrides = sessionOverrides[widget.tagAddress]
-    val resolvedLabel = tagOverrides?.get("label") ?: widget.customLabel ?: widget.tagAddress
+    val currentValue = tagValues[widget.tagAddress.orEmpty()] ?: 0f
+    val tagOverrides = sessionOverrides[widget.tagAddress.orEmpty()]
+    // Handle Gson potentially setting non-null String fields to null at runtime
+    val resolvedLabel = tagOverrides?.get("label") ?: widget.customLabel ?: widget.tagAddress.orEmpty()
     val resolvedColorLong = tagOverrides?.get("color")?.let { 
         com.example.hmi.widgets.ColorUtils.parseHexColor(it) 
     } ?: widget.backgroundColor
