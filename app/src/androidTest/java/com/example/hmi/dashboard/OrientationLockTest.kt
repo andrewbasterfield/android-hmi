@@ -39,7 +39,7 @@ class OrientationLockTest {
         composeTestRule.onNodeWithText("Orientation Mode").assertIsDisplayed()
 
         // Select Force Landscape
-        composeTestRule.onNodeWithText("FORCE_LANDSCAPE").performClick()
+        composeTestRule.onNodeWithText("LANDSCAPE").performClick()
         
         // Verify selection (via semantics or checking the button state if possible)
         // For now, we'll assume success if no crash and we can save

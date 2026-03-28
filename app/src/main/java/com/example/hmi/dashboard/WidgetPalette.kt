@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.example.hmi.data.GaugeZone
 import com.example.hmi.data.WidgetConfiguration
 import com.example.hmi.data.WidgetType
@@ -154,6 +155,7 @@ fun WidgetConfigDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(dismissOnClickOutside = false),
         title = { Text(if (initialWidget == null) "Add Widget" else "Edit Widget") },
         shape = IndustrialShape.Standard, // US1: 8dp rounded corners
         modifier = Modifier.fillMaxWidth(0.95f),

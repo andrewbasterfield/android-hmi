@@ -6,8 +6,8 @@ import java.util.UUID
 @Serializable
 enum class OrientationMode {
     AUTO,
-    FORCE_LANDSCAPE,
-    FORCE_PORTRAIT
+    LANDSCAPE,
+    PORTRAIT
 }
 
 @Serializable

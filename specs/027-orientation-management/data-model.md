@@ -5,8 +5,8 @@
 ### OrientationMode (Enum)
 Represents the enforced orientation of the application.
 - `AUTO`: Follow the device's physical sensor.
-- `FORCE_LANDSCAPE`: Lock the UI to landscape mode.
-- `FORCE_PORTRAIT`: Lock the UI to portrait mode.
+- `LANDSCAPE`: Lock the UI to landscape mode.
+- `PORTRAIT`: Lock the UI to portrait mode.
 
 ### DashboardLayout (Updated)
 Existing layout configuration extended for orientation and grid management.
@@ -37,7 +37,7 @@ Existing layout configuration extended for orientation and grid management.
 
 ## State Transitions
 1. **Orientation Change**:
-   - Triggered by: Sensor (AUTO) or User Toggle (FORCE_*).
+   - Triggered by: Sensor (AUTO) or User Toggle (LANDSCAPE/PORTRAIT).
    - Result: `Viewport` dimensions update -> `Reflow` of the `VirtualGrid` into new `Page` boundaries.
 2. **Page Navigation**:
    - Triggered by: Swipe or Edge-Swipe in Edit Mode.

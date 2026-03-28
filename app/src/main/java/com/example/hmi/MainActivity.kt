@@ -51,8 +51,8 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(layout.orientationMode) {
                     requestedOrientation = when (layout.orientationMode) {
                         OrientationMode.AUTO -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                        OrientationMode.FORCE_LANDSCAPE -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                        OrientationMode.FORCE_PORTRAIT -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                        OrientationMode.LANDSCAPE -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                        OrientationMode.PORTRAIT -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                     }
                 }
 

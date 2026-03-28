@@ -16,7 +16,7 @@ To lock the UI to a specific orientation:
 
 1. Open the **Dashboard Settings** menu.
 2. Locate the **Orientation Mode** toggle.
-3. Select between **Auto**, **Force Landscape**, or **Force Portrait**.
+3. Select between **Auto**, **Landscape**, or **Portrait**.
 4. The UI will immediately switch and stay locked to the chosen mode.
 
 ## For Developers

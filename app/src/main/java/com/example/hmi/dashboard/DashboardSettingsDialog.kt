@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.hmi.ui.components.HmiColorPicker
 import com.example.hmi.ui.theme.IndustrialShape
@@ -31,6 +32,7 @@ fun DashboardSettingsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(dismissOnClickOutside = false),
         title = { Text("Layout Settings") },
         modifier = Modifier.fillMaxWidth(0.95f),
         shape = IndustrialShape.Standard, // US1: 8dp rounded corners

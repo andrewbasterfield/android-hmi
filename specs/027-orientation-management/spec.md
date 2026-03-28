@@ -62,7 +62,7 @@ As a supervisor, I want the orientation and layout preferences to be saved acros
 
 ### Functional Requirements
 
-- **FR-001**: System MUST provide three Orientation Modes: `AUTO`, `FORCE_LANDSCAPE`, and `FORCE_PORTRAIT`.
+- **FR-001**: System MUST provide three Orientation Modes: `AUTO`, `LANDSCAPE`, and `PORTRAIT`.
 - **FR-002**: System MUST persist the selected Orientation Mode and layout configuration.
 - **FR-003**: System MUST implement a 2D paging mechanism (supporting both horizontal and vertical swiping) where each page corresponds to the current viewable screen width/height.
 - **FR-004**: System MUST allow widgets to have global grid coordinates that include negative values and extend beyond the boundaries of a single page in any direction.
