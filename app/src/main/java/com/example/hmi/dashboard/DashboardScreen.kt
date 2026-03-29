@@ -111,7 +111,7 @@ fun DashboardScreen(
     }
 
     LaunchedEffect(dashboardLayout.widgets) {
-        val currentTags = dashboardLayout.widgets.map { it.tagAddress }.toSet()
+        val currentTags = dashboardLayout.widgets.map { it.tagAddress to it.jsonPath }.toSet()
         viewModel.syncTagObservations(currentTags)
     }
 
@@ -395,10 +395,11 @@ private fun WidgetRenderingNode(
 
     // Use derivedStateOf to isolate recomposition - only recompose when THIS widget's tag value changes
     val tagAddress = widget.tagAddress.orEmpty()
-    val currentValue by remember(tagAddress) {
+    val jsonPath = widget.jsonPath
+    val currentValue by remember(tagAddress, jsonPath) {
         derivedStateOf { tagValuesState.value[tagAddress] ?: 0f }
     }
-    val tagOverrides by remember(tagAddress) {
+    val tagOverrides by remember(tagAddress, jsonPath) {
         derivedStateOf { sessionOverridesState.value[tagAddress] }
     }
     val resolvedLabel = tagOverrides?.get("label") ?: widget.customLabel ?: tagAddress
@@ -655,7 +656,7 @@ private fun WidgetRenderingNode(
                     SliderWidget(
                         label = resolvedLabel,
                         value = currentValue,
-                        onValueChange = { viewModel.onSliderChange(widget.tagAddress, widget.writeAddress, it) },
+                        onValueChange = { viewModel.onSliderChange(widget.tagAddress, widget.writeAddress, it, widget.writeTemplate) },
                         valueRange = (widget.minValue ?: 0f)..(widget.maxValue ?: 100f),
                         backgroundColor = resolvedColorLong,
                         labelFontSizeMultiplier = widget.labelFontSizeMultiplier,

@@ -115,6 +115,8 @@ fun WidgetConfigDialog(
     var pointerColor by remember { mutableStateOf(initialWidget?.pointerColor) }
     var isPointerDynamic by remember { mutableStateOf(initialWidget?.isPointerDynamic ?: true) }
     var writeAddress by remember { mutableStateOf(initialWidget?.writeAddress.orEmpty()) }
+    var jsonPath by remember { mutableStateOf(initialWidget?.jsonPath.orEmpty()) }
+    var writeTemplate by remember { mutableStateOf(initialWidget?.writeTemplate.orEmpty()) }
     var units by remember { mutableStateOf(initialWidget?.units.orEmpty()) }
     var decimalPlaces by remember { mutableFloatStateOf(initialWidget?.decimalPlaces?.toFloat() ?: 1f) }
     
@@ -195,6 +197,17 @@ fun WidgetConfigDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = jsonPath,
+                    onValueChange = { jsonPath = it },
+                    label = { Text("JSON Path (Optional)") },
+                    placeholder = { Text("e.g. sensors.temperature") },
+                    supportingText = { Text("Used for MQTT JSON payloads") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 if (selectedType == WidgetType.SLIDER || selectedType == WidgetType.BUTTON) {
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
@@ -202,6 +215,17 @@ fun WidgetConfigDialog(
                         onValueChange = { writeAddress = it },
                         label = { Text("Write Topic (Optional)") },
                         placeholder = { Text(tagAddress.ifEmpty { "Same as Tag Address" }) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = writeTemplate,
+                        onValueChange = { writeTemplate = it },
+                        label = { Text("Write Template (Optional)") },
+                        placeholder = { Text("e.g. {\"val\": ${'$'}VALUE}") },
+                        supportingText = { Text("Use ${'$'}VALUE for the actual value") },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -517,6 +541,8 @@ fun WidgetConfigDialog(
                         (initialWidget ?: WidgetConfiguration(type = selectedType, tagAddress = tagAddress)).copy(
                             tagAddress = tagAddress,
                             writeAddress = writeAddress.ifBlank { null },
+                            jsonPath = jsonPath.ifBlank { null },
+                            writeTemplate = writeTemplate.ifBlank { null },
                             customLabel = customLabel.ifBlank { null },
                             backgroundColor = selectedColor,
                             orientation = if (selectedType == WidgetType.SLIDER) selectedOrientation else WidgetOrientation.HORIZONTAL,

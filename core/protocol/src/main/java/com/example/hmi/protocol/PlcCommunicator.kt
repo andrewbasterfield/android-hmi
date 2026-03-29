@@ -27,8 +27,9 @@ interface PlcCommunicator {
     /**
      * Reads a continuous stream of updates for a specific tag or memory address.
      * @param tagAddress The address string (e.g., "40001" for Modbus, "ns=2;s=MyTag" for OPC UA)
+     * @param jsonPath Optional path to extract from a JSON payload (e.g., "motor.temp")
      */
-    fun observeTag(tagAddress: String): Flow<PlcValue>
+    fun observeTag(tagAddress: String, jsonPath: String? = null): Flow<PlcValue>
 
     /**
      * A flow of all attribute updates received (TagAddress, AttributeName, Value).

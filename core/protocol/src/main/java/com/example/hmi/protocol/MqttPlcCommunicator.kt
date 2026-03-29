@@ -8,6 +8,7 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import com.example.hmi.protocol.utils.JsonPathUtils
 import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient
 import com.hivemq.client.mqtt.mqtt3.Mqtt3Client
 import com.hivemq.client.mqtt.mqtt3.exceptions.Mqtt3DisconnectException
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
@@ -53,7 +55,7 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
     override val attributeUpdates: Flow<Triple<String, String, String>> = _attributeUpdates.asSharedFlow()
 
     // Cache for shared subscriptions (Reference Counting via shareIn)
-    private val tagFlows = mutableMapOf<String, Flow<PlcValue>>()
+    private val rawTopicFlows = mutableMapOf<String, Flow<String>>()
     private val attributeFlows = mutableMapOf<String, Flow<String>>()
     private val communicatorScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -71,7 +73,7 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
         currentProfile = profile
         
         // Reset state for new connection
-        synchronized(tagFlows) { tagFlows.clear() }
+        synchronized(rawTopicFlows) { rawTopicFlows.clear() }
         synchronized(attributeFlows) { attributeFlows.clear() }
         
         val clientBuilder = Mqtt3Client.builder()
@@ -118,7 +120,10 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
                     _connectionState.value = ConnectionState.DISCONNECTED
                 }
             }
-            .automaticReconnectWithDefaultConfig()
+            .automaticReconnect()
+                .initialDelay(1, java.util.concurrent.TimeUnit.SECONDS)
+                .maxDelay(10, java.util.concurrent.TimeUnit.SECONDS)
+                .applyAutomaticReconnect()
             
         if (settings.username != null && settings.password != null) {
             clientBuilder.simpleAuth()
@@ -194,15 +199,14 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
         _connectionState.value = ConnectionState.DISCONNECTED
         
         // Clear flows to ensure new connection starts fresh
-        synchronized(tagFlows) { tagFlows.clear() }
+        synchronized(rawTopicFlows) { rawTopicFlows.clear() }
         synchronized(attributeFlows) { attributeFlows.clear() }
     }
 
-    override fun observeTag(tagAddress: String): Flow<PlcValue> {
+    override fun observeTag(tagAddress: String, jsonPath: String?): Flow<PlcValue> {
         val fullTopic = getFullTopic(tagAddress)
-        return synchronized(tagFlows) {
-            tagFlows.getOrPut(fullTopic) {
-                val settings = currentProfile?.mqttSettings ?: MqttSettings()
+        val rawFlow = synchronized(rawTopicFlows) {
+            rawTopicFlows.getOrPut(fullTopic) {
                 callbackFlow {
                     val mqttClient = client ?: run {
                         Log.w(TAG, "Cannot observe tag '$tagAddress': not connected")
@@ -216,8 +220,7 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
                         .qos(MqttQos.AT_MOST_ONCE)
                         .callback { publish ->
                             val payload = String(publish.payloadAsBytes)
-                            val value = parsePayload(payload, settings, fullTopic)
-                            trySend(value)
+                            trySend(payload)
                         }
                         .send()
                         .whenComplete { _, throwable ->
@@ -237,6 +240,11 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
                     replay = 1
                 )
             }
+        }
+
+        val settings = currentProfile?.mqttSettings ?: MqttSettings()
+        return rawFlow.map { payload ->
+            parsePayload(payload, settings, fullTopic, jsonPath)
         }
     }
 
@@ -260,20 +268,21 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
         }
     }
 
-    private fun parsePayload(payload: String, settings: MqttSettings, topic: String? = null): PlcValue {
-        return if (settings.payloadFormat == MqttPayloadFormat.JSON && settings.jsonKey != null) {
+    private fun parsePayload(payload: String, settings: MqttSettings, topic: String? = null, jsonPathOverride: String? = null): PlcValue {
+        val effectivePath = jsonPathOverride ?: if (settings.payloadFormat == MqttPayloadFormat.JSON) settings.jsonKey else null
+        
+        return if (effectivePath != null) {
             try {
                 val jsonElement = Json.parseToJsonElement(payload)
-                val valueElement = jsonElement.jsonObject[settings.jsonKey]
-                if (valueElement != null && valueElement is JsonPrimitive) {
-                    val primitive = valueElement.jsonPrimitive
+                val valueElement = JsonPathUtils.extractJsonPath(jsonElement, effectivePath)
+                if (valueElement != null) {
                     when {
-                        primitive.booleanOrNull != null -> PlcValue.BooleanValue(primitive.booleanOrNull!!)
-                        primitive.floatOrNull != null -> PlcValue.FloatValue(primitive.floatOrNull!!)
-                        else -> PlcValue.StringValue(primitive.content)
+                        valueElement.booleanOrNull != null -> PlcValue.BooleanValue(valueElement.booleanOrNull!!)
+                        valueElement.floatOrNull != null -> PlcValue.FloatValue(valueElement.floatOrNull!!)
+                        else -> PlcValue.StringValue(valueElement.content)
                     }
                 } else {
-                    Log.w(TAG, "JSON key '${settings.jsonKey}' not found or not primitive in payload from ${topic ?: "unknown"}: $payload")
+                    Log.w(TAG, "JSON path '$effectivePath' not found or not primitive in payload from ${topic ?: "unknown"}: $payload")
                     PlcValue.StringValue(payload)
                 }
             } catch (e: Exception) {

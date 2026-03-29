@@ -113,6 +113,35 @@ The HMI automatically publishes its status to `[prefix]/status`.
 ### Write Topics
 By default, widgets read and write to the same topic. For systems like Home Assistant that use separate state/command topics, use the **Write Topic** field in the widget configuration to specify a dedicated command path.
 
+## MQTT Advanced Features
+
+### Per-Widget JSON Extraction
+
+If your MQTT broker publishes data as a JSON blob (e.g. from Zigbee2MQTT), you can extract specific keys directly in the widget configuration.
+
+**JSON Path Syntax:** `key1.key2.leaf`
+
+| Example Payload | JSON Path | Result |
+|-----------------|-----------|--------|
+| `{"temp": 22.5}` | `temp` | `22.5` |
+| `{"motor": {"rpm": 1500}}` | `motor.rpm` | `1500` |
+
+Multiple widgets can subscribe to the same topic with different paths. The HMI parses the blob once and updates all widgets efficiently.
+
+### Structured Write Templates
+
+To control devices that require JSON-formatted commands, use the **Write Template** field on Sliders or Buttons.
+
+**Template Variable:** `$VALUE` (substituted with the widget's numeric or text value)
+
+| Write Template | Widget Value | Published Payload |
+|----------------|--------------|-------------------|
+| `{"level": $VALUE}` | `75` | `{"level": 75}` |
+| `{"cmd": "SET", "val": $VALUE}` | `42` | `{"cmd": "SET", "val": 42}` |
+| `{"state": "$VALUE"}` | `on` | `{"state": "on"}` |
+
+> **Note**: Literal substitution is used. Wrap `$VALUE` in quotes in the template if the destination expects a string.
+
 ## Advanced Options
 
 - **Keep screen on while dashboard is active:** Prevents the Android device from dimming or sleeping while you are monitoring the HMI.

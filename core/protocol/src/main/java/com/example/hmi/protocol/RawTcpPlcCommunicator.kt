@@ -163,7 +163,7 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
             Triple(tag, attr, (value as? PlcValue.StringValue)?.value ?: "")
         }
 
-    override fun observeTag(tagAddress: String): Flow<PlcValue> {
+    override fun observeTag(tagAddress: String, jsonPath: String?): Flow<PlcValue> {
         return _tagUpdates
             .filter { it.first == tagAddress }
             .map { it.second }

@@ -66,10 +66,22 @@ class MqttPlcCommunicatorTest {
         assertEquals("tag2", getFullTopicMethod.invoke(communicator, "/tag2"))
     }
 
+    @Test
+    fun `parsePayload with jsonPath override`() {
+        val settings = MqttSettings(payloadFormat = MqttPayloadFormat.PLAIN_TEXT) // Global setting is PLAIN_TEXT
+        val payload = "{\"temp\": 25.5, \"humidity\": 60}"
+        
+        val tempResult = communicator.callParsePayload(payload, settings, "temp")
+        val humidityResult = communicator.callParsePayload(payload, settings, "humidity")
+        
+        assertEquals(PlcValue.FloatValue(25.5f), tempResult)
+        assertEquals(PlcValue.FloatValue(60.0f), humidityResult)
+    }
+
     // Helper to call private method for testing
-    private fun MqttPlcCommunicator.callParsePayload(payload: String, settings: MqttSettings): PlcValue {
-        val method = this.javaClass.getDeclaredMethod("parsePayload", String::class.java, MqttSettings::class.java, String::class.java)
+    private fun MqttPlcCommunicator.callParsePayload(payload: String, settings: MqttSettings, jsonPathOverride: String? = null): PlcValue {
+        val method = this.javaClass.getDeclaredMethod("parsePayload", String::class.java, MqttSettings::class.java, String::class.java, String::class.java)
         method.isAccessible = true
-        return method.invoke(this, payload, settings, null) as PlcValue
+        return method.invoke(this, payload, settings, null, jsonPathOverride) as PlcValue
     }
 }

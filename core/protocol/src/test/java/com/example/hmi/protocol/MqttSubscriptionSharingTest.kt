@@ -30,7 +30,7 @@ class MqttSubscriptionSharingTest {
     private class TestableMqttCommunicator(val scope: CoroutineScope) : PlcCommunicator {
         var subscribeCount = 0
         var unsubscribeCount = 0
-        private val tagFlows = mutableMapOf<String, Flow<PlcValue>>()
+        private val tagFlows = mutableMapOf<Pair<String, String?>, Flow<PlcValue>>()
 
         override val connectionState = kotlinx.coroutines.flow.MutableStateFlow(ConnectionState.CONNECTED)
         override val attributeUpdates = kotlinx.coroutines.flow.MutableSharedFlow<Triple<String, String, String>>()
@@ -40,9 +40,10 @@ class MqttSubscriptionSharingTest {
         override suspend fun writeTag(tagAddress: String, value: PlcValue, shouldRetain: Boolean) = Result.success(Unit)
         override fun observeAttribute(tagAddress: String, attribute: String) = kotlinx.coroutines.flow.emptyFlow<String>()
 
-        override fun observeTag(tagAddress: String): Flow<PlcValue> {
+        override fun observeTag(tagAddress: String, jsonPath: String?): Flow<PlcValue> {
+            val key = tagAddress to jsonPath
             return synchronized(tagFlows) {
-                tagFlows.getOrPut(tagAddress) {
+                tagFlows.getOrPut(key) {
                     callbackFlow<PlcValue> {
                         subscribeCount++
                         awaitClose {

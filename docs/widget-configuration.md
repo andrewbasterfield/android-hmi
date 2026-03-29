@@ -4,8 +4,10 @@
 
 | Setting              | Description                                                |
 |----------------------|------------------------------------------------------------|
-| Tag Address          | MQTT topic or TCP tag to read from (see [MQTT Configuration](mqtt-configuration.md) for addressing rules) |
+| Tag Address          | MQTT topic or TCP tag to read from                         |
+| JSON Path            | Optional dot-notation path to extract from a JSON payload (e.g. `status.temp`) |
 | Write Topic          | Optional separate topic for sending commands (sliders, buttons only) |
+| Write Template       | Optional JSON template for outgoing commands (e.g. `{"val": $VALUE}`) |
 | Custom Label         | Display name override (defaults to Tag Address)            |
 | Width / Height       | Grid span in columns and rows                              |
 | Label Font Size      | Scale multiplier for the label (0 = hidden, up to 2x)     |

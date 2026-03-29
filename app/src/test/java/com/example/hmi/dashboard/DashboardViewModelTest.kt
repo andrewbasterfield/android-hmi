@@ -29,6 +29,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
@@ -48,7 +49,7 @@ class DashboardViewModelTest {
     private val plcCommunicator = mock<PlcCommunicator> {
         on { connectionState } doReturn MutableStateFlow(ConnectionState.DISCONNECTED)
         on { attributeUpdates } doReturn emptyFlow()
-        on { observeTag(any()) } doReturn emptyFlow()
+        on { observeTag(any(), anyOrNull()) } doReturn emptyFlow()
     }
 
     private lateinit var repository: DashboardRepository

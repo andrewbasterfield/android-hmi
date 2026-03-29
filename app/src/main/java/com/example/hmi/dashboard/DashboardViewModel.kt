@@ -93,7 +93,8 @@ class DashboardViewModel @Inject constructor(
     val transferEvents: SharedFlow<TransferEvent> = transferManager.events
 
     // Track active tag observation jobs to prevent duplicates and enable cleanup
-    private val activeTagObservations = mutableMapOf<String, Job>()
+    // Key is Pair(tagAddress, jsonPath)
+    private val activeTagObservations = mutableMapOf<Pair<String, String?>, Job>()
 
     init {
         viewModelScope.launch(ioDispatcher) {
@@ -119,17 +120,18 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    fun observeTag(tagAddress: String) {
+    fun observeTag(tagAddress: String, jsonPath: String? = null) {
         if (tagAddress.isBlank()) return
 
+        val observationKey = tagAddress to jsonPath
         synchronized(activeTagObservations) {
-            // Skip if already observing this tag
-            if (activeTagObservations[tagAddress]?.isActive == true) {
+            // Skip if already observing this specific (topic + path) combination
+            if (activeTagObservations[observationKey]?.isActive == true) {
                 return
             }
 
             val job = viewModelScope.launch(ioDispatcher) {
-                plcCommunicator.observeTag(tagAddress).collect { value ->
+                plcCommunicator.observeTag(tagAddress, jsonPath).collect { value ->
                     when (value) {
                         is PlcValue.FloatValue -> {
                             _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value.value) }
@@ -147,7 +149,7 @@ class DashboardViewModel @Inject constructor(
                     }
                 }
             }
-            activeTagObservations[tagAddress] = job
+            activeTagObservations[observationKey] = job
         }
     }
 
@@ -155,18 +157,18 @@ class DashboardViewModel @Inject constructor(
      * Synchronizes active tag observations with the current widget list.
      * Cancels observations for tags no longer in use.
      */
-    fun syncTagObservations(currentTagAddresses: Set<String>) {
+    fun syncTagObservations(currentTags: Set<Pair<String, String?>>) {
         synchronized(activeTagObservations) {
             // Cancel observations for tags no longer needed
-            val tagsToRemove = activeTagObservations.keys - currentTagAddresses
-            tagsToRemove.forEach { tagAddress ->
-                activeTagObservations[tagAddress]?.cancel()
-                activeTagObservations.remove(tagAddress)
+            val tagsToRemove = activeTagObservations.keys - currentTags
+            tagsToRemove.forEach { key ->
+                activeTagObservations[key]?.cancel()
+                activeTagObservations.remove(key)
             }
 
             // Start observations for new tags
-            currentTagAddresses.forEach { tagAddress ->
-                observeTag(tagAddress)
+            currentTags.forEach { (tagAddress, jsonPath) ->
+                observeTag(tagAddress, jsonPath)
             }
         }
     }
@@ -189,21 +191,24 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             when (widget.interactionType) {
                 com.example.hmi.data.InteractionType.MOMENTARY -> {
-                    plcCommunicator.writeTag(writeAddr, PlcValue.StringValue(truePayload), shouldRetain = false)
+                    val payload = widget.writeTemplate?.replace("${'$'}VALUE", truePayload) ?: truePayload
+                    plcCommunicator.writeTag(writeAddr, PlcValue.StringValue(payload), shouldRetain = false)
                 }
                 com.example.hmi.data.InteractionType.LATCHING -> {
                     val isOn = resolveButtonState(widget)
                     val sendTrue = !isOn
+                    val valueToWrap = if (sendTrue) truePayload else falsePayload
 
                     // Optimistic update
                     _tagStringValues.value = _tagStringValues.value.toMutableMap().apply {
-                        put(widget.tagAddress, if (sendTrue) truePayload else falsePayload)
+                        put(widget.tagAddress, valueToWrap)
                     }
                     _tagValues.value = _tagValues.value.toMutableMap().apply {
                         put(widget.tagAddress, if (sendTrue) 1f else 0f)
                     }
 
-                    plcCommunicator.writeTag(writeAddr, PlcValue.StringValue(if (sendTrue) truePayload else falsePayload), shouldRetain = true)
+                    val payload = widget.writeTemplate?.replace("${'$'}VALUE", valueToWrap) ?: valueToWrap
+                    plcCommunicator.writeTag(writeAddr, PlcValue.StringValue(payload), shouldRetain = true)
                 }
                 com.example.hmi.data.InteractionType.INDICATOR -> {}
             }
@@ -213,19 +218,27 @@ class DashboardViewModel @Inject constructor(
     fun onButtonRelease(widget: WidgetConfiguration) {
         if (widget.interactionType == com.example.hmi.data.InteractionType.MOMENTARY) {
             val writeAddr = widget.writeAddress?.takeIf { it.isNotBlank() } ?: widget.tagAddress
+            val falsePayload = widget.falseValues.first()
             viewModelScope.launch(ioDispatcher) {
-                plcCommunicator.writeTag(writeAddr, PlcValue.StringValue(widget.falseValues.first()), shouldRetain = false)
+                val payload = widget.writeTemplate?.replace("${'$'}VALUE", falsePayload) ?: falsePayload
+                plcCommunicator.writeTag(writeAddr, PlcValue.StringValue(payload), shouldRetain = false)
             }
         }
     }
 
-    fun onSliderChange(tagAddress: String, writeAddress: String?, value: Float) {
+    fun onSliderChange(tagAddress: String, writeAddress: String?, value: Float, writeTemplate: String? = null) {
         val prev = _tagValues.value[tagAddress]
         if (prev == value) return
         _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value) }
         val writeAddr = writeAddress?.takeIf { it.isNotBlank() } ?: tagAddress
         viewModelScope.launch(ioDispatcher) {
-            plcCommunicator.writeTag(writeAddr, PlcValue.FloatValue(value), shouldRetain = true)
+            if (writeTemplate != null) {
+                val formattedValue = value.toBigDecimal().stripTrailingZeros().toPlainString()
+                val payload = writeTemplate.replace("${'$'}VALUE", formattedValue)
+                plcCommunicator.writeTag(writeAddr, PlcValue.StringValue(payload), shouldRetain = true)
+            } else {
+                plcCommunicator.writeTag(writeAddr, PlcValue.FloatValue(value), shouldRetain = true)
+            }
         }
     }
     

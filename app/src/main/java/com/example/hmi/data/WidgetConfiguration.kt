@@ -61,5 +61,7 @@ data class WidgetConfiguration(
     val interactionType: InteractionType = InteractionType.MOMENTARY,
     val isInverted: Boolean = false,
     val trueValues: List<String> = listOf("true", "1", "on"),
-    val falseValues: List<String> = listOf("false", "0", "off")
+    val falseValues: List<String> = listOf("false", "0", "off"),
+    val jsonPath: String? = null,
+    val writeTemplate: String? = null
 )

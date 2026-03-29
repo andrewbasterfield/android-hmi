@@ -59,9 +59,9 @@ class PlcCommunicatorDispatcher @Inject constructor(
         _activeProtocol.value = null
     }
 
-    override fun observeTag(tagAddress: String): Flow<PlcValue> {
+    override fun observeTag(tagAddress: String, jsonPath: String?): Flow<PlcValue> {
         return _activeProtocol.flatMapLatest { protocol ->
-            getActiveCommunicator(protocol)?.observeTag(tagAddress) ?: kotlinx.coroutines.flow.emptyFlow()
+            getActiveCommunicator(protocol)?.observeTag(tagAddress, jsonPath) ?: kotlinx.coroutines.flow.emptyFlow()
         }
     }
 
