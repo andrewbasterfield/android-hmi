@@ -67,6 +67,11 @@ The project follows a modular, MVVM-based architecture with Hilt for Dependency 
 - Example: `color = StitchTheme.tokens.statusRed`
 - Note: `HmiTheme` is legacy; `StitchTheme` is the current project standard.
 
+### 5. Using the Painter Pattern (Visualization Widgets)
+- For complex visualization widgets like Gauges, use the `Painter` abstraction to decouple the axis/scale geometry from the indicator/needle rendering.
+- Implement the `GaugePainter` interface for new axis types (e.g., Logarithmic or specialized linear scales).
+- The `GaugeWidget` acts as a coordinator, managing telemetry and animation state, then delegating the actual `Canvas` drawing to the selected `GaugePainter`.
+
 ## Important Files & Locations
 
 | Location | Purpose |
@@ -84,7 +89,10 @@ The project follows a modular, MVVM-based architecture with Hilt for Dependency 
 - **Simulation**: Use `DemoPlcServer` in `core:protocol` for UI development without a real PLC.
 - **2D VirtualGrid**: The layout uses a discrete coordinate system (Columns x Rows). Each widget has global `column` and `row` properties.
 - **Manual 2D Paging**: The dashboard uses a custom paging system based on `currentLogicalPageX/Y` and animated offsets. Navigation is logically constrained to pages that contain at least one widget (or a portion of a spanning widget) to prevent "losing" the user in empty grid space. This avoids nested `Pager` complexity.
-- **Widget Variants**: Certain widgets support multiple orientations (e.g., Sliders can be Horizontal or Vertical). Sizing logic often automatically adjusts (`colSpan`/`rowSpan` swap) when the variant is changed to maintain the intended aspect ratio.
+- **Widget Variants**: Certain widgets support multiple orientations or visual styles.
+    - **Sliders**: Horizontal or Vertical. Sizing logic automatically adjusts (`colSpan`/`rowSpan` swap) when the variant is changed to maintain the intended aspect ratio.
+    - **Gauges**: Decoupled `GaugeAxis` (Arc, Linear Horizontal, Linear Vertical) and `GaugeIndicator` (Fill, Pointer) provide 6 unique visualization combinations.
 - **Grid Reflow**: When orientation changes, the viewport dimensions update, causing the grid to logically "reflow" into a different set of page boundaries. See `GridReflowLogic.kt` for mapping math.
+
 - **Edge-Swiping (Legacy/Draft)**: Previously mentioned automatic page flip during drag is currently not active; navigation between pages during drag is handled via `onNavigateToPage` upon drag completion if the widget crosses page boundaries.
 es.
