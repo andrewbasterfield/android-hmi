@@ -49,6 +49,48 @@ class WidgetTest {
     }
 
     @Test
+    fun gaugeWidget_combinations_renderCorrectly() {
+        val label = "Process Data"
+        val value = 60f
+
+        // 1. ARC + POINTER (Default)
+        composeTestRule.setContent {
+            GaugeWidget(label = label, value = value, minValue = 0f, maxValue = 100f, gaugeAxis = com.example.hmi.data.GaugeAxis.ARC, gaugeIndicator = com.example.hmi.data.GaugeIndicator.POINTER)
+        }
+        composeTestRule.onNodeWithContentDescription("Gauge for Process Data showing 60.0").assertIsDisplayed()
+
+        // 2. ARC + FILL
+        composeTestRule.setContent {
+            GaugeWidget(label = label, value = value, minValue = 0f, maxValue = 100f, gaugeAxis = com.example.hmi.data.GaugeAxis.ARC, gaugeIndicator = com.example.hmi.data.GaugeIndicator.FILL)
+        }
+        composeTestRule.onNodeWithContentDescription("Gauge for Process Data showing 60.0 (filled to 60%)").assertIsDisplayed()
+
+        // 3. LINEAR_HORIZONTAL + POINTER
+        composeTestRule.setContent {
+            GaugeWidget(label = label, value = value, minValue = 0f, maxValue = 100f, gaugeAxis = com.example.hmi.data.GaugeAxis.LINEAR_HORIZONTAL, gaugeIndicator = com.example.hmi.data.GaugeIndicator.POINTER)
+        }
+        composeTestRule.onNodeWithContentDescription("Gauge for Process Data showing 60.0").assertIsDisplayed()
+
+        // 4. LINEAR_HORIZONTAL + FILL
+        composeTestRule.setContent {
+            GaugeWidget(label = label, value = value, minValue = 0f, maxValue = 100f, gaugeAxis = com.example.hmi.data.GaugeAxis.LINEAR_HORIZONTAL, gaugeIndicator = com.example.hmi.data.GaugeIndicator.FILL)
+        }
+        composeTestRule.onNodeWithContentDescription("Gauge for Process Data showing 60.0 (filled to 60%)").assertIsDisplayed()
+
+        // 5. LINEAR_VERTICAL + POINTER
+        composeTestRule.setContent {
+            GaugeWidget(label = label, value = value, minValue = 0f, maxValue = 100f, gaugeAxis = com.example.hmi.data.GaugeAxis.LINEAR_VERTICAL, gaugeIndicator = com.example.hmi.data.GaugeIndicator.POINTER)
+        }
+        composeTestRule.onNodeWithContentDescription("Gauge for Process Data showing 60.0").assertIsDisplayed()
+
+        // 6. LINEAR_VERTICAL + FILL
+        composeTestRule.setContent {
+            GaugeWidget(label = label, value = value, minValue = 0f, maxValue = 100f, gaugeAxis = com.example.hmi.data.GaugeAxis.LINEAR_VERTICAL, gaugeIndicator = com.example.hmi.data.GaugeIndicator.FILL)
+        }
+        composeTestRule.onNodeWithContentDescription("Gauge for Process Data showing 60.0 (filled to 60%)").assertIsDisplayed()
+    }
+
+    @Test
     fun sliderWidget_updatesValueOnInteraction() {
         val label = "Pump Speed"
         var currentValue = 10f

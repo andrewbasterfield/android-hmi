@@ -290,6 +290,19 @@ fun WidgetConfigDialog(
                     steps = 19
                 )
 
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Show Outline", style = MaterialTheme.typography.bodyMedium)
+                    Switch(
+                        checked = showOutline,
+                        onCheckedChange = { showOutline = it }
+                    )
+                }
+
                 if (selectedType == WidgetType.SLIDER || selectedType == WidgetType.GAUGE) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Metric Font Size: ${"%.1f".format(metricFontSizeMultiplier)}x", style = MaterialTheme.typography.labelSmall)
@@ -335,40 +348,7 @@ fun WidgetConfigDialog(
                         fontWeight = FontWeight.Bold
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Arc Sweep: ${arcSweep.toInt()}°", style = MaterialTheme.typography.labelSmall)
-                    Slider(
-                        value = arcSweep,
-                        onValueChange = { arcSweep = it },
-                        valueRange = 90f..270f,
-                        steps = 17  // 10° increments
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Gauge Axis", style = MaterialTheme.typography.labelSmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        GaugeAxis.entries.forEach { axis ->
-                            FilterChip(
-                                selected = selectedGaugeAxis == axis,
-                                onClick = { selectedGaugeAxis = axis },
-                                label = { Text(axis.name.replace("LINEAR_", "")) }
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Gauge Indicator", style = MaterialTheme.typography.labelSmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        GaugeIndicator.entries.forEach { indicator ->
-                            FilterChip(
-                                selected = selectedGaugeIndicator == indicator,
-                                onClick = { selectedGaugeIndicator = indicator },
-                                label = { Text(indicator.name) }
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -389,6 +369,41 @@ fun WidgetConfigDialog(
                             selectedColor = pointerColor,
                             onColorSelected = { pointerColor = it }
                         )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Gauge Axis", style = MaterialTheme.typography.labelSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        GaugeAxis.entries.forEach { axis ->
+                            FilterChip(
+                                selected = selectedGaugeAxis == axis,
+                                onClick = { selectedGaugeAxis = axis },
+                                label = { Text(axis.name.replace("LINEAR_", "")) }
+                            )
+                        }
+                    }
+
+                    if (selectedGaugeAxis == GaugeAxis.ARC) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Arc Sweep: ${arcSweep.toInt()}°", style = MaterialTheme.typography.labelSmall)
+                        Slider(
+                            value = arcSweep,
+                            onValueChange = { arcSweep = it },
+                            valueRange = 90f..270f,
+                            steps = 17  // 10° increments
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Gauge Indicator", style = MaterialTheme.typography.labelSmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GaugeIndicator.entries.forEach { indicator ->
+                            FilterChip(
+                                selected = selectedGaugeIndicator == indicator,
+                                onClick = { selectedGaugeIndicator = indicator },
+                                label = { Text(indicator.name) }
+                            )
+                        }
                     }
                 }
 
@@ -413,19 +428,6 @@ fun WidgetConfigDialog(
                         selectedTextColor = it
                     }
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Show Outline", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = showOutline,
-                        onCheckedChange = { showOutline = it }
-                    )
-                }
 
                 if (selectedType == WidgetType.GAUGE) {
                     Spacer(modifier = Modifier.height(24.dp))

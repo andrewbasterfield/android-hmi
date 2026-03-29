@@ -115,12 +115,13 @@ fun GaugeWidget(
             ) {
                 val layoutBgColor = MaterialTheme.colorScheme.background
                 var canvasSize by remember { mutableStateOf(Size.Zero) }
+                var metricHeight by remember { mutableFloatStateOf(0f) }
                 val density = LocalDensity.current
                 
-                val painter = remember(canvasSize, gaugeAxis, arcSweep, minValue, maxValue, targetTicks, colorZones, contentColor, density) {
+                val painter = remember(canvasSize, gaugeAxis, arcSweep, minValue, maxValue, targetTicks, colorZones, contentColor, density, metricHeight) {
                     when (gaugeAxis) {
                         GaugeAxis.ARC -> ArcGaugePainter(canvasSize, arcSweep, density)
-                        else -> LinearGaugePainter(canvasSize, gaugeAxis, density)
+                        else -> LinearGaugePainter(canvasSize, gaugeAxis, density, metricHeight)
                     }
                 }
 
@@ -159,8 +160,12 @@ fun GaugeWidget(
                             fontSize = MaterialTheme.typography.displayMedium.fontSize * metricFontSizeMultiplier
                         ),
                         color = contentColor,
-                        modifier = Modifier.align(Alignment.BottomCenter)
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .onSizeChanged { metricHeight = it.height.toFloat() }
                     )
+                } else {
+                    SideEffect { metricHeight = 0f }
                 }
             }
         }
