@@ -129,7 +129,7 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
         
         // FR-010: Last Will and Testament
         clientBuilder.willPublish()
-            .topic(settings.statusTopic)
+            .topic(getFullTopic("status"))
             .payload("offline".toByteArray())
             .qos(MqttQos.AT_LEAST_ONCE)
             .retain(true)
@@ -169,7 +169,7 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
             try {
                 suspendCancellableCoroutine<Unit> { continuation ->
                     mqttClient.publishWith()
-                        .topic(settings.statusTopic)
+                        .topic(getFullTopic("status"))
                         .payload("offline".toByteArray())
                         .qos(MqttQos.AT_LEAST_ONCE)
                         .retain(true)
@@ -245,7 +245,7 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
         val settings = currentProfile?.mqttSettings
         if (mqttClient != null && settings != null) {
             mqttClient.publishWith()
-                .topic(settings.statusTopic)
+                .topic(getFullTopic("status"))
                 .payload("online".toByteArray())
                 .qos(MqttQos.AT_LEAST_ONCE)
                 .retain(true)
@@ -345,7 +345,7 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
 
         val payload = when (value) {
             is PlcValue.BooleanValue -> value.value.toString()
-            is PlcValue.FloatValue -> value.value.toString()
+            is PlcValue.FloatValue -> value.value.toBigDecimal().stripTrailingZeros().toPlainString()
             is PlcValue.IntValue -> value.value.toString()
             is PlcValue.StringValue -> value.value
         }

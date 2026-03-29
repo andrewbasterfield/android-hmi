@@ -14,7 +14,6 @@ data class MqttSettings(
     val username: String? = null,
     val password: String? = null,
     val rootTopicPrefix: String? = null,
-    val statusTopic: String = "hmi/status",
     val payloadFormat: MqttPayloadFormat = MqttPayloadFormat.PLAIN_TEXT,
     val jsonKey: String? = "value"
 )

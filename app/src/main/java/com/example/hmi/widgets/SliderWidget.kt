@@ -41,6 +41,7 @@ fun SliderWidget(
     labelFontSizeMultiplier: Float = 1.0f,
     metricFontSizeMultiplier: Float = 1.0f,
     units: String? = null,
+    decimalPlaces: Int = 1,
     orientation: WidgetOrientation = WidgetOrientation.HORIZONTAL
 ) {
     if (orientation == WidgetOrientation.VERTICAL) {
@@ -52,7 +53,8 @@ fun SliderWidget(
             valueRange = valueRange,
             labelFontSizeMultiplier = labelFontSizeMultiplier,
             metricFontSizeMultiplier = metricFontSizeMultiplier,
-            units = units
+            units = units,
+            decimalPlaces = decimalPlaces
         )
     } else {
         HorizontalSliderWidget(
@@ -63,7 +65,8 @@ fun SliderWidget(
             valueRange = valueRange,
             labelFontSizeMultiplier = labelFontSizeMultiplier,
             metricFontSizeMultiplier = metricFontSizeMultiplier,
-            units = units
+            units = units,
+            decimalPlaces = decimalPlaces
         )
     }
 }
@@ -78,12 +81,18 @@ private fun HorizontalSliderWidget(
     valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
     labelFontSizeMultiplier: Float = 1.0f,
     metricFontSizeMultiplier: Float = 1.0f,
-    units: String? = null
+    units: String? = null,
+    decimalPlaces: Int = 1
 ) {
     // Rely on LocalContentColor provided by WidgetContainer
     val contentColor = LocalContentColor.current
-    
-    val metricText = SiFormatter.formatMetric(value, units)
+    val roundingScale = remember(decimalPlaces) {
+        var s = 1f
+        repeat(decimalPlaces) { s *= 10f }
+        s
+    }
+
+    val metricText = SiFormatter.formatMetric(value, units, decimalPlaces)
 
     Box(
         modifier = modifier.padding(8.dp)
@@ -104,7 +113,9 @@ private fun HorizontalSliderWidget(
         // Slider in center
         Slider(
             value = value,
-            onValueChange = onValueChange,
+            onValueChange = { raw ->
+                onValueChange(kotlin.math.round(raw * roundingScale) / roundingScale)
+            },
             valueRange = valueRange,
             modifier = Modifier.fillMaxWidth().align(Alignment.Center).semantics { contentDescription = "Slider for $label" },
             colors = SliderDefaults.colors(
@@ -225,9 +236,15 @@ private fun VerticalSliderWidget(
     valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
     labelFontSizeMultiplier: Float = 1.0f,
     metricFontSizeMultiplier: Float = 1.0f,
-    units: String? = null
+    units: String? = null,
+    decimalPlaces: Int = 1
 ) {
     val contentColor = LocalContentColor.current
+    val roundingScale = remember(decimalPlaces) {
+        var s = 1f
+        repeat(decimalPlaces) { s *= 10f }
+        s
+    }
 
     // HIGH-FREQUENCY LOCAL STATE
     var localValue by remember { mutableFloatStateOf(value) }
@@ -241,7 +258,7 @@ private fun VerticalSliderWidget(
         }
     }
 
-    val metricText = SiFormatter.formatMetric(localValue, units)
+    val metricText = SiFormatter.formatMetric(localValue, units, decimalPlaces)
     var trackHeightPx by remember { mutableStateOf(0f) }
     val density = LocalDensity.current
     val thumbHeightDp = 24.dp
@@ -297,8 +314,9 @@ private fun VerticalSliderWidget(
                         if (travelPx > 0) {
                             // deltaY is negative when moving UP
                             val valueDelta = -(deltaY / travelPx) * range
-                            localValue = (localValue + valueDelta).coerceIn(valueRange)
-                            onValueChange(localValue)
+                            val rounded = kotlin.math.round((localValue + valueDelta).coerceIn(valueRange) * roundingScale) / roundingScale
+                            localValue = rounded
+                            onValueChange(rounded)
                         }
                     },
                     orientation = Orientation.Vertical,

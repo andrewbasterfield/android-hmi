@@ -70,16 +70,16 @@ object SiFormatter {
         }
     }
 
-    fun formatValue(value: Float): String {
-        return "%.1f".format(value)
+    fun formatValue(value: Float, decimalPlaces: Int = 1): String {
+        return "%.${decimalPlaces}f".format(value)
     }
 
     /**
      * Unified Metric Formatting for HMI Widgets.
      * Concatenates value and unit with a non-breaking space (\\u00A0).
      */
-    fun formatMetric(value: Float, unit: String?): String {
-        val formattedValue = formatValue(value)
+    fun formatMetric(value: Float, unit: String?, decimalPlaces: Int = 1): String {
+        val formattedValue = formatValue(value, decimalPlaces)
         val formattedUnit = formatUnit(unit)
         return if (formattedUnit.isBlank()) {
             formattedValue

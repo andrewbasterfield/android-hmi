@@ -34,6 +34,7 @@ data class WidgetConfiguration(
     val colSpan: Int = 1,
     val rowSpan: Int = 1,
     val tagAddress: String = "",
+    val writeAddress: String? = null,
     val customLabel: String? = null,
     val backgroundColor: Long? = null,
     val textColor: Long? = null,
@@ -52,10 +53,13 @@ data class WidgetConfiguration(
     val gaugeAxis: GaugeAxis = GaugeAxis.ARC,
     val gaugeIndicator: GaugeIndicator = GaugeIndicator.POINTER,
     val gaugeStyle: GaugeStyle = GaugeStyle.POINTER,
+    val decimalPlaces: Int = 1,
     val units: String? = null,
     val alarmState: AlarmState = AlarmState.Normal,
     val showOutline: Boolean = false,
     val zOrder: Int = 0,
     val interactionType: InteractionType = InteractionType.MOMENTARY,
-    val isInverted: Boolean = false
+    val isInverted: Boolean = false,
+    val trueValues: List<String> = listOf("true", "1", "on"),
+    val falseValues: List<String> = listOf("false", "0", "off")
 )

@@ -52,6 +52,9 @@ class DashboardViewModel @Inject constructor(
     private val _tagValues = MutableStateFlow<Map<String, Float>>(emptyMap())
     val tagValues: StateFlow<Map<String, Float>> = _tagValues.asStateFlow()
 
+    private val _tagStringValues = MutableStateFlow<Map<String, String>>(emptyMap())
+    val tagStringValues: StateFlow<Map<String, String>> = _tagStringValues.asStateFlow()
+
     val globalStatus: StateFlow<HealthStatus> = combine(_dashboardLayout, _tagValues) { layout, values ->
         val widgetStatuses = layout.widgets.map { widget ->
             val currentValue = values[widget.tagAddress] ?: 0f
@@ -135,9 +138,12 @@ class DashboardViewModel @Inject constructor(
                             _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value.value.toFloat()) }
                         }
                         is PlcValue.BooleanValue -> {
+                            _tagStringValues.value = _tagStringValues.value.toMutableMap().apply { put(tagAddress, value.value.toString()) }
                             _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, if (value.value) 1f else 0f) }
                         }
-                        is PlcValue.StringValue -> {}
+                        is PlcValue.StringValue -> {
+                            _tagStringValues.value = _tagStringValues.value.toMutableMap().apply { put(tagAddress, value.value) }
+                        }
                     }
                 }
             }
@@ -165,23 +171,39 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    fun resolveButtonState(widget: WidgetConfiguration): Boolean {
+        val raw = _tagStringValues.value[widget.tagAddress]
+        if (raw != null) {
+            if (widget.trueValues.any { it.equals(raw, ignoreCase = true) }) return true
+            if (widget.falseValues.any { it.equals(raw, ignoreCase = true) }) return false
+        }
+        // Fall back to numeric check
+        val floatVal = _tagValues.value[widget.tagAddress] ?: 0f
+        return floatVal > 0.5f
+    }
+
     fun onButtonPress(widget: WidgetConfiguration) {
+        val writeAddr = widget.writeAddress?.takeIf { it.isNotBlank() } ?: widget.tagAddress
+        val truePayload = widget.trueValues.first()
+        val falsePayload = widget.falseValues.first()
         viewModelScope.launch(ioDispatcher) {
             when (widget.interactionType) {
                 com.example.hmi.data.InteractionType.MOMENTARY -> {
-                    // Momentary: Send 'true' on press, NO retain
-                    plcCommunicator.writeTag(widget.tagAddress, PlcValue.BooleanValue(true), shouldRetain = false)
+                    plcCommunicator.writeTag(writeAddr, PlcValue.StringValue(truePayload), shouldRetain = false)
                 }
                 com.example.hmi.data.InteractionType.LATCHING -> {
-                    val currentVal = _tagValues.value[widget.tagAddress] ?: 0f
-                    val newValue = if (currentVal > 0.5f) false else true
-                    
+                    val isOn = resolveButtonState(widget)
+                    val sendTrue = !isOn
+
                     // Optimistic update
-                    _tagValues.value = _tagValues.value.toMutableMap().apply { 
-                        put(widget.tagAddress, if (newValue) 1f else 0f) 
+                    _tagStringValues.value = _tagStringValues.value.toMutableMap().apply {
+                        put(widget.tagAddress, if (sendTrue) truePayload else falsePayload)
                     }
-                    
-                    plcCommunicator.writeTag(widget.tagAddress, PlcValue.BooleanValue(newValue), shouldRetain = true)
+                    _tagValues.value = _tagValues.value.toMutableMap().apply {
+                        put(widget.tagAddress, if (sendTrue) 1f else 0f)
+                    }
+
+                    plcCommunicator.writeTag(writeAddr, PlcValue.StringValue(if (sendTrue) truePayload else falsePayload), shouldRetain = true)
                 }
                 com.example.hmi.data.InteractionType.INDICATOR -> {}
             }
@@ -190,17 +212,20 @@ class DashboardViewModel @Inject constructor(
 
     fun onButtonRelease(widget: WidgetConfiguration) {
         if (widget.interactionType == com.example.hmi.data.InteractionType.MOMENTARY) {
+            val writeAddr = widget.writeAddress?.takeIf { it.isNotBlank() } ?: widget.tagAddress
             viewModelScope.launch(ioDispatcher) {
-                // Momentary: Send 'false' on release, NO retain
-                plcCommunicator.writeTag(widget.tagAddress, PlcValue.BooleanValue(false), shouldRetain = false)
+                plcCommunicator.writeTag(writeAddr, PlcValue.StringValue(widget.falseValues.first()), shouldRetain = false)
             }
         }
     }
 
-    fun onSliderChange(tagAddress: String, value: Float) {
+    fun onSliderChange(tagAddress: String, writeAddress: String?, value: Float) {
+        val prev = _tagValues.value[tagAddress]
+        if (prev == value) return
+        _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value) }
+        val writeAddr = writeAddress?.takeIf { it.isNotBlank() } ?: tagAddress
         viewModelScope.launch(ioDispatcher) {
-            plcCommunicator.writeTag(tagAddress, PlcValue.FloatValue(value), shouldRetain = true)
-            _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value) }
+            plcCommunicator.writeTag(writeAddr, PlcValue.FloatValue(value), shouldRetain = true)
         }
     }
     

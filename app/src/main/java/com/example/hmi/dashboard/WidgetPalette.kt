@@ -114,10 +114,14 @@ fun WidgetConfigDialog(
     var selectedGaugeIndicator by remember { mutableStateOf(initialWidget?.gaugeIndicator ?: GaugeIndicator.POINTER) }
     var pointerColor by remember { mutableStateOf(initialWidget?.pointerColor) }
     var isPointerDynamic by remember { mutableStateOf(initialWidget?.isPointerDynamic ?: true) }
+    var writeAddress by remember { mutableStateOf(initialWidget?.writeAddress.orEmpty()) }
     var units by remember { mutableStateOf(initialWidget?.units.orEmpty()) }
+    var decimalPlaces by remember { mutableFloatStateOf(initialWidget?.decimalPlaces?.toFloat() ?: 1f) }
     
     var selectedInteractionType by remember { mutableStateOf(initialWidget?.interactionType ?: InteractionType.MOMENTARY) }
     var isInverted by remember { mutableStateOf(initialWidget?.isInverted ?: false) }
+    var trueValuesText by remember { mutableStateOf(initialWidget?.trueValues?.joinToString(", ") ?: "true, 1, on") }
+    var falseValuesText by remember { mutableStateOf(initialWidget?.falseValues?.joinToString(", ") ?: "false, 0, off") }
     
     val colorZones = remember { mutableStateListOf<GaugeZone>().apply {
         addAll(initialWidget?.colorZones ?: emptyList())
@@ -190,7 +194,18 @@ fun WidgetConfigDialog(
                     label = { Text("Tag Address") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                
+
+                if (selectedType == WidgetType.SLIDER || selectedType == WidgetType.BUTTON) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = writeAddress,
+                        onValueChange = { writeAddress = it },
+                        label = { Text("Write Topic (Optional)") },
+                        placeholder = { Text(tagAddress.ifEmpty { "Same as Tag Address" }) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
@@ -227,6 +242,20 @@ fun WidgetConfigDialog(
                             onCheckedChange = { isInverted = it }
                         )
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = trueValuesText,
+                        onValueChange = { trueValuesText = it },
+                        label = { Text("True Values (comma-separated)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = falseValuesText,
+                        onValueChange = { falseValuesText = it },
+                        label = { Text("False Values (comma-separated)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
@@ -260,6 +289,15 @@ fun WidgetConfigDialog(
                         onValueChange = { units = it },
                         label = { Text("Units (e.g. PSI, °C)") },
                         modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Decimal Places: ${decimalPlaces.toInt()}", style = MaterialTheme.typography.labelSmall)
+                    Slider(
+                        value = decimalPlaces,
+                        onValueChange = { decimalPlaces = it },
+                        valueRange = 0f..4f,
+                        steps = 3
                     )
                 }
                 
@@ -478,6 +516,7 @@ fun WidgetConfigDialog(
                     onConfirm(
                         (initialWidget ?: WidgetConfiguration(type = selectedType, tagAddress = tagAddress)).copy(
                             tagAddress = tagAddress,
+                            writeAddress = writeAddress.ifBlank { null },
                             customLabel = customLabel.ifBlank { null },
                             backgroundColor = selectedColor,
                             orientation = if (selectedType == WidgetType.SLIDER) selectedOrientation else WidgetOrientation.HORIZONTAL,
@@ -495,10 +534,13 @@ fun WidgetConfigDialog(
                             colorZones = colorZones.toList(),
                             pointerColor = pointerColor,
                             isPointerDynamic = isPointerDynamic,
+                            decimalPlaces = decimalPlaces.toInt(),
                             units = if (selectedType == WidgetType.BUTTON) null else units.ifBlank { null },
                             showOutline = showOutline,
                             interactionType = if (selectedType == WidgetType.BUTTON) selectedInteractionType else InteractionType.MOMENTARY,
-                            isInverted = if (selectedType == WidgetType.BUTTON) isInverted else false
+                            isInverted = if (selectedType == WidgetType.BUTTON) isInverted else false,
+                            trueValues = if (selectedType == WidgetType.BUTTON) trueValuesText.split(",").map { it.trim() }.filter { it.isNotEmpty() }.ifEmpty { listOf("true", "1", "on") } else listOf("true", "1", "on"),
+                            falseValues = if (selectedType == WidgetType.BUTTON) falseValuesText.split(",").map { it.trim() }.filter { it.isNotEmpty() }.ifEmpty { listOf("false", "0", "off") } else listOf("false", "0", "off")
                         )
                     )
                 },

@@ -185,7 +185,7 @@ class RawTcpPlcCommunicator @Inject constructor() : PlcCommunicator {
             val message = "$tagAddress:${
                 when (value) {
                     is PlcValue.IntValue -> value.value
-                    is PlcValue.FloatValue -> value.value
+                    is PlcValue.FloatValue -> value.value.toBigDecimal().stripTrailingZeros().toPlainString()
                     is PlcValue.BooleanValue -> value.value
                     is PlcValue.StringValue -> value.value
                 }

@@ -55,6 +55,7 @@ fun GaugeWidget(
     gaugeAxis: GaugeAxis = GaugeAxis.ARC,
     gaugeIndicator: GaugeIndicator = GaugeIndicator.POINTER,
     units: String? = null,
+    decimalPlaces: Int = 1,
     pulseState: PulseState = PulseState.NORMAL,
     onAcknowledgeAlarm: () -> Unit = {}
 ) {
@@ -68,7 +69,7 @@ fun GaugeWidget(
     )
 
     val contentColor = LocalContentColor.current
-    val metricText = SiFormatter.formatMetric(value, units)
+    val metricText = SiFormatter.formatMetric(value, units, decimalPlaces)
 
     AlarmPulse(
         state = pulseState,

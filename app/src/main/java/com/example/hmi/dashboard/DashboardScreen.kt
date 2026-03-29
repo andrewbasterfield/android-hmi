@@ -50,6 +50,7 @@ fun DashboardScreen(
 ) {
     val dashboardLayout by viewModel.dashboardLayout.collectAsState()
     val tagValuesState = viewModel.tagValues.collectAsState()
+    val tagStringValuesState = viewModel.tagStringValues.collectAsState()
     val sessionOverridesState = viewModel.sessionOverrides.collectAsState()
     val isEditMode by viewModel.isEditMode.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
@@ -345,6 +346,7 @@ fun DashboardScreen(
                                 viewportCols = viewportCols,
                                 viewportRows = viewportRows,
                                 tagValuesState = tagValuesState,
+                                tagStringValuesState = tagStringValuesState,
                                 sessionOverridesState = sessionOverridesState,
                                 isEditMode = isEditMode,
                                 hapticEnabled = dashboardLayout.hapticFeedbackEnabled,
@@ -377,6 +379,7 @@ private fun WidgetRenderingNode(
     viewportCols: Int,
     viewportRows: Int,
     tagValuesState: State<Map<String, Float>>,
+    tagStringValuesState: State<Map<String, String>>,
     sessionOverridesState: State<Map<String, Map<String, String>>>,
     isEditMode: Boolean,
     hapticEnabled: Boolean,
@@ -635,7 +638,14 @@ private fun WidgetRenderingNode(
                         textColor = widget.textColor,
                         labelFontSizeMultiplier = widget.labelFontSizeMultiplier,
                         hapticFeedbackEnabled = hapticEnabled,
-                        isChecked = if (widget.interactionType != com.example.hmi.data.InteractionType.MOMENTARY) currentValue > 0.5f else false,
+                        isChecked = if (widget.interactionType != com.example.hmi.data.InteractionType.MOMENTARY) {
+                            val raw = tagStringValuesState.value[tagAddress]
+                            if (raw != null && (widget.trueValues.any { it.equals(raw, ignoreCase = true) } || widget.falseValues.any { it.equals(raw, ignoreCase = true) })) {
+                                widget.trueValues.any { it.equals(raw, ignoreCase = true) }
+                            } else {
+                                currentValue > 0.5f
+                            }
+                        } else false,
                         isInverted = widget.isInverted,
                         isInteractive = widget.interactionType != com.example.hmi.data.InteractionType.INDICATOR,
                         modifier = Modifier.fillMaxSize()
@@ -645,12 +655,13 @@ private fun WidgetRenderingNode(
                     SliderWidget(
                         label = resolvedLabel,
                         value = currentValue,
-                        onValueChange = { viewModel.onSliderChange(widget.tagAddress, it) },
+                        onValueChange = { viewModel.onSliderChange(widget.tagAddress, widget.writeAddress, it) },
                         valueRange = (widget.minValue ?: 0f)..(widget.maxValue ?: 100f),
                         backgroundColor = resolvedColorLong,
                         labelFontSizeMultiplier = widget.labelFontSizeMultiplier,
                         metricFontSizeMultiplier = widget.metricFontSizeMultiplier,
                         units = widget.units,
+                        decimalPlaces = widget.decimalPlaces,
                         orientation = widget.orientation,
                         modifier = Modifier.fillMaxSize().padding(8.dp)
                     )
@@ -672,6 +683,7 @@ private fun WidgetRenderingNode(
                         gaugeAxis = widget.gaugeAxis,
                         gaugeIndicator = widget.gaugeIndicator,
                         units = widget.units,
+                        decimalPlaces = widget.decimalPlaces,
                         pulseState = when (widget.alarmState) {
                             com.example.hmi.data.AlarmState.Normal -> com.example.hmi.core.ui.components.PulseState.NORMAL
                             com.example.hmi.data.AlarmState.Unacknowledged -> com.example.hmi.core.ui.components.PulseState.UNACKNOWLEDGED
