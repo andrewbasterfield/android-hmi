@@ -143,10 +143,10 @@ fun WidgetConfigDialog(
         }
     }
 
-    // Adaptive default size logic: Calculate required columns based on text length and font size
-    val calculatedColSpan = remember(tagAddress, customLabel, labelFontSizeMultiplier) {
+    // Adaptive default size logic: Calculate required columns/rows based on type and text length
+    val adaptiveSize = remember(selectedType, selectedOrientation, tagAddress, customLabel, labelFontSizeMultiplier) {
         val text = customLabel.ifBlank { tagAddress }
-        if (text.isEmpty()) 1
+        val textWidthCells = if (text.isEmpty()) 1
         else {
             // Heuristic: ~0.6 chars per sp width, 80dp cell size
             val baseFontSize = 18f 
@@ -155,12 +155,27 @@ fun WidgetConfigDialog(
             val requiredCells = kotlin.math.ceil(totalWidthSp / 80f).toInt().coerceAtLeast(1)
             requiredCells.coerceAtMost(8)
         }
+
+        val baseCols = when (selectedType) {
+            WidgetType.BUTTON -> 1
+            WidgetType.SLIDER -> if (selectedOrientation == WidgetOrientation.HORIZONTAL) 2 else 1
+            WidgetType.GAUGE -> 2
+        }
+
+        val baseRows = when (selectedType) {
+            WidgetType.BUTTON -> 1
+            WidgetType.SLIDER -> if (selectedOrientation == WidgetOrientation.HORIZONTAL) 1 else 2
+            WidgetType.GAUGE -> 2
+        }
+
+        maxOf(baseCols, textWidthCells) to baseRows
     }
 
-    // Auto-apply calculated size for NEW widgets or if current size is 1
-    LaunchedEffect(calculatedColSpan) {
-        if (initialWidget == null || colSpan == "1") {
-            colSpan = calculatedColSpan.toString()
+    // Auto-apply calculated size for NEW widgets or if current size is 1x1
+    LaunchedEffect(adaptiveSize) {
+        if (initialWidget == null || (colSpan == "1" && rowSpan == "1")) {
+            colSpan = adaptiveSize.first.toString()
+            rowSpan = adaptiveSize.second.toString()
         }
     }
 
