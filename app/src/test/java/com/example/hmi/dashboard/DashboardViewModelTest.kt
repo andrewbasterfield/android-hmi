@@ -218,4 +218,23 @@ class DashboardViewModelTest {
         assertTrue("Duplicate should have higher zOrder", (duplicate?.zOrder ?: 0) > sourceWidget.zOrder)
         assertTrue("Duplicate should have new UUID", duplicate?.id?.length ?: 0 > 0 && duplicate?.id != "source-id")
     }
+
+    @Test
+    fun `addWidget sets zOrder to max plus 1`() = testScope.runTest {
+        val existingWidget = WidgetConfiguration(
+            id = "existing",
+            zOrder = 10
+        )
+        layoutFlow.value = DashboardLayout(widgets = listOf(existingWidget))
+        runCurrent()
+        
+        val newWidget = WidgetConfiguration(id = "new", type = WidgetType.GAUGE)
+        viewModel.addWidget(newWidget)
+        runCurrent()
+        
+        val widgets = viewModel.dashboardLayout.value.widgets
+        assertEquals(2, widgets.size)
+        val added = widgets.find { it.id == "new" }
+        assertEquals(11, added?.zOrder)
+    }
 }

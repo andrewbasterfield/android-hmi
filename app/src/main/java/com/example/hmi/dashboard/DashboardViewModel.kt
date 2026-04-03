@@ -362,7 +362,9 @@ class DashboardViewModel @Inject constructor(
 
     fun addWidget(widget: WidgetConfiguration) {
         _dashboardLayout.update { layout ->
-            layout.copy(widgets = layout.widgets + widget).also { newLayout ->
+            val maxZOrder = layout.widgets.maxOfOrNull { it.zOrder } ?: 0
+            val widgetWithZOrder = widget.copy(zOrder = maxZOrder + 1)
+            layout.copy(widgets = layout.widgets + widgetWithZOrder).also { newLayout ->
                 viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
             }
         }
