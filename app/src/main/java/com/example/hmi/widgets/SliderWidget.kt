@@ -94,8 +94,10 @@ private fun HorizontalSliderWidget(
 
     val metricText = SiFormatter.formatMetric(value, units, decimalPlaces)
 
-    Box(
-        modifier = modifier.padding(8.dp)
+    Column(
+        modifier = modifier.padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         // Label at top
         if (labelFontSizeMultiplier > 0.0f) {
@@ -105,89 +107,96 @@ private fun HorizontalSliderWidget(
                     fontSize = MaterialTheme.typography.headlineSmall.fontSize * labelFontSizeMultiplier,
                     letterSpacing = 1.25.sp
                 ),
-                color = contentColor.copy(alpha = 0.8f),
-                modifier = Modifier.align(Alignment.TopCenter)
+                color = contentColor.copy(alpha = 0.8f)
             )
         }
 
-        // Slider in center
-        Slider(
-            value = value,
-            onValueChange = { raw ->
-                onValueChange(kotlin.math.round(raw * roundingScale) / roundingScale)
-            },
-            valueRange = valueRange,
-            modifier = Modifier.fillMaxWidth().align(Alignment.Center).semantics { contentDescription = "Slider for $label" },
-            colors = SliderDefaults.colors(
-                thumbColor = contentColor,
-                activeTrackColor = contentColor,
-                inactiveTrackColor = contentColor.copy(alpha = 0.2f)
-            ),
-            thumb = {
-                // Rugged Rectangle Thumb
-                Box(
-                    modifier = Modifier
-                        .size(24.dp, 32.dp)
-                        .background(contentColor, RectangleShape)
-                )
-            },
-            track = { _ ->
-                val layoutBgColor = MaterialTheme.colorScheme.background
-                val fraction = (value - valueRange.start) / (valueRange.endInclusive - valueRange.start)
+        // Content area below label: Layered Box allows overlap if space is tight (matching Gauge behavior)
+        Box(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(modifier = Modifier.height(8.dp))
 
-                // Track with ticks at ends
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .semantics { trackBackgroundColor = layoutBgColor },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Start tick
-                    Box(
-                        modifier = Modifier
-                            .width(2.dp)
-                            .height(16.dp)
-                            .background(contentColor.copy(alpha = 0.8f), RectangleShape)
-                    )
-
-                    // Track area
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(8.dp)
-                    ) {
-                        // Inactive track (remaining portion) - grey like gauge arc
+                Slider(
+                    value = value,
+                    onValueChange = { raw ->
+                        onValueChange(kotlin.math.round(raw * roundingScale) / roundingScale)
+                    },
+                    valueRange = valueRange,
+                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = "Slider for $label" },
+                    colors = SliderDefaults.colors(
+                        thumbColor = contentColor,
+                        activeTrackColor = contentColor,
+                        inactiveTrackColor = contentColor.copy(alpha = 0.2f)
+                    ),
+                    thumb = {
+                        // Rugged Rectangle Thumb
                         Box(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .background(contentColor.copy(alpha = 0.3f), RectangleShape)
-                        )
-                        // Active track (filled portion)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(fraction)
-                                .fillMaxHeight()
+                                .size(24.dp, 32.dp)
                                 .background(contentColor, RectangleShape)
                         )
+                    },
+                    track = { _ ->
+                        val layoutBgColor = MaterialTheme.colorScheme.background
+                        val fraction = (value - valueRange.start) / (valueRange.endInclusive - valueRange.start)
+
+                        // Track with ticks at ends
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics { trackBackgroundColor = layoutBgColor },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Start tick
+                            Box(
+                                modifier = Modifier
+                                    .width(2.dp)
+                                    .height(16.dp)
+                                    .background(contentColor.copy(alpha = 0.8f), RectangleShape)
+                            )
+
+                            // Track area
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(8.dp)
+                            ) {
+                                // Inactive track (remaining portion) - grey like gauge arc
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(contentColor.copy(alpha = 0.3f), RectangleShape)
+                                )
+                                // Active track (filled portion)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(fraction)
+                                        .fillMaxHeight()
+                                        .background(contentColor, RectangleShape)
+                                )
+                            }
+
+                            // End tick
+                            Box(
+                                modifier = Modifier
+                                    .width(2.dp)
+                                    .height(16.dp)
+                                    .background(contentColor.copy(alpha = 0.8f), RectangleShape)
+                            )
+                        }
                     }
-
-                    // End tick
-                    Box(
-                        modifier = Modifier
-                            .width(2.dp)
-                            .height(16.dp)
-                            .background(contentColor.copy(alpha = 0.8f), RectangleShape)
-                    )
-                }
+                )
             }
-        )
 
-        // Metric row pinned to bottom
-        Row(
-            modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+            // Metric row pinned to bottom of the content area - can overlap if space is tight
+            Row(
+                modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
             if (labelFontSizeMultiplier > 0.0f) {
                 Text(
                     text = "%.0f".format(valueRange.start),
@@ -225,6 +234,7 @@ private fun HorizontalSliderWidget(
             }
         }
     }
+}
 }
 
 @Composable
