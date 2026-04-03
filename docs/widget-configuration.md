@@ -1,5 +1,7 @@
 # Widget Configuration Guide
 
+Every widget in the HMI has a set of common settings, plus type-specific options for Gauges, Sliders, and Buttons.
+
 ## Common Settings (All Widgets)
 
 | Setting              | Description                                                |
@@ -13,11 +15,11 @@
 | Label Font Size      | Scale multiplier for the label (0 = hidden, up to 2x)     |
 | Show Outline         | Adds a visible border around the widget                    |
 | Background Color     | Widget background from the color picker                    |
-| Label Color          | Text color override (auto-detected from background if empty) |
+| Label Color          | Text color override (auto-detected from background if left empty) |
 
 ## Alarms
 
-Gauge widgets support an alarm state that provides visual signaling for critical conditions.
+Gauge widgets support alarm states that provide clear visual signaling when something needs attention.
 
 | State            | Visual                                            | Interaction                |
 |------------------|---------------------------------------------------|----------------------------|
@@ -25,18 +27,18 @@ Gauge widgets support an alarm state that provides visual signaling for critical
 | Unacknowledged   | Pulsing red border (4 Hz)                         | Tap the widget to acknowledge |
 | Acknowledged     | Static red border                                 | None (requires manual reset) |
 
-When a gauge is in the **Unacknowledged** state, tapping it transitions to **Acknowledged**, which stops the pulse but keeps the red border as a reminder.
+When a gauge is **Unacknowledged**, tapping it transitions to **Acknowledged** -- the pulsing stops, but the red border stays as a visual reminder.
 
-> **Note**: There is currently no UI to set the alarm state on a widget. It can only be configured by editing the layout JSON directly (set `"alarmState"` to `"Normal"`, `"Unacknowledged"`, or `"Acknowledged"`).
+> **Note**: There's currently no UI for setting alarm state on a widget. For now, edit the layout JSON directly (set `"alarmState"` to `"Normal"`, `"Unacknowledged"`, or `"Acknowledged"`).
 
 ## Gauge
 
-Gauges display a read-only numeric value with a visual indicator.
+Gauges display a read-only numeric value with a visual indicator -- perfect for monitoring temperatures, pressures, levels, and more.
 
 | Setting            | Description                                              |
 |--------------------|----------------------------------------------------------|
-| Units              | Suffix displayed after the value (e.g. `PSI`, `°C`, `W`) |
-| Decimal Places     | Number of decimal places for the metric display (0-4)    |
+| Units              | Suffix displayed after the value (e.g. `PSI`, `C`, `W`) |
+| Decimal Places     | Number of decimal places for the readout (0-4)           |
 | Min / Max          | Scale range                                               |
 | Metric Font Size   | Scale multiplier for the value readout (0 = hidden)      |
 | Tick Density       | Target number of tick marks on the scale                  |
@@ -48,7 +50,7 @@ Gauges display a read-only numeric value with a visual indicator.
 
 ## Slider
 
-Sliders send a numeric value within a configurable range.
+Sliders let you send a numeric value within a configurable range -- great for setpoints, speed controls, and manual overrides.
 
 | Setting            | Description                                              |
 |--------------------|----------------------------------------------------------|
@@ -58,11 +60,11 @@ Sliders send a numeric value within a configurable range.
 | Metric Font Size   | Scale multiplier for the value readout                   |
 | Orientation        | HORIZONTAL or VERTICAL                                    |
 
-The slider only publishes to the broker when the rounded value actually changes, avoiding duplicate messages during drag.
+The slider only publishes when the rounded value actually changes, so you won't get duplicate messages during drag.
 
 ## Button
 
-Buttons send a configured value on press and/or release.
+Buttons send a configured value on press and/or release -- ideal for start/stop controls, toggles, and status indicators.
 
 | Setting            | Description                                              |
 |--------------------|----------------------------------------------------------|
@@ -73,6 +75,6 @@ Buttons send a configured value on press and/or release.
 
 ### True/False Value Matching
 
-When a message arrives on the Tag Address, the raw payload is matched (case-insensitive) against the True Values and False Values lists to determine the button's visual state. This allows integration with systems that use non-standard payloads like `"running"` / `"stopped"` or `"ON"` / `"OFF"`.
+When a message arrives on the Tag Address, the raw payload is matched (case-insensitive) against the True Values and False Values lists to determine the button's visual state. This makes it easy to integrate with systems that use non-standard payloads like `"running"` / `"stopped"` or `"ON"` / `"OFF"`.
 
 If the payload doesn't match either list, the button falls back to numeric comparison (value > 0.5 = on).
