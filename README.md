@@ -6,9 +6,9 @@ A drag-and-drop dashboard / control panel app that connects to home automation o
 
 - **Customizable Dashboards** -- Toggle between "Run Mode" for live operation and "Edit Mode" for layout design.
 - **Drag-and-Drop Editor** -- Reposition gauges, sliders, and buttons directly on the screen.
-- **Multiple PLC Protocols** -- Connect through a unified interface:
+- **Multiple PLC Protocols** -- Two protocols, one interface:
     - **Raw TCP** -- Direct socket communication using `TAG:VALUE` lines.
-    - **MQTT v3.1.1** -- Full IoT support with JSON payloads, QoS 1, and Last Will and Testament (LWT) status signaling.
+    - **MQTT v3.1.1** -- JSON payloads, QoS 1, and Last Will and Testament (LWT) for status signaling.
 - **Real-time Updates** -- Low-latency UI powered by Kotlin StateFlow and Jetpack Compose.
 - **Accessibility-First** -- 48dp minimum touch targets and screen-reader support built in.
 
@@ -26,15 +26,17 @@ A drag-and-drop dashboard / control panel app that connects to home automation o
 
 As defined in the project [Constitution](.specify/memory/constitution.md):
 
-1.  **Compose-First** -- All UI is built with modern declarative toolkits.
+1.  **Compose-First** -- All UI is Jetpack Compose. No legacy Views.
 2.  **Unidirectional Data Flow** -- State flows down, events flow up. This keeps UI behavior predictable.
 3.  **Accessibility by Default** -- Minimum 48x48dp touch targets and dynamic text scaling, always.
-4.  **Clarity by Design** -- Every screen should be readable at a glance, with no room for ambiguity.
+4.  **Clarity by Design** -- Every screen should be readable at a glance.
 5.  **Low Cognitive Load** -- Prioritize the most important information and reveal the rest progressively.
 6.  **No Gimmicks** -- Every element and animation serves a real purpose.
-7.  **Modular Architecture** -- Clean separation between UI, business logic, and protocol layers.
+7.  **Modular Architecture** -- UI, business logic, and protocol layers don't know about each other.
 
 ## User Interface Guide
+
+<img src="docs/assets/example-hmi-dashboard-1.png" width="800" alt="HMI Dashboard Run Mode">
 
 ### 1. Connection Screen
 Configure your connection settings before opening a dashboard.
@@ -51,6 +53,9 @@ Once connected, the app opens in **Run Mode** -- the live operational view.
 
 ### 3. Dashboard: Edit Mode
 Tap the **Edit Mode** button in the top app bar to customize the layout.
+
+<img src="docs/assets/example-edit-dashboard.png" width="500" alt="Dashboard Edit Mode">
+
 - **Drag-and-Drop** -- Long-press any widget to move it. New coordinates are saved instantly.
 - **Add Widget** -- A palette appears at the bottom. Pick a control type (Button, Slider, Gauge) and place it.
 - **Customization** --
@@ -58,17 +63,7 @@ Tap the **Edit Mode** button in the top app bar to customize the layout.
     - **Background Color** -- Pick from a high-contrast palette, or use the **Custom Color Picker** (hex entry, visual spectrum, recent colors). Text color adjusts automatically for WCAG-compliant contrast.
     - **Font Scaling** -- Adjust text size per widget (0.5x to 2.5x) with the "Font Size" slider.
 
-### 4. Industrial UI & Cockpit Style
-The UI targets industrial environments where readability and contrast are critical:
-- **Adaptive Rounded Corners** -- 8dp radius (scaled to 4dp for small widgets) to visually separate interactive areas.
-- **Dark Background** -- Near-black (`#131313`) default for high contrast and reduced eye strain.
-- **Smart Text Contrast** -- Light backgrounds get Black text; dark backgrounds (L < 0.2) get White text. Always WCAG 4.5:1 compliant.
-- **Subtle Borders** -- 1dp borders follow corner paths so widgets stay visible on the dark canvas.
-- **Custom Color Picker** -- A tabbed interface for brand matching and safety colors.
-- **Cockpit Typography** -- Tuned Roboto weights and spacing for legibility at a distance.
-- **Automatic Migration** -- Existing layouts upgrade to the dark theme automatically on first run.
-
-### 5. Demo Mode
+### 4. Demo Mode
 The app includes a built-in simulation for testing without external hardware.
 - **Local Demo Server** -- Tap "Connect to Local Demo Server" on the Connection Screen to launch a built-in simulation at `127.0.0.1:9999`.
 - **Simulated Tags** -- Use `SIM_TEMP`, `SIM_PRESSURE`, or `SIM_STATUS` in your widgets to see live, fluctuating data.
