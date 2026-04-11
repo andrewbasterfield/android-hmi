@@ -28,9 +28,9 @@ android {
             val keystorePath = System.getenv("KEYSTORE_PATH")
             if (keystorePath != null) {
                 storeFile = file(keystorePath)
-                storePassword = System.getenv("KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("KEY_ALIAS")
-                keyPassword = System.getenv("KEY_PASSWORD")
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: error("KEYSTORE_PASSWORD not set")
+                keyAlias = System.getenv("KEY_ALIAS") ?: error("KEY_ALIAS not set")
+                keyPassword = System.getenv("KEY_PASSWORD") ?: error("KEY_PASSWORD not set")
             } else {
                 // Fallback to debug keystore if no release config provided
                 storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
