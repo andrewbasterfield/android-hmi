@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import java.util.UUID
 
 @Serializable
-enum class WidgetType { BUTTON, SLIDER, GAUGE }
+enum class WidgetType { BUTTON, SLIDER, GAUGE, TEXT }
 
 @Serializable
 enum class GaugeAxis { ARC, LINEAR_HORIZONTAL, LINEAR_VERTICAL }

@@ -133,12 +133,12 @@ open class DashboardRepository @Inject constructor(
     open val dashboardLayoutFlow: Flow<DashboardLayout> = context.dataStore.data.map { preferences ->
         val jsonStr = preferences[DASHBOARD_KEY]
         if (jsonStr.isNullOrEmpty()) {
-            DashboardLayout()
+            DashboardLayout.createDemoLayout()
         } else {
             try {
                 json.decodeFromString<DashboardLayout>(jsonStr)
             } catch (e: Exception) {
-                DashboardLayout()
+                DashboardLayout.createDemoLayout()
             }
         }
     }

@@ -160,12 +160,14 @@ fun WidgetConfigDialog(
             WidgetType.BUTTON -> 1
             WidgetType.SLIDER -> if (selectedOrientation == WidgetOrientation.HORIZONTAL) 2 else 1
             WidgetType.GAUGE -> 2
+            WidgetType.TEXT -> 2
         }
 
         val baseRows = when (selectedType) {
             WidgetType.BUTTON -> 1
             WidgetType.SLIDER -> if (selectedOrientation == WidgetOrientation.HORIZONTAL) 1 else 2
             WidgetType.GAUGE -> 2
+            WidgetType.TEXT -> 1
         }
 
         maxOf(baseCols, textWidthCells) to baseRows

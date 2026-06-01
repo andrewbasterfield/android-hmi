@@ -1,5 +1,6 @@
 package com.example.hmi.dashboard
 
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
@@ -693,6 +694,24 @@ private fun WidgetRenderingNode(
                         onAcknowledgeAlarm = { viewModel.acknowledgeAlarm(widget.tagAddress) },
                         modifier = Modifier.fillMaxSize()
                     )
+                }
+                WidgetType.TEXT -> {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        contentAlignment = androidx.compose.ui.Alignment.Center
+                    ) {
+                        androidx.compose.material3.Text(
+                            text = resolvedLabel,
+                            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.semantics {
+                                // A11Y-001, A11Y-002, A11Y-003: Text content description and dynamic sizing are built-in for Text.
+                                // Not interactive, so touch target size doesn't apply.
+                                contentDescription = resolvedLabel
+                            }
+                        )
+                    }
                 }
             }
         }
