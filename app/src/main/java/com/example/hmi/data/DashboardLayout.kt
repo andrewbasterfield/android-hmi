@@ -30,9 +30,9 @@ data class DashboardLayout(
                         type = WidgetType.TEXT,
                         customLabel = "Welcome to the HMI Demo. This dashboard is showing simulated data from the local server. To connect to a real device or create a custom layout, use the settings menu.",
                         row = 0,
-                        column = 0,
-                        colSpan = 4,
-                        rowSpan = 1
+                        column = 1,
+                        colSpan = 8,
+                        rowSpan = 2
                     ),
                     WidgetConfiguration(
                         type = WidgetType.GAUGE,
@@ -41,10 +41,10 @@ data class DashboardLayout(
                         units = "°C",
                         minValue = 0f,
                         maxValue = 100f,
-                        row = 1,
-                        column = 0,
-                        colSpan = 2,
-                        rowSpan = 2
+                        row = 2,
+                        column = 1,
+                        colSpan = 4,
+                        rowSpan = 4
                     ),
                     WidgetConfiguration(
                         type = WidgetType.GAUGE,
@@ -53,20 +53,20 @@ data class DashboardLayout(
                         units = "kPa",
                         minValue = 0f,
                         maxValue = 200f,
-                        row = 1,
-                        column = 2,
-                        colSpan = 2,
-                        rowSpan = 2
+                        row = 2,
+                        column = 5,
+                        colSpan = 4,
+                        rowSpan = 4
                     ),
                     WidgetConfiguration(
                         type = WidgetType.BUTTON,
                         interactionType = InteractionType.INDICATOR,
                         tagAddress = "SIM_STATUS",
                         customLabel = "System Status",
-                        row = 3,
-                        column = 1,
-                        colSpan = 2,
-                        rowSpan = 1
+                        row = 6,
+                        column = 3,
+                        colSpan = 4,
+                        rowSpan = 2
                     )
                 )
             )
