@@ -637,6 +637,7 @@ fun ZoneEditCard(
 ) {
     var startInput by remember { mutableStateOf(zone.startValue.toString()) }
     var endInput by remember { mutableStateOf(zone.endValue.toString()) }
+    var exactMatchInput by remember { mutableStateOf(zone.exactMatch ?: "") }
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -700,6 +701,16 @@ fun ZoneEditCard(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = exactMatchInput,
+                onValueChange = { input ->
+                    exactMatchInput = input
+                    onZoneChanged(zone.copy(exactMatch = input.ifBlank { null }))
+                },
+                label = { Text("Exact Match (Optional)") },
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(

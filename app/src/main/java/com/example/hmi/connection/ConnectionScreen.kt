@@ -38,8 +38,8 @@ fun ConnectionScreen(
     val wasUnexpectedDisconnect by viewModel.wasUnexpectedDisconnect.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState(initial = null)
     
-    var name by remember { mutableStateOf("My Connection") }
-    var ipAddress by remember { mutableStateOf("192.168.1.100") }
+    var name by remember { mutableStateOf("Local Demo Server") }
+    var ipAddress by remember { mutableStateOf("127.0.0.1") }
     var port by remember { mutableStateOf("9999") }
     var protocol by remember { mutableStateOf(Protocol.RAW_TCP) }
     

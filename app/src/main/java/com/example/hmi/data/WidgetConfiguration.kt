@@ -37,6 +37,7 @@ data class WidgetConfiguration(
     val writeAddress: String? = null,
     val customLabel: String? = null,
     val backgroundColor: Long? = null,
+    val isColorDynamic: Boolean = true,
     val textColor: Long? = null,
     val pressedFillColor: Long? = null,
     val labelFontSizeMultiplier: Float = 1.0f,

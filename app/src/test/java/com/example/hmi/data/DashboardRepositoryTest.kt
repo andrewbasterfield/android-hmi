@@ -184,10 +184,10 @@ class DashboardRepositoryTest {
 
         // Then it should be the DemoLayout, not just an empty layout
         assertEquals("Demo Layout", layout.name)
-        assertEquals(4, layout.widgets.size)
+        assertEquals(5, layout.widgets.size)
         
-        // Verify it contains the Text widget and the gauges
-        assertTrue(layout.widgets.any { it.type == WidgetType.TEXT })
+        // Verify it contains the simulation gauges and slider
+        assertTrue(layout.widgets.any { it.type == WidgetType.SLIDER })
         assertTrue(layout.widgets.any { it.tagAddress == "SIM_TEMP" })
     }
 

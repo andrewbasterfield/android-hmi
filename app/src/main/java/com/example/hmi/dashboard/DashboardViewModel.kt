@@ -111,6 +111,8 @@ class DashboardViewModel @Inject constructor(
         }
         viewModelScope.launch(ioDispatcher) {
             plcCommunicator.attributeUpdates.collect { (tag, attr, value) ->
+                if (attr.equals("color", ignoreCase = true)) return@collect
+                
                 val current = _sessionOverrides.value.toMutableMap()
                 val tagMap = current[tag]?.toMutableMap() ?: mutableMapOf()
                 tagMap[attr] = value

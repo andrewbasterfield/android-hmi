@@ -24,6 +24,7 @@ tests/
 : Follow standard conventions
 
 ## Recent Changes
+- 033-frontend-color-logic: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 032-default-demo-mode: Added Kotlin (Android) + Jetpack Compose, ViewModels (AAC)
 
 - 032-default-demo-mode: Added

@@ -12,5 +12,6 @@ data class GaugeZone(
     val endValue: Float,
     val color: Long,
     val label: String? = null,
+    val exactMatch: String? = null,
     val id: String = UUID.randomUUID().toString()
 )

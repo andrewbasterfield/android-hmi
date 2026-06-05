@@ -8,7 +8,7 @@
       "minimum": 1
     },
     "layout": {
-      "type": "object",
+      "type": ["object", "null"],
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
@@ -24,7 +24,7 @@
       "required": ["id", "name", "widgets"]
     },
     "profiles": {
-      "type": "array",
+      "type": ["array", "null"],
       "items": {
         "type": "object",
         "properties": {

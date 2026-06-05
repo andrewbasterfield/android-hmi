@@ -158,7 +158,13 @@ open class DashboardRepository @Inject constructor(
             if (ipAddress != null && port != null) {
                 PlcConnectionProfile(ipAddress = ipAddress, port = port)
             } else {
-                null
+                // Default to Local Demo Server
+                PlcConnectionProfile(
+                    name = "Local Demo Server",
+                    ipAddress = "127.0.0.1",
+                    port = 9999,
+                    protocol = com.example.hmi.protocol.Protocol.RAW_TCP
+                )
             }
         } else {
             try {
