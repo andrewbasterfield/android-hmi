@@ -40,7 +40,6 @@ TAG:VALUE\n
 TANK_LEVEL:75.5
 PUMP_ENABLED:true
 MOTOR_01.label:Main Pump
-MOTOR_01.color:#FF0000
 ```
 
 **Outbound (HMI to server):**
@@ -71,7 +70,6 @@ TAG.attribute:VALUE
 | Attribute | What it does                              | Example                        |
 |-----------|-------------------------------------------|--------------------------------|
 | `label`   | Overrides the widget's display text       | `MOTOR_01.label:Main Pump`     |
-| `color`   | Overrides the widget's background color   | `MOTOR_01.color:#FF0000`       |
 
 These overrides are applied at runtime only -- they don't modify your saved widget configuration, and they last for the duration of the connection session.
 
@@ -163,14 +161,14 @@ The built-in **Local Demo Server** profile launches an in-process TCP server on 
 
 `SIM_TEMP` also generates dynamic attribute updates so you can see runtime widget customization in action:
 
-| Temperature Range | Label        | Color                |
-|-------------------|--------------|----------------------|
-| < 40              | Cold         | `#0000FF` (Blue)     |
-| 40 - 70           | Optimal      | `#00FF00` (Green)    |
-| 70 - 90           | Warning      | `#FFA500` (Orange)   |
-| >= 90             | CRITICAL     | `#FF0000` (Red)      |
+| Temperature Range | Label        |
+|-------------------|--------------|
+| < 40              | Cold         |
+| 40 - 70           | Optimal      |
+| 70 - 90           | Warning      |
+| >= 90             | CRITICAL     |
 
-To try it: create a Gauge widget with Tag Address `SIM_TEMP` and watch the label and background color change automatically as the temperature sweeps through its range.
+To try it: create a Gauge widget with Tag Address `SIM_TEMP` and watch the label change automatically as the temperature sweeps through its range. You can configure Color Zones locally on the widget to match these ranges.
 
 ## Connection States
 

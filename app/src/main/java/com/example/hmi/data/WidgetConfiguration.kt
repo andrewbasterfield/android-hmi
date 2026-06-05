@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 import java.util.UUID
 
 @Serializable
-enum class WidgetType { BUTTON, SLIDER, GAUGE }
+enum class WidgetType { BUTTON, SLIDER, GAUGE, TEXT }
 
 @Serializable
 enum class GaugeAxis { ARC, LINEAR_HORIZONTAL, LINEAR_VERTICAL }
@@ -37,6 +37,7 @@ data class WidgetConfiguration(
     val writeAddress: String? = null,
     val customLabel: String? = null,
     val backgroundColor: Long? = null,
+    val isColorDynamic: Boolean = true,
     val textColor: Long? = null,
     val pressedFillColor: Long? = null,
     val labelFontSizeMultiplier: Float = 1.0f,

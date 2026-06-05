@@ -22,10 +22,10 @@ class RawTcpPlcCommunicatorTest {
         val label = communicator.observeAttribute("MOTOR_01", "label").first()
         assertEquals("Main Pump", label)
 
-        // Test color update
-        communicator.parseLine("MOTOR_01.color:#FF0000")
-        val color = communicator.observeAttribute("MOTOR_01", "color").first()
-        assertEquals("#FF0000", color)
+        // Test unit update
+        communicator.parseLine("MOTOR_01.unit:RPM")
+        val unit = communicator.observeAttribute("MOTOR_01", "unit").first()
+        assertEquals("RPM", unit)
     }
 
     @Test(timeout = 2000)

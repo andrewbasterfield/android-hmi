@@ -1,5 +1,6 @@
 package com.example.hmi.dashboard
 
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.spring
@@ -403,9 +404,22 @@ private fun WidgetRenderingNode(
         derivedStateOf { sessionOverridesState.value[tagAddress] }
     }
     val resolvedLabel = tagOverrides?.get("label") ?: widget.customLabel ?: tagAddress
-    val resolvedColorLong = tagOverrides?.get("color")?.let { 
-        com.example.hmi.widgets.ColorUtils.parseHexColor(it) 
-    } ?: widget.backgroundColor
+
+    val resolvedColorLong by remember(widget.isColorDynamic, widget.backgroundColor, widget.colorZones, currentValue, tagStringValuesState.value[tagAddress]) {
+        derivedStateOf {
+            val stringVal = tagStringValuesState.value[tagAddress]
+            val color = com.example.hmi.widgets.ColorUtils.resolveColor(
+                currentValueStr = stringVal,
+                currentValueFloat = currentValue,
+                isColorDynamic = widget.isColorDynamic && widget.type != com.example.hmi.data.WidgetType.GAUGE,
+                staticColor = widget.backgroundColor,
+                colorZones = widget.colorZones,
+                defaultColor = androidx.compose.ui.graphics.Color.Transparent // Not used since we return Long?
+            )
+            // If the resolved color is Transparent and there's no background set, return null
+            if (color == androidx.compose.ui.graphics.Color.Transparent) null else color.value.toLong()
+        }
+    }
 
     val dragOffset = draggingOffsets[widget.id]
     val resizeOffset = resizingOffsets[widget.id]
@@ -693,6 +707,24 @@ private fun WidgetRenderingNode(
                         onAcknowledgeAlarm = { viewModel.acknowledgeAlarm(widget.tagAddress) },
                         modifier = Modifier.fillMaxSize()
                     )
+                }
+                WidgetType.TEXT -> {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        contentAlignment = androidx.compose.ui.Alignment.Center
+                    ) {
+                        androidx.compose.material3.Text(
+                            text = resolvedLabel,
+                            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.semantics {
+                                // A11Y-001, A11Y-002, A11Y-003: Text content description and dynamic sizing are built-in for Text.
+                                // Not interactive, so touch target size doesn't apply.
+                                contentDescription = resolvedLabel
+                            }
+                        )
+                    }
                 }
             }
         }

@@ -160,12 +160,14 @@ fun WidgetConfigDialog(
             WidgetType.BUTTON -> 1
             WidgetType.SLIDER -> if (selectedOrientation == WidgetOrientation.HORIZONTAL) 2 else 1
             WidgetType.GAUGE -> 2
+            WidgetType.TEXT -> 2
         }
 
         val baseRows = when (selectedType) {
             WidgetType.BUTTON -> 1
             WidgetType.SLIDER -> if (selectedOrientation == WidgetOrientation.HORIZONTAL) 1 else 2
             WidgetType.GAUGE -> 2
+            WidgetType.TEXT -> 1
         }
 
         maxOf(baseCols, textWidthCells) to baseRows
@@ -635,6 +637,7 @@ fun ZoneEditCard(
 ) {
     var startInput by remember { mutableStateOf(zone.startValue.toString()) }
     var endInput by remember { mutableStateOf(zone.endValue.toString()) }
+    var exactMatchInput by remember { mutableStateOf(zone.exactMatch ?: "") }
 
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -698,6 +701,16 @@ fun ZoneEditCard(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = exactMatchInput,
+                onValueChange = { input ->
+                    exactMatchInput = input
+                    onZoneChanged(zone.copy(exactMatch = input.ifBlank { null }))
+                },
+                label = { Text("Exact Match (Optional)") },
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(

@@ -155,4 +155,40 @@ object ColorUtils {
             else -> defaultColor
         }
     }
+
+    /**
+     * Resolves the color dynamically based on the current tag value (which could be string, boolean, or float).
+     * It checks for exactMatch first, then falls back to numeric range matching.
+     */
+    fun resolveColor(
+        currentValueStr: String?,
+        currentValueFloat: Float?,
+        isColorDynamic: Boolean,
+        staticColor: Long?,
+        colorZones: List<com.example.hmi.data.GaugeZone>,
+        defaultColor: Color
+    ): Color {
+        if (!isColorDynamic) {
+            return staticColor?.let { toColor(it) } ?: defaultColor
+        }
+
+        // 1. Try exactMatch (string equality)
+        if (currentValueStr != null) {
+            val stringMatchZone = colorZones.find { it.exactMatch != null && it.exactMatch.equals(currentValueStr, ignoreCase = true) }
+            if (stringMatchZone != null) {
+                return toColor(stringMatchZone.color)
+            }
+        }
+
+        // 2. Try numeric range
+        if (currentValueFloat != null) {
+            val numericMatchZone = colorZones.find { it.exactMatch == null && currentValueFloat >= it.startValue && currentValueFloat <= it.endValue }
+            if (numericMatchZone != null) {
+                return toColor(numericMatchZone.color)
+            }
+        }
+
+        // Fallback
+        return staticColor?.let { toColor(it) } ?: defaultColor
+    }
 }

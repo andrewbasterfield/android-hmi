@@ -119,15 +119,6 @@ class DemoPlcServer @Inject constructor() {
         val formattedTemp = String.format(Locale.US, "%.2f", tempVal)
         tagValues[tempTag] = formattedTemp
         broadcast("$tempTag:$formattedTemp")
-
-        // Update colors based on the new sine-wave value
-        val colorHex = when {
-            tempVal < 40f -> "#0000FF" // Blue
-            tempVal < 70f -> "#00FF00" // Green
-            tempVal < 90f -> "#FFA500" // Orange
-            else -> "#FF0000" // Red
-        }
-        broadcast("$tempTag.color:$colorHex")
         
         val stateLabel = when {
             tempVal < 40f -> "Cold"
