@@ -137,10 +137,15 @@ class ConfigTransferManager @Inject constructor(
         try {
             val layout = repository.dashboardLayoutFlow.first()
             val profiles = repository.savedProfilesFlow.first()
+            val libraryLayouts = repository.savedLayoutsFlow.first()
+            val systemProfiles = repository.systemProfilesFlow.first()
+
             val backup = FullBackupPackage(
                 version = CURRENT_VERSION,
                 layout = layout,
-                profiles = profiles
+                profiles = profiles,
+                libraryLayouts = libraryLayouts,
+                systemProfiles = systemProfiles
             )
             val jsonStr = json.encodeToString(backup)
             context.contentResolver.openOutputStream(uri)?.use { outputStream ->
@@ -161,13 +166,11 @@ class ConfigTransferManager @Inject constructor(
             if (validateJson(jsonStr)) {
                 val backup = json.decodeFromString<FullBackupPackage>(jsonStr)
 
-                // FR-014: Schema versioning and compatibility
                 if (backup.version > CURRENT_VERSION) {
                     _events.emit(TransferEvent.Error("Backup version (${backup.version}) is newer than app version ($CURRENT_VERSION). Please update the app."))
                     return
                 }
 
-                // Emit ImportReady event to trigger Selection UI
                 _events.emit(TransferEvent.ImportReady(backup))
             }
         } catch (e: Exception) {
@@ -175,21 +178,43 @@ class ConfigTransferManager @Inject constructor(
         }
     }
 
-    companion object {
-        private const val CURRENT_VERSION = 1
-    }
-
     suspend fun executeImport(backup: FullBackupPackage, importLayout: Boolean, importProfiles: Boolean) {
         try {
             if (importLayout) {
                 backup.layout?.let { repository.saveLayout(it) }
+                backup.libraryLayouts?.let { repository.mergeLayouts(it) }
             }
             if (importProfiles) {
                 backup.profiles?.let { repository.mergeProfiles(it) }
+                backup.systemProfiles?.let { repository.mergeSystemProfiles(it) }
             }
             _events.emit(TransferEvent.Success("Import completed successfully"))
         } catch (e: Exception) {
             _events.emit(TransferEvent.Error("Import execution failed: ${e.message}"))
+        }
+    }
+
+    suspend fun exportSystemProfileBundle(profile: SystemProfile, context: Context) {
+        try {
+            val layouts = repository.savedLayoutsFlow.first()
+            val profiles = repository.savedProfilesFlow.first()
+            
+            val layout = layouts.find { it.id == profile.layoutId } 
+                ?: throw Exception("Bound layout not found in library")
+            val connection = profiles.find { it.name == profile.connectionProfileName }
+                ?: throw Exception("Bound connection not found in library")
+                
+            val transportBackup = FullBackupPackage(
+                version = CURRENT_VERSION,
+                libraryLayouts = listOf(layout),
+                profiles = listOf(connection),
+                systemProfiles = listOf(profile)
+            )
+            
+            val jsonStr = json.encodeToString(transportBackup)
+            shareConfig(context, jsonStr, "${profile.name.replace(" ", "_")}_bundle.json")
+        } catch (e: Exception) {
+            _events.emit(TransferEvent.Error("Share failed: ${e.message}"))
         }
     }
 
@@ -206,5 +231,9 @@ class ConfigTransferManager @Inject constructor(
             _events.emit(TransferEvent.ValidationError("JSON Parse Error: ${e.message}"))
             false
         }
+    }
+
+    companion object {
+        private const val CURRENT_VERSION = 2
     }
 }

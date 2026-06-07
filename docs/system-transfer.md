@@ -4,33 +4,42 @@ The **System Transfer Center** lets you back up, restore, and share your HMI con
 
 ## Dashboard Layouts
 
-Manage the visual arrangement and widget settings for the current dashboard.
+Manage the visual arrangement and widget settings for your dashboards.
 
 - **JSON Import/Export:**
-  - **Copy** -- Copy the raw JSON representation of your layout to the clipboard.
+  - **Copy** -- Copy the raw JSON representation of the active layout to the clipboard.
   - **Import** -- Paste JSON into the text field and click **Import** to apply it immediately.
 - **File Management:**
-  - **Save File** -- Save your layout as a `.json` file to your device storage (via Android SAF).
-  - **Open File** -- Pick an existing `.json` file from your device to load a saved layout.
+  - **Save File** -- Save your active layout as a `.json` file to your device storage.
+  - **Open File** -- Pick an existing `.json` file from your device to load it.
 - **Sharing:**
-  - **Share Layout** -- Send the layout via the Android Share Sheet (email, messaging, or any other app).
+  - **Share Layout** -- Send the single layout via the Android Share Sheet.
 
-## Connection Profiles
+## System Profile Bundles
 
-Manage your PLC and MQTT broker connection settings.
+A **Profile Bundle** is a standalone machine package containing a preset, its layout, and its connection technical details.
 
-- **Export All** -- Packages all your saved connection profiles into a single file for backup or migration.
-- **Import** -- Load a previously exported profile package.
-- **Share Profiles** -- Send all your connection configurations through the Android Share Sheet.
+- **How to Share:**
+  1. Open the **Management Hub** (Side Drawer).
+  2. Locate your preset in the **Systems** list.
+  3. Tap the **Share (icon)** next to the profile name.
+- **Importing:**
+  - When you open a profile bundle on a new device, the app automatically adds the layout and the connection profile to the recipient's library and recreates the binding.
 
-## Full System Backup
+## Full System Backup (Version 2)
 
-This is the easiest way to migrate everything to a new device.
+This is the easiest way to migrate your entire environment to a new device.
 
 - **Generate Full Backup** creates a single JSON package containing **everything**:
-  - Your current dashboard layout and all its widgets.
-  - All saved connection profiles (IPs, ports, MQTT credentials).
+  - All saved **System Profiles** (Presets).
+  - All **Dashboard Layouts** in your library.
+  - All saved **Connection Profiles** (IPs, ports, MQTT credentials).
   - Global app preferences (haptic feedback, keep screen on, etc.).
+
+### Merge Strategy
+When importing a backup, the app uses an **Upsert** logic:
+- If an item (Connection, Layout, or Profile) with the same identifier already exists, it is **updated** with the incoming data.
+- If it doesn't exist, it is **added** to your local library.
 
 ---
 

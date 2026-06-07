@@ -9,6 +9,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import com.example.hmi.dashboard.components.ManagementHubDrawer
+import com.example.hmi.dashboard.WidgetContainer
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -56,6 +62,42 @@ fun DashboardScreen(
     val isEditMode by viewModel.isEditMode.collectAsState()
     val connectionState by viewModel.connectionState.collectAsState()
     val globalStatus by viewModel.globalStatus.collectAsState()
+
+    val systemProfiles by viewModel.systemProfiles.collectAsState()
+    val activeProfileId by viewModel.activeSystemProfileId.collectAsState()
+    val savedConnections by viewModel.savedProfiles.collectAsState()
+    val savedLayouts by viewModel.savedLayouts.collectAsState()
+    val isModified by viewModel.isModified.collectAsState()
+    val activeConnection by viewModel.activeConnection.collectAsState()
+
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    
+    val context = LocalContext.current
+    
+    val profileImportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importProfiles(it) }
+    }
+
+    val layoutImportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importLayout(it) }
+    }
+
+    val fullBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        uri?.let { viewModel.exportFullBackup(it) }
+    }
+
+    val fullRestoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importFullBackup(it) }
+    }
     
     var srAnnouncement by remember { mutableStateOf("") }
 
@@ -68,15 +110,48 @@ fun DashboardScreen(
     var editingWidget by remember { mutableStateOf<WidgetConfiguration?>(null) }
     var showDashboardSettings by remember { mutableStateOf(false) }
     var showTransferHub by remember { mutableStateOf(false) }
+    var showSaveProfileDialog by remember { mutableStateOf(false) }
 
-    if (showTransferHub) {
-        val connectionViewModel: com.example.hmi.connection.ConnectionViewModel = hiltViewModel()
-        SystemTransferDialog(
-            dashboardViewModel = viewModel,
-            connectionViewModel = connectionViewModel,
-            onDismiss = { showTransferHub = false }
+    if (showSaveProfileDialog) {
+        var profileName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showSaveProfileDialog = false },
+            title = { Text("Save System Profile") },
+            text = {
+                Column {
+                    Text("Enter a name for this preset environment (Connection + Layout).")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = profileName,
+                        onValueChange = { profileName = it },
+                        label = { Text("Profile Name") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (profileName.isNotBlank()) {
+                            viewModel.saveCurrentAsSystemProfile(profileName)
+                            showSaveProfileDialog = false
+                            scope.launch { drawerState.close() }
+                        }
+                    },
+                    enabled = profileName.isNotBlank()
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSaveProfileDialog = false }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
+
     
     val draggingOffsets = remember { mutableStateMapOf<String, Offset>() }
     val resizingOffsets = remember { mutableStateMapOf<String, Offset>() }
@@ -137,17 +212,58 @@ fun DashboardScreen(
         )
     }
 
-    if (showDashboardSettings) {
-        DashboardSettingsDialog(
-            initialName = dashboardLayout.name,
-            initialCanvasColor = dashboardLayout.canvasColor,
-            initialHapticEnabled = dashboardLayout.hapticFeedbackEnabled,
-            initialOrientationMode = dashboardLayout.orientationMode,
-            onDismiss = { showDashboardSettings = false },
-            onConfirm = { name, color, hapticEnabled, orientationMode ->
-                viewModel.updateDashboardSettings(name, color, hapticEnabled, orientationMode)
-                showDashboardSettings = false
+    var layoutToEdit by remember { mutableStateOf<com.example.hmi.data.DashboardLayout?>(null) }
+    var showCreateLayoutDialog by remember { mutableStateOf(false) }
+    
+    if (showCreateLayoutDialog) {
+        var newLayoutName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreateLayoutDialog = false },
+            title = { Text("Create New Layout") },
+            text = {
+                OutlinedTextField(
+                    value = newLayoutName,
+                    onValueChange = { newLayoutName = it },
+                    label = { Text("Layout Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newLayoutName.isNotBlank()) {
+                            viewModel.createNewLayout(newLayoutName)
+                            showCreateLayoutDialog = false
+                        }
+                    },
+                    enabled = newLayoutName.isNotBlank()
+                ) { Text("Create") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreateLayoutDialog = false }) { Text("Cancel") }
             }
+        )
+    }
+    
+    if (layoutToEdit != null) {
+        DashboardSettingsDialog(
+            layoutId = layoutToEdit!!.id,
+            initialName = layoutToEdit!!.name,
+            initialCanvasColor = layoutToEdit!!.canvasColor,
+            initialHapticEnabled = layoutToEdit!!.hapticFeedbackEnabled,
+            initialOrientationMode = layoutToEdit!!.orientationMode,
+            onDismiss = { layoutToEdit = null },
+            onConfirm = { id, name, color, haptic, orientation ->
+                viewModel.updateAnyLayoutSettings(id, name, color, haptic, orientation)
+                layoutToEdit = null
+            },
+            onDelete = if (layoutToEdit?.id != dashboardLayout.id) {
+                {
+                    viewModel.deleteLayout(layoutToEdit!!.id)
+                    layoutToEdit = null
+                }
+            } else null
         )
     }
 
@@ -167,46 +283,71 @@ fun DashboardScreen(
         )
     }
 
-    EmergencyHUD(status = globalStatus) {
-        // Hidden element for screen reader announcements
-        if (srAnnouncement.isNotEmpty()) {
-            Text(
-                text = srAnnouncement,
-                modifier = Modifier
-                    .size(1.dp)
-                    .semantics { 
-                        liveRegion = LiveRegionMode.Polite 
-                        invisibleToUser()
-                    }
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ManagementHubDrawer(
+                systemProfiles = systemProfiles,
+                activeProfileId = activeProfileId,
+                connections = savedConnections,
+                layouts = savedLayouts,
+                activeConnection = activeConnection,
+                activeLayout = dashboardLayout,
+                isModified = isModified,
+                connectionState = connectionState,
+                onProfileSelect = { profile -> viewModel.selectSystemProfile(profile) },
+                onProfileShare = { profile -> viewModel.shareSystemProfile(profile, context) },
+                onProfileDelete = { profile -> viewModel.deleteSystemProfile(profile.id) },
+                onAddProfile = { showSaveProfileDialog = true },
+                onConnectionSelect = { connection -> viewModel.selectManualConnection(connection) },
+                onAddConnection = {
+                    onNavigateBack()
+                    scope.launch { drawerState.close() }
+                },
+                onImportConnections = { profileImportLauncher.launch(arrayOf("application/json")) },
+                onLayoutSelect = { layout -> viewModel.selectManualLayout(layout) },
+                onEditLayout = { layout -> layoutToEdit = layout },
+                onAddLayout = { showCreateLayoutDialog = true },
+                onImportLayouts = { layoutImportLauncher.launch(arrayOf("application/json")) },
+                onFullBackup = { fullBackupLauncher.launch("hmi_full_backup.json") },
+                onFullRestore = { fullRestoreLauncher.launch(arrayOf("application/json")) }
             )
         }
+    ) {
+        EmergencyHUD(status = globalStatus) {
+            // Hidden element for screen reader announcements
+            if (srAnnouncement.isNotEmpty()) {
+                Text(
+                    text = srAnnouncement,
+                    modifier = Modifier
+                        .size(1.dp)
+                        .semantics { 
+                            liveRegion = LiveRegionMode.Polite 
+                            invisibleToUser()
+                        }
+                )
+            }
 
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("${dashboardLayout.name} [$currentLogicalPageX, $currentLogicalPageY]") },
-                    actions = {
-                        if (isEditMode) {
-                            IconButton(onClick = { showTransferHub = true }) {
-                                Icon(Icons.Default.CloudSync, "System Transfer Center")
+            Scaffold(
+                topBar = {
+                    TopAppBar(
+                        title = { Text("${dashboardLayout.name} [$currentLogicalPageX, $currentLogicalPageY]") },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, "Open Management Hub")
                             }
-                            Button(onClick = { showAddWidgetDialog = true }) {
-                                Text("Add Widget")
+                        },
+                        actions = {
+                            if (isEditMode) {
+                                Button(onClick = { showAddWidgetDialog = true }) {
+                                    Text("Add Widget")
+                                }
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Button(onClick = { showDashboardSettings = true }) {
-                                Text("Layout")
+                            Button(onClick = { viewModel.toggleEditMode() }) {
+                                Text(if (isEditMode) "Run Mode" else "Edit Mode")
                             }
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(onClick = { viewModel.toggleEditMode() }) {
-                            Text(if (isEditMode) "Run Mode" else "Edit Mode")
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Button(onClick = onNavigateBack) {
-                            Text("Connection")
-                        }
-                    }
                 )
             }
         ) { paddingValues ->
@@ -366,6 +507,7 @@ fun DashboardScreen(
                 }
             }
         }
+    }
     }
 }
 
