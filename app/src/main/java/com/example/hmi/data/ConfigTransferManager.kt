@@ -30,7 +30,7 @@ class ConfigTransferManager @Inject constructor(
     private val json: Json,
     private val repository: DashboardRepository
 ) {
-    private val _events = MutableSharedFlow<TransferEvent>()
+    private val _events = MutableSharedFlow<TransferEvent>(replay = 1)
     val events: SharedFlow<TransferEvent> = _events.asSharedFlow()
 
     private val schema: Schema by lazy {

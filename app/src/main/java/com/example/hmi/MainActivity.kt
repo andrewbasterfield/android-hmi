@@ -182,21 +182,26 @@ class MainActivity : ComponentActivity() {
     private fun handleIntent(intent: Intent) {
         val action = intent.action
         val type = intent.type
+        android.util.Log.d("HMI_TRANSFER", "Handling intent: action=$action, type=$type")
 
-        if (Intent.ACTION_VIEW == action && type == "application/json") {
-            intent.data?.let { uri ->
-                lifecycleScope.launch {
-                    transferManager.importFullBackup(uri)
-                }
+        val uri = when (action) {
+            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_SEND -> {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
             }
-        } else if (Intent.ACTION_SEND == action && type == "application/json") {
-            @Suppress("DEPRECATION")
-            val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
-            uri?.let {
-                lifecycleScope.launch {
-                    transferManager.importFullBackup(it)
-                }
+            else -> null
+        }
+
+        if (uri != null) {
+            android.util.Log.d("HMI_TRANSFER", "Found URI in intent: $uri")
+            lifecycleScope.launch {
+                // Give the UI a tiny bit of time to start collecting if this is a cold launch
+                kotlinx.coroutines.delay(500)
+                transferManager.importFullBackup(uri)
             }
+        } else {
+            android.util.Log.d("HMI_TRANSFER", "No URI found in intent")
         }
     }
 }
