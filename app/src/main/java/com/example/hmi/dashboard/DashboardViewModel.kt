@@ -439,6 +439,12 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    fun importSystemProfiles(uri: android.net.Uri) {
+        viewModelScope.launch(ioDispatcher) {
+            transferManager.importSystemProfiles(uri)
+        }
+    }
+
     fun importFullBackup(uri: android.net.Uri) {
         viewModelScope.launch(ioDispatcher) {
             transferManager.importFullBackup(uri)

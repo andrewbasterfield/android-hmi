@@ -62,11 +62,20 @@ class ConfigTransferManager @Inject constructor(
 
             if (validateJson(jsonStr)) {
                 val backup = json.decodeFromString<FullBackupPackage>(jsonStr)
+                var imported = false
                 backup.layout?.let { layout ->
                     repository.saveLayout(layout)
-                    _events.emit(TransferEvent.Success("Layout imported successfully"))
-                } ?: run {
-                    _events.emit(TransferEvent.ValidationError("File does not contain a layout"))
+                    imported = true
+                }
+                backup.libraryLayouts?.let { layouts ->
+                    repository.mergeLayouts(layouts)
+                    imported = true
+                }
+                
+                if (imported) {
+                    _events.emit(TransferEvent.Success("Layouts imported successfully"))
+                } else {
+                    _events.emit(TransferEvent.ValidationError("File does not contain any layouts"))
                 }
             } else {
                 _events.emit(TransferEvent.ValidationError("Invalid file format"))
@@ -100,9 +109,47 @@ class ConfigTransferManager @Inject constructor(
                 val backup = json.decodeFromString<FullBackupPackage>(jsonStr)
                 backup.profiles?.let { profiles ->
                     repository.mergeProfiles(profiles)
-                    _events.emit(TransferEvent.Success("Profiles imported successfully"))
+                    _events.emit(TransferEvent.Success("Connections imported successfully"))
                 } ?: run {
-                    _events.emit(TransferEvent.ValidationError("File does not contain profiles"))
+                    _events.emit(TransferEvent.ValidationError("File does not contain connections"))
+                }
+            } else {
+                _events.emit(TransferEvent.ValidationError("Invalid file format"))
+            }
+        } catch (e: Exception) {
+            _events.emit(TransferEvent.Error("Import failed: ${e.message}"))
+        }
+    }
+
+    suspend fun importSystemProfiles(uri: Uri) {
+        try {
+            val jsonStr = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                inputStream.bufferedReader().use { it.readText() }
+            } ?: throw Exception("Failed to open file")
+
+            if (validateJson(jsonStr)) {
+                val backup = json.decodeFromString<FullBackupPackage>(jsonStr)
+                
+                // For a system profile bundle, we actually want to import the profile AND its dependencies
+                var imported = false
+                backup.systemProfiles?.let { profiles ->
+                    repository.mergeSystemProfiles(profiles)
+                    imported = true
+                }
+                backup.layout?.let { layout ->
+                    repository.saveLayout(layout)
+                }
+                backup.libraryLayouts?.let { layouts ->
+                    repository.mergeLayouts(layouts)
+                }
+                backup.profiles?.let { connections ->
+                    repository.mergeProfiles(connections)
+                }
+                
+                if (imported) {
+                    _events.emit(TransferEvent.Success("System Profile bundle imported successfully"))
+                } else {
+                    _events.emit(TransferEvent.ValidationError("File does not contain any system profiles"))
                 }
             } else {
                 _events.emit(TransferEvent.ValidationError("Invalid file format"))

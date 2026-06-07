@@ -31,6 +31,7 @@ fun ManagementHubDrawer(
     onProfileShare: (SystemProfile) -> Unit,
     onProfileDelete: (SystemProfile) -> Unit,
     onAddProfile: () -> Unit,
+    onImportSystemProfiles: () -> Unit,
     onConnectionSelect: (PlcConnectionProfile) -> Unit,
     onAddConnection: () -> Unit,
     onImportConnections: () -> Unit,
@@ -68,8 +69,7 @@ fun ManagementHubDrawer(
                     connection = activeConnection,
                     layout = activeLayout,
                     isModified = isModified,
-                    connectionState = connectionState,
-                    onEditLayout = { activeLayout?.let { onEditLayout(it) } }
+                    connectionState = connectionState
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider()
@@ -82,6 +82,9 @@ fun ManagementHubDrawer(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     SectionHeader("System Profiles", Modifier.weight(1f))
+                    IconButton(onClick = onImportSystemProfiles) {
+                        Icon(Icons.Default.FileUpload, contentDescription = "Import System Profiles")
+                    }
                     IconButton(onClick = onAddProfile) {
                         Icon(Icons.Default.Add, contentDescription = "Save Current as Profile")
                     }
@@ -143,7 +146,7 @@ fun ManagementHubDrawer(
             if (connections.isEmpty()) {
                 item {
                     Text(
-                        "No connections saved",
+                        "No connections saved. Tap '+' to create, or the upload icon to import.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 8.dp)
@@ -184,7 +187,7 @@ fun ManagementHubDrawer(
             if (layouts.isEmpty()) {
                 item {
                     Text(
-                        "No layouts saved",
+                        "No layouts saved. Tap '+' to create, or the upload icon to import.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 8.dp)
@@ -258,8 +261,7 @@ private fun ActiveEnvironmentCard(
     connection: PlcConnectionProfile?,
     layout: DashboardLayout?,
     isModified: Boolean,
-    connectionState: com.example.hmi.protocol.ConnectionState,
-    onEditLayout: () -> Unit
+    connectionState: com.example.hmi.protocol.ConnectionState
 ) {
     val (statusColor, statusText) = when (connectionState) {
         com.example.hmi.protocol.ConnectionState.CONNECTED -> androidx.compose.ui.graphics.Color(0xFF4CAF50) to "Connected"
@@ -305,13 +307,8 @@ private fun ActiveEnvironmentCard(
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            InfoRow(Icons.Default.Link, "PLC:", connection?.name ?: "None")
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                InfoRow(Icons.Default.Layers, "UI:", layout?.name ?: "None", Modifier.weight(1f))
-                IconButton(onClick = onEditLayout, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Settings, contentDescription = "Layout Settings", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                }
-            }
+            InfoRow(Icons.Default.Link, "Connection:", connection?.name ?: "None")
+            InfoRow(Icons.Default.Layers, "Layout:", layout?.name ?: "None")
         }
     }
 }
@@ -342,3 +339,4 @@ private fun InfoRow(icon: ImageVector, label: String, value: String, modifier: M
         )
     }
 }
+

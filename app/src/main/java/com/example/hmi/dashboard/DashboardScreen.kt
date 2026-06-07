@@ -75,6 +75,12 @@ fun DashboardScreen(
     
     val context = LocalContext.current
     
+    val systemProfileImportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { viewModel.importSystemProfiles(it) } // We will need to add this to ViewModel
+    }
+
     val profileImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -111,6 +117,8 @@ fun DashboardScreen(
     var showDashboardSettings by remember { mutableStateOf(false) }
     var showTransferHub by remember { mutableStateOf(false) }
     var showSaveProfileDialog by remember { mutableStateOf(false) }
+    var pendingImportAction by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
+
 
     if (showSaveProfileDialog) {
         var profileName by remember { mutableStateOf("") }
@@ -299,18 +307,27 @@ fun DashboardScreen(
                 onProfileShare = { profile -> viewModel.shareSystemProfile(profile, context) },
                 onProfileDelete = { profile -> viewModel.deleteSystemProfile(profile.id) },
                 onAddProfile = { showSaveProfileDialog = true },
+                onImportSystemProfiles = { 
+                    pendingImportAction = "a System Profile Bundle" to { systemProfileImportLauncher.launch(arrayOf("application/json")) }
+                },
                 onConnectionSelect = { connection -> viewModel.selectManualConnection(connection) },
                 onAddConnection = {
                     onNavigateBack()
                     scope.launch { drawerState.close() }
                 },
-                onImportConnections = { profileImportLauncher.launch(arrayOf("application/json")) },
+                onImportConnections = { 
+                    pendingImportAction = "Connection Profiles" to { profileImportLauncher.launch(arrayOf("application/json")) }
+                },
                 onLayoutSelect = { layout -> viewModel.selectManualLayout(layout) },
                 onEditLayout = { layout -> layoutToEdit = layout },
                 onAddLayout = { showCreateLayoutDialog = true },
-                onImportLayouts = { layoutImportLauncher.launch(arrayOf("application/json")) },
+                onImportLayouts = { 
+                    pendingImportAction = "Dashboard Layouts" to { layoutImportLauncher.launch(arrayOf("application/json")) }
+                },
                 onFullBackup = { fullBackupLauncher.launch("hmi_full_backup.json") },
-                onFullRestore = { fullRestoreLauncher.launch(arrayOf("application/json")) }
+                onFullRestore = { 
+                    pendingImportAction = "a Full Environment Backup" to { fullRestoreLauncher.launch(arrayOf("application/json")) }
+                }
             )
         }
     ) {
@@ -873,3 +890,4 @@ private fun WidgetRenderingNode(
     }
 }
 }
+

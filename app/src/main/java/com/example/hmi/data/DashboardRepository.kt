@@ -124,9 +124,10 @@ open class DashboardRepository @Inject constructor(
         if (!activeJson.isNullOrEmpty()) {
             try {
                 val active = json.decodeFromString<DashboardLayout>(activeJson)
-                // Filter out the stale version from the library and replace with active
-                val otherSaved = saved.filter { it.id != active.id }
-                return@map listOf(active) + otherSaved
+                // Replace the stale version from the library with active, keeping the same order
+                if (saved.any { it.id == active.id }) {
+                    return@map saved.map { if (it.id == active.id) active else it }
+                }
             } catch (e: Exception) {}
         }
         saved
@@ -237,8 +238,9 @@ open class DashboardRepository @Inject constructor(
         if (!activeJson.isNullOrEmpty()) {
             try {
                 val active = json.decodeFromString<PlcConnectionProfile>(activeJson)
-                val otherSaved = saved.filter { it.name != active.name }
-                return@map listOf(active) + otherSaved
+                if (saved.any { it.name == active.name }) {
+                    return@map saved.map { if (it.name == active.name) active else it }
+                }
             } catch (e: Exception) {}
         }
         saved
