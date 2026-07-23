@@ -78,10 +78,72 @@ class MqttPlcCommunicatorTest {
         assertEquals(PlcValue.FloatValue(60.0f), humidityResult)
     }
 
+    // --- reconnect cap ---
+
+    @Test
+    fun `reconnect cap trips even when the broker has never connected`() {
+        // lastConnectedTime stays at its initial 0, simulating a broker that's
+        // down at app start, before any successful connection has ever happened.
+        repeat(4) {
+            assertEquals(ConnectionState.RECONNECTING, communicator.callHandleDisconnect(hasError = true))
+        }
+
+        assertEquals(ConnectionState.ERROR, communicator.callHandleDisconnect(hasError = true))
+    }
+
+    @Test
+    fun `giving up after max attempts is not overwritten by the resulting disconnect event`() {
+        repeat(4) { communicator.callHandleDisconnect(hasError = true) }
+        assertEquals(ConnectionState.ERROR, communicator.callHandleDisconnect(hasError = true))
+
+        // The disconnect() call triggered by giving up fires the listener again,
+        // and HiveMQ reports that self-triggered event as "no error" (intentional).
+        assertEquals(ConnectionState.ERROR, communicator.callHandleDisconnect(hasError = false))
+    }
+
+    @Test
+    fun `an intentional disconnect resets attempts and reports DISCONNECTED`() {
+        communicator.callHandleDisconnect(hasError = true)
+
+        val state = communicator.callHandleDisconnect(hasError = false)
+
+        assertEquals(ConnectionState.DISCONNECTED, state)
+        assertEquals(0, communicator.getReconnectAttemptsForTest())
+    }
+
+    @Test
+    fun `a stable connection resets the attempt counter before the next failure`() {
+        repeat(3) { communicator.callHandleDisconnect(hasError = true) }
+        assertEquals(3, communicator.getReconnectAttemptsForTest())
+
+        communicator.setLastConnectedTimeForTest(System.currentTimeMillis() - 6000)
+        communicator.callHandleDisconnect(hasError = true)
+
+        assertEquals(1, communicator.getReconnectAttemptsForTest())
+    }
+
     // Helper to call private method for testing
     private fun MqttPlcCommunicator.callParsePayload(payload: String, settings: MqttSettings, jsonPathOverride: String? = null): PlcValue {
         val method = this.javaClass.getDeclaredMethod("parsePayload", String::class.java, MqttSettings::class.java, String::class.java, String::class.java)
         method.isAccessible = true
         return method.invoke(this, payload, settings, null, jsonPathOverride) as PlcValue
+    }
+
+    private fun MqttPlcCommunicator.callHandleDisconnect(hasError: Boolean, cause: Throwable? = null): ConnectionState {
+        val method = this.javaClass.getDeclaredMethod("handleDisconnect", Boolean::class.java, Throwable::class.java)
+        method.isAccessible = true
+        return method.invoke(this, hasError, cause) as ConnectionState
+    }
+
+    private fun MqttPlcCommunicator.getReconnectAttemptsForTest(): Int {
+        val field = this.javaClass.getDeclaredField("reconnectAttempts")
+        field.isAccessible = true
+        return field.getInt(this)
+    }
+
+    private fun MqttPlcCommunicator.setLastConnectedTimeForTest(value: Long) {
+        val field = this.javaClass.getDeclaredField("lastConnectedTime")
+        field.isAccessible = true
+        field.setLong(this, value)
     }
 }

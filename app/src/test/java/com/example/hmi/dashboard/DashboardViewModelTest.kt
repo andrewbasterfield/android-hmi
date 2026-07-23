@@ -9,14 +9,19 @@ import com.example.hmi.protocol.PlcCommunicator
 import com.example.hmi.protocol.PlcValue
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -32,8 +37,10 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.doSuspendableAnswer
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.stub
+import org.mockito.kotlin.verify
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DashboardViewModelTest {
@@ -241,5 +248,132 @@ class DashboardViewModelTest {
         assertEquals(2, widgets.size)
         val added = widgets.find { it.id == "new" }
         assertEquals(11, added?.zOrder)
+    }
+
+    @Test(timeout = 5000)
+    fun `onButtonPress on a MOMENTARY widget with empty trueValues falls back instead of crashing`() = testScope.runTest {
+        val widget = WidgetConfiguration(
+            id = "w1",
+            type = WidgetType.BUTTON,
+            tagAddress = "TAG1",
+            interactionType = com.example.hmi.data.InteractionType.MOMENTARY,
+            trueValues = emptyList(),
+            falseValues = emptyList()
+        )
+
+        viewModel.onButtonPress(widget)
+        runCurrent()
+
+        verify(plcCommunicator).writeTag("TAG1", PlcValue.StringValue("true"), false)
+    }
+
+    @Test(timeout = 5000)
+    fun `onButtonRelease on a MOMENTARY widget with empty falseValues falls back instead of crashing`() = testScope.runTest {
+        val widget = WidgetConfiguration(
+            id = "w1",
+            type = WidgetType.BUTTON,
+            tagAddress = "TAG1",
+            interactionType = com.example.hmi.data.InteractionType.MOMENTARY,
+            trueValues = emptyList(),
+            falseValues = emptyList()
+        )
+
+        viewModel.onButtonRelease(widget)
+        runCurrent()
+
+        verify(plcCommunicator).writeTag("TAG1", PlcValue.StringValue("false"), false)
+    }
+
+    @Test(timeout = 5000)
+    fun `onButtonPress on a LATCHING widget with empty trueValues and falseValues falls back instead of crashing`() = testScope.runTest {
+        val widget = WidgetConfiguration(
+            id = "w1",
+            type = WidgetType.BUTTON,
+            tagAddress = "TAG1",
+            interactionType = com.example.hmi.data.InteractionType.LATCHING,
+            trueValues = emptyList(),
+            falseValues = emptyList()
+        )
+
+        viewModel.onButtonPress(widget)
+        runCurrent()
+
+        verify(plcCommunicator).writeTag("TAG1", PlcValue.StringValue("true"), true)
+    }
+
+    @Test(timeout = 5000)
+    fun `two widgets on the same tag with different json paths do not overwrite each other`() = testScope.runTest {
+        val tempFlow = MutableSharedFlow<PlcValue>(replay = 1)
+        val pressureFlow = MutableSharedFlow<PlcValue>(replay = 1)
+        plcCommunicator.stub {
+            on { observeTag("SENSOR", "temp") } doReturn tempFlow
+            on { observeTag("SENSOR", "pressure") } doReturn pressureFlow
+        }
+
+        viewModel.observeTag("SENSOR", "temp")
+        viewModel.observeTag("SENSOR", "pressure")
+        runCurrent()
+
+        tempFlow.emit(PlcValue.FloatValue(11f))
+        runCurrent()
+        pressureFlow.emit(PlcValue.FloatValue(22f))
+        runCurrent()
+
+        assertEquals(11f, viewModel.tagValues.value["SENSOR" to "temp"])
+        assertEquals(22f, viewModel.tagValues.value["SENSOR" to "pressure"])
+    }
+
+    @Test(timeout = 5000)
+    fun `a slow save for an older edit does not revert a faster newer edit`() = testScope.runTest {
+        val widget = WidgetConfiguration(id = "w1", type = WidgetType.GAUGE, tagAddress = "T1", column = 0, row = 0, colSpan = 1, rowSpan = 1)
+        layoutFlow.value = DashboardLayout(isKineticCockpitMigrated = true, isDarkThemeMigrated = true, widgets = listOf(widget))
+        runCurrent()
+
+        // The first save (from the drag) is slower than the second (from the resize
+        // that follows immediately after), simulating saves completing out of the
+        // order they were issued in.
+        var saveCount = 0
+        repository.stub {
+            onBlocking { saveLayout(any()) } doSuspendableAnswer { invocation ->
+                val layout = invocation.getArgument<DashboardLayout>(0)
+                saveCount++
+                if (saveCount == 1) {
+                    delay(100)
+                }
+                layoutFlow.value = layout
+            }
+        }
+
+        viewModel.updateWidgetPosition("w1", column = 5, row = 5)
+        runCurrent() // let the save queue pick up the drag and start its (slow) save
+        viewModel.updateWidgetSize("w1", colSpan = 3, rowSpan = 2)
+        advanceUntilIdle() // let the slow drag save finish, then the resize save
+
+        val result = viewModel.dashboardLayout.value.widgets.first()
+        assertEquals(5, result.column)
+        assertEquals(5, result.row)
+        assertEquals(3, result.colSpan)
+        assertEquals(2, result.rowSpan)
+    }
+
+    @Test(timeout = 10000)
+    fun `concurrent tag updates from real threads do not lose writes`() = runBlocking {
+        val tags = (0 until 16).map { "TAG_$it" }
+
+        coroutineScope {
+            tags.forEach { tag ->
+                launch(Dispatchers.Default) {
+                    repeat(100) { i ->
+                        viewModel.onSliderChange(tag, null, i.toFloat())
+                    }
+                }
+            }
+        }
+
+        val expectedKeys = tags.map { it to null }
+        assertEquals(tags.size, viewModel.tagValues.value.keys.count { it in expectedKeys })
+        tags.forEach { tag ->
+            assertEquals(99f, viewModel.tagValues.value[tag to null])
+        }
     }
 }

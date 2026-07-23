@@ -8,9 +8,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,19 +63,40 @@ fun IndustrialButton(
     val visualActive = if (isInverted) !logicActive else logicActive
 
     // Trigger haptic feedback and press/release callbacks
+    var hasBeenPressed by remember { mutableStateOf(false) }
     LaunchedEffect(isPressed) {
         if (isPressed) {
+            hasBeenPressed = true
             if (enabled && hapticFeedbackEnabled) {
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             }
             onPress()
-        } else {
-            // Important: onRelease is called when the touch is lifted, 
+        } else if (hasBeenPressed) {
+            // Important: onRelease is called when the touch is lifted,
             // even if the finger moved outside the button area.
+            // Skip the initial composition's isPressed=false, or every
+            // momentary button fires its off payload on app start and on
+            // every page swipe that brings it back into composition.
             onRelease()
         }
     }
-    
+
+    // Safety net: if this widget leaves composition while still pressed (e.g. a
+    // page swipe mid-press), the LaunchedEffect above is cancelled without ever
+    // seeing isPressed flip back to false, so onRelease -- and the PLC's off
+    // write -- would never fire, leaving the output latched on. rememberUpdatedState
+    // keeps the values live so onDispose reflects the state at teardown, not at
+    // whenever this effect happened to be created.
+    val latestIsPressed = rememberUpdatedState(isPressed)
+    val latestOnRelease = rememberUpdatedState(onRelease)
+    DisposableEffect(Unit) {
+        onDispose {
+            if (latestIsPressed.value) {
+                latestOnRelease.value()
+            }
+        }
+    }
+
     val backgroundColor: Color
     val contentColor: Color
     val borderStroke: BorderStroke?

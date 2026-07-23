@@ -19,6 +19,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -51,15 +52,18 @@ class DashboardViewModel @Inject constructor(
     private val _dashboardLayout = MutableStateFlow(DashboardLayout())
     val dashboardLayout: StateFlow<DashboardLayout> = _dashboardLayout.asStateFlow()
 
-    private val _tagValues = MutableStateFlow<Map<String, Float>>(emptyMap())
-    val tagValues: StateFlow<Map<String, Float>> = _tagValues.asStateFlow()
+    // Keyed by (tagAddress, jsonPath) -- matching activeTagObservations -- so two
+    // widgets subscribed to the same topic but different JSON paths don't overwrite
+    // each other's value.
+    private val _tagValues = MutableStateFlow<Map<Pair<String, String?>, Float>>(emptyMap())
+    val tagValues: StateFlow<Map<Pair<String, String?>, Float>> = _tagValues.asStateFlow()
 
-    private val _tagStringValues = MutableStateFlow<Map<String, String>>(emptyMap())
-    val tagStringValues: StateFlow<Map<String, String>> = _tagStringValues.asStateFlow()
+    private val _tagStringValues = MutableStateFlow<Map<Pair<String, String?>, String>>(emptyMap())
+    val tagStringValues: StateFlow<Map<Pair<String, String?>, String>> = _tagStringValues.asStateFlow()
 
     val globalStatus: StateFlow<HealthStatus> = combine(_dashboardLayout, _tagValues) { layout, values ->
         val widgetStatuses = layout.widgets.map { widget ->
-            val currentValue = values[widget.tagAddress] ?: 0f
+            val currentValue = values[widget.tagAddress to widget.jsonPath] ?: 0f
             val zone = widget.colorZones.find { currentValue in it.startValue..it.endValue }
             when (zone?.label) {
                 "CRITICAL" -> HealthStatus.CRITICAL
@@ -145,7 +149,36 @@ class DashboardViewModel @Inject constructor(
     // Key is Pair(tagAddress, jsonPath)
     private val activeTagObservations = mutableMapOf<Pair<String, String?>, Job>()
 
+    // Layout writes are funneled through this single conflated channel so concurrent
+    // edits (e.g. rapid drag-then-resize) persist in order, one at a time, instead of
+    // racing as independent unordered coroutines where a slower older save can win.
+    private val layoutSaveRequests = Channel<DashboardLayout>(Channel.CONFLATED)
+
+    // The layout instance of the most recently enqueued, not-yet-completed save.
+    // Cleared (by reference) once its write finishes, as long as nothing newer has
+    // superseded it in the meantime. While set, the DataStore echo collector below
+    // knows a fresher write for this layout id is still outstanding, so an echo of
+    // an older on-disk state must be ignored rather than applied over the edit.
+    @Volatile
+    private var outstandingLayoutSave: DashboardLayout? = null
+
+    private fun persistLayout(layout: DashboardLayout) {
+        outstandingLayoutSave = layout
+        layoutSaveRequests.trySend(layout)
+    }
+
     init {
+        viewModelScope.launch(ioDispatcher) {
+            for (layout in layoutSaveRequests) {
+                repository.saveLayout(layout)
+                // Only clear if this was still the latest request; a newer one may
+                // have already replaced it in `outstandingLayoutSave` while this
+                // write was in flight, in which case it remains outstanding.
+                if (outstandingLayoutSave === layout) {
+                    outstandingLayoutSave = null
+                }
+            }
+        }
         viewModelScope.launch(ioDispatcher) {
             repository.dashboardLayoutFlow.collect { layout ->
                 val safeLayout = migrationManager.ensureNonNullFields(layout)
@@ -155,18 +188,25 @@ class DashboardViewModel @Inject constructor(
                     repository.saveLayout(migrated)
                     return@collect
                 }
+
+                val outstanding = outstandingLayoutSave
+                if (outstanding != null && outstanding.id == safeLayout.id) {
+                    // A save for this layout id hasn't finished yet, so this echo
+                    // reflects on-disk state from before that write. Skip it; the
+                    // write's own echo will arrive once it completes.
+                    return@collect
+                }
                 _dashboardLayout.value = safeLayout
             }
         }
         viewModelScope.launch(ioDispatcher) {
             plcCommunicator.attributeUpdates.collect { (tag, attr, value) ->
                 if (attr.equals("color", ignoreCase = true)) return@collect
-                
-                val current = _sessionOverrides.value.toMutableMap()
-                val tagMap = current[tag]?.toMutableMap() ?: mutableMapOf()
-                tagMap[attr] = value
-                current[tag] = tagMap
-                _sessionOverrides.value = current
+
+                _sessionOverrides.update { current ->
+                    val tagMap = (current[tag] ?: emptyMap()) + (attr to value)
+                    current + (tag to tagMap)
+                }
             }
         }
     }
@@ -185,17 +225,17 @@ class DashboardViewModel @Inject constructor(
                 plcCommunicator.observeTag(tagAddress, jsonPath).collect { value ->
                     when (value) {
                         is PlcValue.FloatValue -> {
-                            _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value.value) }
+                            _tagValues.update { it + (observationKey to value.value) }
                         }
                         is PlcValue.IntValue -> {
-                            _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value.value.toFloat()) }
+                            _tagValues.update { it + (observationKey to value.value.toFloat()) }
                         }
                         is PlcValue.BooleanValue -> {
-                            _tagStringValues.value = _tagStringValues.value.toMutableMap().apply { put(tagAddress, value.value.toString()) }
-                            _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, if (value.value) 1f else 0f) }
+                            _tagStringValues.update { it + (observationKey to value.value.toString()) }
+                            _tagValues.update { it + (observationKey to if (value.value) 1f else 0f) }
                         }
                         is PlcValue.StringValue -> {
-                            _tagStringValues.value = _tagStringValues.value.toMutableMap().apply { put(tagAddress, value.value) }
+                            _tagStringValues.update { it + (observationKey to value.value) }
                         }
                     }
                 }
@@ -225,20 +265,21 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun resolveButtonState(widget: WidgetConfiguration): Boolean {
-        val raw = _tagStringValues.value[widget.tagAddress]
+        val key = widget.tagAddress to widget.jsonPath
+        val raw = _tagStringValues.value[key]
         if (raw != null) {
             if (widget.trueValues.any { it.equals(raw, ignoreCase = true) }) return true
             if (widget.falseValues.any { it.equals(raw, ignoreCase = true) }) return false
         }
         // Fall back to numeric check
-        val floatVal = _tagValues.value[widget.tagAddress] ?: 0f
+        val floatVal = _tagValues.value[key] ?: 0f
         return floatVal > 0.5f
     }
 
     fun onButtonPress(widget: WidgetConfiguration) {
         val writeAddr = widget.writeAddress?.takeIf { it.isNotBlank() } ?: widget.tagAddress
-        val truePayload = widget.trueValues.first()
-        val falsePayload = widget.falseValues.first()
+        val truePayload = widget.trueValues.firstOrNull() ?: "true"
+        val falsePayload = widget.falseValues.firstOrNull() ?: "false"
         viewModelScope.launch(ioDispatcher) {
             when (widget.interactionType) {
                 com.example.hmi.data.InteractionType.MOMENTARY -> {
@@ -251,12 +292,9 @@ class DashboardViewModel @Inject constructor(
                     val valueToWrap = if (sendTrue) truePayload else falsePayload
 
                     // Optimistic update
-                    _tagStringValues.value = _tagStringValues.value.toMutableMap().apply {
-                        put(widget.tagAddress, valueToWrap)
-                    }
-                    _tagValues.value = _tagValues.value.toMutableMap().apply {
-                        put(widget.tagAddress, if (sendTrue) 1f else 0f)
-                    }
+                    val key = widget.tagAddress to widget.jsonPath
+                    _tagStringValues.update { it + (key to valueToWrap) }
+                    _tagValues.update { it + (key to if (sendTrue) 1f else 0f) }
 
                     val payload = widget.writeTemplate?.replace("${'$'}VALUE", valueToWrap) ?: valueToWrap
                     plcCommunicator.writeTag(writeAddr, PlcValue.StringValue(payload), shouldRetain = true)
@@ -269,7 +307,7 @@ class DashboardViewModel @Inject constructor(
     fun onButtonRelease(widget: WidgetConfiguration) {
         if (widget.interactionType == com.example.hmi.data.InteractionType.MOMENTARY) {
             val writeAddr = widget.writeAddress?.takeIf { it.isNotBlank() } ?: widget.tagAddress
-            val falsePayload = widget.falseValues.first()
+            val falsePayload = widget.falseValues.firstOrNull() ?: "false"
             viewModelScope.launch(ioDispatcher) {
                 val payload = widget.writeTemplate?.replace("${'$'}VALUE", falsePayload) ?: falsePayload
                 plcCommunicator.writeTag(writeAddr, PlcValue.StringValue(payload), shouldRetain = false)
@@ -277,10 +315,11 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    fun onSliderChange(tagAddress: String, writeAddress: String?, value: Float, writeTemplate: String? = null) {
-        val prev = _tagValues.value[tagAddress]
+    fun onSliderChange(tagAddress: String, writeAddress: String?, value: Float, writeTemplate: String? = null, jsonPath: String? = null) {
+        val key = tagAddress to jsonPath
+        val prev = _tagValues.value[key]
         if (prev == value) return
-        _tagValues.value = _tagValues.value.toMutableMap().apply { put(tagAddress, value) }
+        _tagValues.update { it + (key to value) }
         val writeAddr = writeAddress?.takeIf { it.isNotBlank() } ?: tagAddress
         viewModelScope.launch(ioDispatcher) {
             if (writeTemplate != null) {
@@ -307,7 +346,7 @@ class DashboardViewModel @Inject constructor(
                     this[index] = widget.copy(column = column, row = row, zOrder = maxZOrder + 1)
                 }
                 layout.copy(widgets = updatedWidgets).also { newLayout ->
-                    viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+                    persistLayout(newLayout)
                 }
             } else layout
         }
@@ -322,7 +361,7 @@ class DashboardViewModel @Inject constructor(
                     this[index] = widget.copy(colSpan = colSpan, rowSpan = rowSpan)
                 }
                 layout.copy(widgets = updatedWidgets).also { newLayout ->
-                    viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+                    persistLayout(newLayout)
                 }
             } else layout
         }
@@ -336,7 +375,7 @@ class DashboardViewModel @Inject constructor(
                     this[index] = updatedWidget
                 }
                 layout.copy(widgets = updatedWidgets).also { newLayout ->
-                    viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+                    persistLayout(newLayout)
                 }
             } else layout
         }
@@ -355,11 +394,9 @@ class DashboardViewModel @Inject constructor(
                 )
                 val newWidgets = layout.widgets + duplicate
                 val newLayout = layout.copy(widgets = newWidgets)
-                
-                viewModelScope.launch(ioDispatcher) {
-                    repository.saveLayout(newLayout)
-                    _announcements.emit("Widget duplicated")
-                }
+
+                persistLayout(newLayout)
+                viewModelScope.launch(ioDispatcher) { _announcements.emit("Widget duplicated") }
                 newLayout
             } else {
                 layout
@@ -370,7 +407,7 @@ class DashboardViewModel @Inject constructor(
     fun deleteWidget(widgetId: String) {
         _dashboardLayout.update { layout ->
             layout.copy(widgets = layout.widgets.filter { it.id != widgetId }).also { newLayout ->
-                viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+                persistLayout(newLayout)
             }
         }
     }
@@ -384,7 +421,7 @@ class DashboardViewModel @Inject constructor(
             }
             if (updatedWidgets != layout.widgets) {
                 layout.copy(widgets = updatedWidgets).also { newLayout ->
-                    viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+                    persistLayout(newLayout)
                 }
             } else layout
         }
@@ -398,7 +435,7 @@ class DashboardViewModel @Inject constructor(
                 hapticFeedbackEnabled = hapticFeedbackEnabled,
                 orientationMode = orientationMode
             ).also { newLayout ->
-                viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+                persistLayout(newLayout)
             }
         }
     }
@@ -406,7 +443,7 @@ class DashboardViewModel @Inject constructor(
     fun updateOrientationMode(mode: com.example.hmi.data.OrientationMode) {
         _dashboardLayout.update { layout ->
             layout.copy(orientationMode = mode).also { newLayout ->
-                viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+                persistLayout(newLayout)
             }
         }
     }
@@ -416,7 +453,7 @@ class DashboardViewModel @Inject constructor(
             val maxZOrder = layout.widgets.maxOfOrNull { it.zOrder } ?: 0
             val widgetWithZOrder = widget.copy(zOrder = maxZOrder + 1)
             layout.copy(widgets = layout.widgets + widgetWithZOrder).also { newLayout ->
-                viewModelScope.launch(ioDispatcher) { repository.saveLayout(newLayout) }
+                persistLayout(newLayout)
             }
         }
     }
@@ -487,7 +524,7 @@ class DashboardViewModel @Inject constructor(
 
                 val safeLayout = migrationManager.ensureNonNullFields(newLayout)
                 _dashboardLayout.value = safeLayout
-                repository.saveLayout(safeLayout)
+                persistLayout(safeLayout)
                 _importResult.emit(Result.success(Unit))
             } catch (e: Exception) {
                 _importResult.emit(Result.failure(Exception("Invalid JSON format: ${e.localizedMessage}")))
@@ -549,7 +586,7 @@ class DashboardViewModel @Inject constructor(
     fun selectManualLayout(layout: DashboardLayout) {
         viewModelScope.launch(ioDispatcher) {
             repository.setActiveSystemProfileId(null)
-            repository.saveLayout(layout)
+            persistLayout(layout)
             _announcements.emit("Manual Layout: ${layout.name}")
         }
     }
@@ -568,7 +605,7 @@ class DashboardViewModel @Inject constructor(
             )
             repository.saveToSavedLayouts(newLayout)
             repository.setActiveSystemProfileId(null)
-            repository.saveLayout(newLayout)
+            persistLayout(newLayout)
             _announcements.emit("Created new layout: $name")
         }
     }

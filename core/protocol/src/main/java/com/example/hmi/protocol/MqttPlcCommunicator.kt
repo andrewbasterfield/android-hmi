@@ -46,6 +46,11 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     private var reconnectAttempts = 0
     private var lastConnectedTime = 0L
+    // Set just before we call client.disconnect() to enforce the max-attempts give-up.
+    // HiveMQ reports that self-triggered disconnect through the same listener as a user
+    // disconnect, so without this flag the listener's "intentional disconnect" branch
+    // immediately overwrites the ERROR state we just set with DISCONNECTED.
+    private var isGivingUpAfterMaxAttempts = false
     override val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
     private var client: Mqtt3AsyncClient? = null
@@ -71,7 +76,14 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
     override suspend fun connect(profile: PlcConnectionProfile): Result<Unit> = suspendCancellableCoroutine { continuation ->
         val settings = profile.mqttSettings ?: MqttSettings()
         currentProfile = profile
-        
+
+        // Reset reconnect accounting for this new connection attempt; otherwise a
+        // count carried over from a previous give-up would make the next session
+        // appear to hit the cap immediately.
+        reconnectAttempts = 0
+        lastConnectedTime = 0L
+        isGivingUpAfterMaxAttempts = false
+
         // Reset state for new connection
         synchronized(rawTopicFlows) { rawTopicFlows.clear() }
         synchronized(attributeFlows) { attributeFlows.clear() }
@@ -93,32 +105,7 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
                 // Check if disconnection was unexpected (BUG-014 fix)
                 // In HiveMQ MQTT 3, Mqtt3DisconnectException represents an intentional disconnect.
                 val cause = context.cause
-                val hasError = cause !is Mqtt3DisconnectException
-                if (hasError) {
-                    // Only reset attempts if we had a stable connection (5+ seconds)
-                    val connectionDuration = System.currentTimeMillis() - lastConnectedTime
-                    if (connectionDuration >= STABLE_CONNECTION_MS) {
-                        Log.d(TAG, "Connection was stable for ${connectionDuration}ms, resetting attempts")
-                        reconnectAttempts = 0
-                    }
-
-                    reconnectAttempts++
-                    Log.w(TAG, "Disconnected unexpectedly (attempt $reconnectAttempts/$MAX_RECONNECT_ATTEMPTS): $cause")
-
-                    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-                        Log.e(TAG, "Max reconnection attempts reached, giving up")
-                        _connectionState.value = ConnectionState.ERROR
-                        // Stop automatic reconnection by disconnecting
-                        client?.disconnect()
-                    } else {
-                        _connectionState.value = ConnectionState.RECONNECTING
-                    }
-                } else {
-                    // Intentional disconnection (no cause)
-                    Log.d(TAG, "Disconnected intentionally")
-                    reconnectAttempts = 0
-                    _connectionState.value = ConnectionState.DISCONNECTED
-                }
+                _connectionState.value = handleDisconnect(hasError = cause !is Mqtt3DisconnectException, cause = cause)
             }
             .automaticReconnect()
                 .initialDelay(1, java.util.concurrent.TimeUnit.SECONDS)
@@ -246,6 +233,55 @@ class MqttPlcCommunicator @Inject constructor() : PlcCommunicator {
         return rawFlow.map { payload ->
             parsePayload(payload, settings, fullTopic, jsonPath)
         }
+    }
+
+    /**
+     * Applies a disconnect event to the reconnect bookkeeping and returns the
+     * resulting connection state. Extracted from the listener lambda so the
+     * reconnect-cap logic can be unit tested without a real MQTT client.
+     */
+    private fun handleDisconnect(hasError: Boolean, cause: Throwable?): ConnectionState {
+        if (hasError) {
+            // Only reset attempts once we've actually had a stable connection
+            // (5+ seconds). lastConnectedTime is 0 until the first successful
+            // connect, so without this check a broker that's down at app start
+            // would compute a huge "duration since epoch" and reset the
+            // counter on every failed attempt, making the cap unreachable.
+            if (lastConnectedTime != 0L) {
+                val connectionDuration = System.currentTimeMillis() - lastConnectedTime
+                if (connectionDuration >= STABLE_CONNECTION_MS) {
+                    Log.d(TAG, "Connection was stable for ${connectionDuration}ms, resetting attempts")
+                    reconnectAttempts = 0
+                }
+            }
+
+            reconnectAttempts++
+            Log.w(TAG, "Disconnected unexpectedly (attempt $reconnectAttempts/$MAX_RECONNECT_ATTEMPTS): $cause")
+
+            return if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                Log.e(TAG, "Max reconnection attempts reached, giving up")
+                isGivingUpAfterMaxAttempts = true
+                // Stop automatic reconnection by disconnecting
+                client?.disconnect()
+                ConnectionState.ERROR
+            } else {
+                ConnectionState.RECONNECTING
+            }
+        }
+
+        if (isGivingUpAfterMaxAttempts) {
+            // This is the disconnect() call above firing its own listener event,
+            // not a user-initiated disconnect. Leave the ERROR state in place
+            // instead of overwriting it with DISCONNECTED.
+            Log.d(TAG, "Disconnected after giving up on reconnection")
+            isGivingUpAfterMaxAttempts = false
+            return ConnectionState.ERROR
+        }
+
+        // Intentional disconnection (no cause)
+        Log.d(TAG, "Disconnected intentionally")
+        reconnectAttempts = 0
+        return ConnectionState.DISCONNECTED
     }
 
     private fun publishOnlineStatus() {

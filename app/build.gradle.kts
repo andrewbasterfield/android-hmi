@@ -27,7 +27,9 @@ android {
         create("release") {
             val keystorePath = System.getenv("KEYSTORE_PATH")
             if (keystorePath != null) {
-                storeFile = file(keystorePath)
+                // KEYSTORE_PATH is relative to the repo root (that's where CI decodes it to),
+                // not this module's directory, so resolve against rootProject.
+                storeFile = rootProject.file(keystorePath)
                 storePassword = System.getenv("KEYSTORE_PASSWORD") ?: error("KEYSTORE_PASSWORD not set")
                 keyAlias = System.getenv("KEY_ALIAS") ?: error("KEY_ALIAS not set")
                 keyPassword = System.getenv("KEY_PASSWORD") ?: error("KEY_PASSWORD not set")
@@ -61,6 +63,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"

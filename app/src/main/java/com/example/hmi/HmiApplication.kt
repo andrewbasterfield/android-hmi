@@ -12,7 +12,10 @@ class HmiApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // Start the demo server on the default port 9999
-        demoServer.start()
+        // Demo/testing convenience only -- an unauthenticated TCP listener that
+        // accepts writes has no place in a release build on a plant network.
+        if (BuildConfig.DEBUG) {
+            demoServer.start()
+        }
     }
 }

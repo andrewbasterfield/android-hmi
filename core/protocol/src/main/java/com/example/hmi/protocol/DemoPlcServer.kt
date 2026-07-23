@@ -5,6 +5,7 @@ import kotlinx.coroutines.*
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.PrintWriter
+import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.Locale
@@ -41,7 +42,9 @@ class DemoPlcServer @Inject constructor() {
         
         scope.launch {
             try {
-                serverSocket = ServerSocket(port)
+                // Bind loopback explicitly -- ServerSocket(port) alone binds all
+                // interfaces, exposing this unauthenticated demo listener to the network.
+                serverSocket = ServerSocket(port, 50, InetAddress.getByName("127.0.0.1"))
                 Log.d("DemoPlcServer", "Server socket created on port $port")
                 while (isRunning && isActive) {
                     val client = serverSocket?.accept() ?: break
@@ -160,6 +163,9 @@ class DemoPlcServer @Inject constructor() {
             }
         }
     }
+
+    /** Exposes the bound address for tests; null until the listening socket is up. */
+    internal fun boundAddressForTest(): InetAddress? = serverSocket?.inetAddress
 
     fun stop() {
         isRunning = false

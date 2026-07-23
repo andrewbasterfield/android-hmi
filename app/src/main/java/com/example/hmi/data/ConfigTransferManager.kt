@@ -45,9 +45,7 @@ class ConfigTransferManager @Inject constructor(
             val layout = repository.dashboardLayoutFlow.first()
             val backup = FullBackupPackage(layout = layout)
             val jsonStr = json.encodeToString(backup)
-            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                outputStream.write(jsonStr.toByteArray())
-            }
+            writeToUri(uri, jsonStr)
             _events.emit(TransferEvent.Success("Layout exported successfully"))
         } catch (e: Exception) {
             _events.emit(TransferEvent.Error("Export failed: ${e.message}"))
@@ -90,9 +88,7 @@ class ConfigTransferManager @Inject constructor(
             val profiles = repository.savedProfilesFlow.first()
             val backup = FullBackupPackage(profiles = profiles)
             val jsonStr = json.encodeToString(backup)
-            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                outputStream.write(jsonStr.toByteArray())
-            }
+            writeToUri(uri, jsonStr)
             _events.emit(TransferEvent.Success("Profiles exported successfully"))
         } catch (e: Exception) {
             _events.emit(TransferEvent.Error("Export failed: ${e.message}"))
@@ -129,13 +125,15 @@ class ConfigTransferManager @Inject constructor(
 
             if (validateJson(jsonStr)) {
                 val backup = json.decodeFromString<FullBackupPackage>(jsonStr)
-                
-                // For a system profile bundle, we actually want to import the profile AND its dependencies
-                var imported = false
-                backup.systemProfiles?.let { profiles ->
-                    repository.mergeSystemProfiles(profiles)
-                    imported = true
+                val systemProfiles = backup.systemProfiles
+
+                if (systemProfiles == null) {
+                    _events.emit(TransferEvent.ValidationError("File does not contain any system profiles"))
+                    return
                 }
+
+                // For a system profile bundle, we actually want to import the profile AND its dependencies
+                repository.mergeSystemProfiles(systemProfiles)
                 backup.layout?.let { layout ->
                     repository.saveLayout(layout)
                 }
@@ -145,12 +143,8 @@ class ConfigTransferManager @Inject constructor(
                 backup.profiles?.let { connections ->
                     repository.mergeProfiles(connections)
                 }
-                
-                if (imported) {
-                    _events.emit(TransferEvent.Success("System Profile bundle imported successfully"))
-                } else {
-                    _events.emit(TransferEvent.ValidationError("File does not contain any system profiles"))
-                }
+
+                _events.emit(TransferEvent.Success("System Profile bundle imported successfully"))
             } else {
                 _events.emit(TransferEvent.ValidationError("Invalid file format"))
             }
@@ -195,9 +189,7 @@ class ConfigTransferManager @Inject constructor(
                 systemProfiles = systemProfiles
             )
             val jsonStr = json.encodeToString(backup)
-            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                outputStream.write(jsonStr.toByteArray())
-            }
+            writeToUri(uri, jsonStr)
             _events.emit(TransferEvent.Success("Full backup exported successfully"))
         } catch (e: Exception) {
             _events.emit(TransferEvent.Error("Export failed: ${e.message}"))
@@ -263,6 +255,19 @@ class ConfigTransferManager @Inject constructor(
         } catch (e: Exception) {
             _events.emit(TransferEvent.Error("Share failed: ${e.message}"))
         }
+    }
+
+    /**
+     * Writes [content] to [uri], truncating any existing content. Plain "w" mode
+     * is interpreted inconsistently across SAF providers and can leave trailing
+     * bytes from a longer previous file; "wt" forces truncation. A null stream
+     * (e.g. a revoked permission) throws instead of silently no-op'ing so the
+     * caller doesn't report success for a write that never happened.
+     */
+    private fun writeToUri(uri: Uri, content: String) {
+        val outputStream = context.contentResolver.openOutputStream(uri, "wt")
+            ?: throw Exception("Failed to open file for writing")
+        outputStream.use { it.write(content.toByteArray()) }
     }
 
     internal suspend fun validateJson(jsonStr: String): Boolean {
