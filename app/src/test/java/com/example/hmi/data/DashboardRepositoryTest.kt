@@ -1,213 +1,417 @@
 package com.example.hmi.data
 
-import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.example.hmi.protocol.PlcConnectionProfile
+import com.example.hmi.protocol.Protocol
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertTrue
+import org.junit.Assert.*
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
-import java.io.File
-import java.util.UUID
+import org.junit.rules.TemporaryFolder
 
-// Basic mock context just for DataStore
-class MockContext : Context() {
-    val file = File.createTempFile("datastore", ".preferences_pb").also { it.deleteOnExit() }
-    
-    // We only need this to satisfy DataStore factory
-    override fun getApplicationContext(): Context = this
-    override fun getFilesDir(): File = file.parentFile
-    
-    // Stub other methods throwing exception if they are ever called
-    override fun getAssets(): android.content.res.AssetManager { TODO("Not yet implemented") }
-    override fun getResources(): android.content.res.Resources { TODO("Not yet implemented") }
-    override fun getPackageManager(): android.content.pm.PackageManager { TODO("Not yet implemented") }
-    override fun getContentResolver(): android.content.ContentResolver { TODO("Not yet implemented") }
-    override fun getMainLooper(): android.os.Looper { TODO("Not yet implemented") }
-    override fun getTheme(): android.content.res.Resources.Theme { TODO("Not yet implemented") }
-    override fun setTheme(resid: Int) { TODO("Not yet implemented") }
-    override fun getClassLoader(): ClassLoader { TODO("Not yet implemented") }
-    override fun getPackageName(): String { TODO("Not yet implemented") }
-    override fun getApplicationInfo(): android.content.pm.ApplicationInfo { TODO("Not yet implemented") }
-    override fun getPackageResourcePath(): String { TODO("Not yet implemented") }
-    override fun getPackageCodePath(): String { TODO("Not yet implemented") }
-    override fun getSharedPreferences(name: String?, mode: Int): android.content.SharedPreferences { TODO("Not yet implemented") }
-    override fun moveSharedPreferencesFrom(sourceContext: Context?, name: String?): Boolean { TODO("Not yet implemented") }
-    override fun deleteSharedPreferences(name: String?): Boolean { TODO("Not yet implemented") }
-    override fun openFileInput(name: String?): java.io.FileInputStream { TODO("Not yet implemented") }
-    override fun openFileOutput(name: String?, mode: Int): java.io.FileOutputStream { TODO("Not yet implemented") }
-    override fun deleteFile(name: String?): Boolean { TODO("Not yet implemented") }
-    override fun getFileStreamPath(name: String?): File { TODO("Not yet implemented") }
-    override fun getDataDir(): File { TODO("Not yet implemented") }
-    override fun getNoBackupFilesDir(): File { TODO("Not yet implemented") }
-    override fun getExternalFilesDir(type: String?): File? { TODO("Not yet implemented") }
-    override fun getExternalFilesDirs(type: String?): Array<File> { TODO("Not yet implemented") }
-    override fun getObbDir(): File { TODO("Not yet implemented") }
-    override fun getObbDirs(): Array<File> { TODO("Not yet implemented") }
-    override fun getCacheDir(): File { TODO("Not yet implemented") }
-    override fun getCodeCacheDir(): File { TODO("Not yet implemented") }
-    override fun getExternalCacheDir(): File? { TODO("Not yet implemented") }
-    override fun getExternalCacheDirs(): Array<File> { TODO("Not yet implemented") }
-    override fun getExternalMediaDirs(): Array<File> { TODO("Not yet implemented") }
-    override fun fileList(): Array<String> { TODO("Not yet implemented") }
-    override fun getDir(name: String?, mode: Int): File { TODO("Not yet implemented") }
-    override fun openOrCreateDatabase(name: String?, mode: Int, factory: android.database.sqlite.SQLiteDatabase.CursorFactory?): android.database.sqlite.SQLiteDatabase { TODO("Not yet implemented") }
-    override fun openOrCreateDatabase(name: String?, mode: Int, factory: android.database.sqlite.SQLiteDatabase.CursorFactory?, errorHandler: android.database.DatabaseErrorHandler?): android.database.sqlite.SQLiteDatabase { TODO("Not yet implemented") }
-    override fun moveDatabaseFrom(sourceContext: Context?, name: String?): Boolean { TODO("Not yet implemented") }
-    override fun deleteDatabase(name: String?): Boolean { TODO("Not yet implemented") }
-    override fun getDatabasePath(name: String?): File { TODO("Not yet implemented") }
-    override fun databaseList(): Array<String> { TODO("Not yet implemented") }
-    override fun getWallpaper(): android.graphics.drawable.Drawable { TODO("Not yet implemented") }
-    override fun peekWallpaper(): android.graphics.drawable.Drawable { TODO("Not yet implemented") }
-    override fun getWallpaperDesiredMinimumWidth(): Int { TODO("Not yet implemented") }
-    override fun getWallpaperDesiredMinimumHeight(): Int { TODO("Not yet implemented") }
-    override fun setWallpaper(bitmap: android.graphics.Bitmap?) { TODO("Not yet implemented") }
-    override fun setWallpaper(data: java.io.InputStream?) { TODO("Not yet implemented") }
-    override fun clearWallpaper() { TODO("Not yet implemented") }
-    override fun startActivity(intent: android.content.Intent?) { TODO("Not yet implemented") }
-    override fun startActivity(intent: android.content.Intent?, options: android.os.Bundle?) { TODO("Not yet implemented") }
-    override fun startActivities(intents: Array<out android.content.Intent>?) { TODO("Not yet implemented") }
-    override fun startActivities(intents: Array<out android.content.Intent>?, options: android.os.Bundle?) { TODO("Not yet implemented") }
-    override fun startIntentSender(intent: android.content.IntentSender?, fillInIntent: android.content.Intent?, flagsMask: Int, flagsValues: Int, extraFlags: Int) { TODO("Not yet implemented") }
-    override fun startIntentSender(intent: android.content.IntentSender?, fillInIntent: android.content.Intent?, flagsMask: Int, flagsValues: Int, extraFlags: Int, options: android.os.Bundle?) { TODO("Not yet implemented") }
-    override fun sendBroadcast(intent: android.content.Intent?) { TODO("Not yet implemented") }
-    override fun sendBroadcast(intent: android.content.Intent?, receiverPermission: String?) { TODO("Not yet implemented") }
-    override fun sendOrderedBroadcast(intent: android.content.Intent?, receiverPermission: String?) { TODO("Not yet implemented") }
-    override fun sendOrderedBroadcast(intent: android.content.Intent, receiverPermission: String?, resultReceiver: android.content.BroadcastReceiver?, scheduler: android.os.Handler?, initialCode: Int, initialData: String?, initialExtras: android.os.Bundle?) { TODO("Not yet implemented") }
-    override fun sendBroadcastAsUser(intent: android.content.Intent?, user: android.os.UserHandle?) { TODO("Not yet implemented") }
-    override fun sendBroadcastAsUser(intent: android.content.Intent?, user: android.os.UserHandle?, receiverPermission: String?) { TODO("Not yet implemented") }
-    override fun sendOrderedBroadcastAsUser(intent: android.content.Intent?, user: android.os.UserHandle?, receiverPermission: String?, resultReceiver: android.content.BroadcastReceiver?, scheduler: android.os.Handler?, initialCode: Int, initialData: String?, initialExtras: android.os.Bundle?) { TODO("Not yet implemented") }
-    override fun sendStickyBroadcast(intent: android.content.Intent?) { TODO("Not yet implemented") }
-    override fun sendStickyOrderedBroadcast(intent: android.content.Intent?, resultReceiver: android.content.BroadcastReceiver?, scheduler: android.os.Handler?, initialCode: Int, initialData: String?, initialExtras: android.os.Bundle?) { TODO("Not yet implemented") }
-    override fun removeStickyBroadcast(intent: android.content.Intent?) { TODO("Not yet implemented") }
-    override fun sendStickyBroadcastAsUser(intent: android.content.Intent?, user: android.os.UserHandle?) { TODO("Not yet implemented") }
-    override fun sendStickyOrderedBroadcastAsUser(intent: android.content.Intent?, user: android.os.UserHandle?, resultReceiver: android.content.BroadcastReceiver?, scheduler: android.os.Handler?, initialCode: Int, initialData: String?, initialExtras: android.os.Bundle?) { TODO("Not yet implemented") }
-    override fun removeStickyBroadcastAsUser(intent: android.content.Intent?, user: android.os.UserHandle?) { TODO("Not yet implemented") }
-    override fun registerReceiver(receiver: android.content.BroadcastReceiver?, filter: android.content.IntentFilter?): android.content.Intent? { TODO("Not yet implemented") }
-    override fun registerReceiver(receiver: android.content.BroadcastReceiver?, filter: android.content.IntentFilter?, flags: Int): android.content.Intent? { TODO("Not yet implemented") }
-    override fun registerReceiver(receiver: android.content.BroadcastReceiver?, filter: android.content.IntentFilter?, broadcastPermission: String?, scheduler: android.os.Handler?): android.content.Intent? { TODO("Not yet implemented") }
-    override fun registerReceiver(receiver: android.content.BroadcastReceiver?, filter: android.content.IntentFilter?, broadcastPermission: String?, scheduler: android.os.Handler?, flags: Int): android.content.Intent? { TODO("Not yet implemented") }
-    override fun unregisterReceiver(receiver: android.content.BroadcastReceiver?) { TODO("Not yet implemented") }
-    override fun startService(service: android.content.Intent?): android.content.ComponentName? { TODO("Not yet implemented") }
-    override fun startForegroundService(service: android.content.Intent?): android.content.ComponentName? { TODO("Not yet implemented") }
-    override fun stopService(name: android.content.Intent?): Boolean { TODO("Not yet implemented") }
-    override fun bindService(service: android.content.Intent, conn: android.content.ServiceConnection, flags: Int): Boolean { TODO("Not yet implemented") }
-    override fun unbindService(conn: android.content.ServiceConnection) { TODO("Not yet implemented") }
-    override fun startInstrumentation(className: android.content.ComponentName, profileFile: String?, arguments: android.os.Bundle?): Boolean { TODO("Not yet implemented") }
-    override fun getSystemService(name: String): Any? { TODO("Not yet implemented") }
-    override fun getSystemServiceName(serviceClass: Class<*>): String? { TODO("Not yet implemented") }
-    override fun checkPermission(permission: String, pid: Int, uid: Int): Int { TODO("Not yet implemented") }
-    override fun checkCallingPermission(permission: String): Int { TODO("Not yet implemented") }
-    override fun checkCallingOrSelfPermission(permission: String): Int { TODO("Not yet implemented") }
-    override fun checkSelfPermission(permission: String): Int { TODO("Not yet implemented") }
-    override fun enforcePermission(permission: String, pid: Int, uid: Int, message: String?) { TODO("Not yet implemented") }
-    override fun enforceCallingPermission(permission: String, message: String?) { TODO("Not yet implemented") }
-    override fun enforceCallingOrSelfPermission(permission: String, message: String?) { TODO("Not yet implemented") }
-    override fun grantUriPermission(toPackage: String?, uri: android.net.Uri?, modeFlags: Int) { TODO("Not yet implemented") }
-    override fun revokeUriPermission(uri: android.net.Uri?, modeFlags: Int) { TODO("Not yet implemented") }
-    override fun revokeUriPermission(toPackage: String?, uri: android.net.Uri?, modeFlags: Int) { TODO("Not yet implemented") }
-    override fun checkUriPermission(uri: android.net.Uri?, pid: Int, uid: Int, modeFlags: Int): Int { TODO("Not yet implemented") }
-    override fun checkCallingUriPermission(uri: android.net.Uri?, modeFlags: Int): Int { TODO("Not yet implemented") }
-    override fun checkCallingOrSelfUriPermission(uri: android.net.Uri?, modeFlags: Int): Int { TODO("Not yet implemented") }
-    override fun checkUriPermission(uri: android.net.Uri?, readPermission: String?, writePermission: String?, pid: Int, uid: Int, modeFlags: Int): Int { TODO("Not yet implemented") }
-    override fun enforceUriPermission(uri: android.net.Uri?, pid: Int, uid: Int, modeFlags: Int, message: String?) { TODO("Not yet implemented") }
-    override fun enforceCallingUriPermission(uri: android.net.Uri?, modeFlags: Int, message: String?) { TODO("Not yet implemented") }
-    override fun enforceCallingOrSelfUriPermission(uri: android.net.Uri?, modeFlags: Int, message: String?) { TODO("Not yet implemented") }
-    override fun enforceUriPermission(uri: android.net.Uri?, readPermission: String?, writePermission: String?, pid: Int, uid: Int, modeFlags: Int, message: String?) { TODO("Not yet implemented") }
-    override fun createPackageContext(packageName: String?, flags: Int): Context { TODO("Not yet implemented") }
-    override fun createContextForSplit(splitName: String?): Context { TODO("Not yet implemented") }
-    override fun createConfigurationContext(overrideConfiguration: android.content.res.Configuration): Context { TODO("Not yet implemented") }
-    override fun createDisplayContext(display: android.view.Display): Context { TODO("Not yet implemented") }
-    override fun createDeviceProtectedStorageContext(): Context { TODO("Not yet implemented") }
-    override fun isDeviceProtectedStorage(): Boolean { TODO("Not yet implemented") }
-}
-
-// Subclass to inject DataStore manually since Context extension val is tricky to mock
-class TestDashboardRepository(
-    context: Context,
-    private val injectedJson: Json,
-    private val injectedDataStore: DataStore<Preferences>
-) : DashboardRepository(context, injectedJson) {
-    override suspend fun saveLayout(layout: DashboardLayout) {
-        val DASHBOARD_KEY = stringPreferencesKey("dashboard_layout")
-        injectedDataStore.edit { preferences ->
-            preferences[DASHBOARD_KEY] = injectedJson.encodeToString(layout)
-        }
-    }
-    
-    override val dashboardLayoutFlow = injectedDataStore.data.map { preferences ->
-        val DASHBOARD_KEY = stringPreferencesKey("dashboard_layout")
-        val jsonStr = preferences[DASHBOARD_KEY]
-        if (jsonStr.isNullOrEmpty()) {
-            DashboardLayout.createDemoLayout()
-        } else {
-            try {
-                injectedJson.decodeFromString<DashboardLayout>(jsonStr)
-            } catch (e: Exception) {
-                DashboardLayout.createDemoLayout()
-            }
-        }
-    }
-}
-
+/**
+ * Unit tests for DashboardRepository covering upsert merge logic,
+ * deletion protection, and system profile persistence.
+ *
+ * Uses a real PreferencesDataStore backed by a temp file to test
+ * the actual DataStore transaction logic without Android framework.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
 class DashboardRepositoryTest {
 
-    private lateinit var classUnderTest: DashboardRepository
-    private lateinit var context: MockContext
-    private lateinit var testDataStore: DataStore<Preferences>
-    private val json = Json { ignoreUnknownKeys = true }
+    @get:Rule
+    val tmpFolder = TemporaryFolder()
+
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
+
+    private val testDispatcher = UnconfinedTestDispatcher()
+    private val testScope = TestScope(testDispatcher)
+
+    private lateinit var dataStore: DataStore<Preferences>
+    private lateinit var repository: DashboardRepository
+
+    // DataStore preference keys (must match production code)
+    private val SAVED_LAYOUTS_KEY = stringPreferencesKey("saved_layouts")
+    private val SAVED_PROFILES_KEY = stringPreferencesKey("saved_profiles")
+    private val SYSTEM_PROFILES_KEY = stringPreferencesKey("system_profiles")
+    private val ACTIVE_SYSTEM_PROFILE_ID_KEY = stringPreferencesKey("active_system_profile_id")
 
     @Before
     fun setup() {
-        context = MockContext()
-        testDataStore = PreferenceDataStoreFactory.create(
-            produceFile = { context.file }
+        dataStore = PreferenceDataStoreFactory.create(
+            scope = testScope,
+            produceFile = { tmpFolder.newFile("test_prefs.preferences_pb") }
         )
-        classUnderTest = TestDashboardRepository(context, json, testDataStore)
+        repository = DashboardRepository(dataStore, json)
+    }
+
+    // --- mergeLayouts tests ---
+
+    @Test
+    fun `mergeLayouts inserts into empty store`() = testScope.runTest {
+        val layout = DashboardLayout(id = "L1", name = "Layout One")
+
+        repository.mergeLayouts(listOf(layout))
+
+        val stored = readLayouts()
+        assertEquals(1, stored.size)
+        assertEquals("L1", stored[0].id)
+        assertEquals("Layout One", stored[0].name)
     }
 
     @Test
-    fun `dashboardLayoutFlow emits DemoLayout when DataStore is empty`() = runTest {
-        // Given an empty DataStore (default state in test)
+    fun `mergeLayouts upserts existing layout by id`() = testScope.runTest {
+        val original = DashboardLayout(id = "L1", name = "Original")
+        repository.mergeLayouts(listOf(original))
 
-        // When
-        val layout = classUnderTest.dashboardLayoutFlow.first()
+        val updated = DashboardLayout(id = "L1", name = "Updated")
+        repository.mergeLayouts(listOf(updated))
 
-        // Then it should be the DemoLayout, not just an empty layout
-        assertEquals("Demo Layout", layout.name)
-        assertEquals(5, layout.widgets.size)
-        
-        // Verify it contains the simulation gauges and slider
-        assertTrue(layout.widgets.any { it.type == WidgetType.SLIDER })
-        assertTrue(layout.widgets.any { it.tagAddress == "SIM_TEMP" })
+        val stored = readLayouts()
+        assertEquals(1, stored.size)
+        assertEquals("Updated", stored[0].name)
     }
 
     @Test
-    fun `dashboardLayoutFlow emits saved layout when DataStore is populated`() = runTest {
-        // Given a custom layout is saved
-        val customLayout = DashboardLayout(
-            id = UUID.randomUUID().toString(),
-            name = "My Custom Layout",
-            widgets = listOf(WidgetConfiguration(type = WidgetType.BUTTON, customLabel = "Custom Button"))
+    fun `mergeLayouts preserves unrelated layouts`() = testScope.runTest {
+        val existing = DashboardLayout(id = "L1", name = "Existing")
+        repository.mergeLayouts(listOf(existing))
+
+        val newLayout = DashboardLayout(id = "L2", name = "New")
+        repository.mergeLayouts(listOf(newLayout))
+
+        val stored = readLayouts()
+        assertEquals(2, stored.size)
+        assertTrue(stored.any { it.id == "L1" && it.name == "Existing" })
+        assertTrue(stored.any { it.id == "L2" && it.name == "New" })
+    }
+
+    @Test
+    fun `mergeLayouts handles batch upsert`() = testScope.runTest {
+        repository.mergeLayouts(listOf(
+            DashboardLayout(id = "L1", name = "First"),
+            DashboardLayout(id = "L2", name = "Second")
+        ))
+
+        repository.mergeLayouts(listOf(
+            DashboardLayout(id = "L1", name = "First Updated"),
+            DashboardLayout(id = "L3", name = "Third")
+        ))
+
+        val stored = readLayouts()
+        assertEquals(3, stored.size)
+        assertEquals("First Updated", stored.find { it.id == "L1" }?.name)
+        assertEquals("Second", stored.find { it.id == "L2" }?.name)
+        assertEquals("Third", stored.find { it.id == "L3" }?.name)
+    }
+
+    // --- mergeProfiles (connection profiles) tests ---
+
+    @Test
+    fun `mergeProfiles inserts into empty store`() = testScope.runTest {
+        val profile = PlcConnectionProfile(name = "PLC1", ipAddress = "10.0.0.1", port = 502)
+
+        repository.mergeProfiles(listOf(profile))
+
+        val stored = readConnectionProfiles()
+        assertEquals(1, stored.size)
+        assertEquals("PLC1", stored[0].name)
+    }
+
+    @Test
+    fun `mergeProfiles upserts by name`() = testScope.runTest {
+        repository.mergeProfiles(listOf(
+            PlcConnectionProfile(name = "PLC1", ipAddress = "10.0.0.1", port = 502)
+        ))
+
+        repository.mergeProfiles(listOf(
+            PlcConnectionProfile(name = "PLC1", ipAddress = "10.0.0.2", port = 503)
+        ))
+
+        val stored = readConnectionProfiles()
+        assertEquals(1, stored.size)
+        assertEquals("10.0.0.2", stored[0].ipAddress)
+        assertEquals(503, stored[0].port)
+    }
+
+    @Test
+    fun `mergeProfiles preserves unrelated profiles`() = testScope.runTest {
+        repository.mergeProfiles(listOf(
+            PlcConnectionProfile(name = "PLC1", ipAddress = "10.0.0.1", port = 502)
+        ))
+
+        repository.mergeProfiles(listOf(
+            PlcConnectionProfile(name = "PLC2", ipAddress = "10.0.0.2", port = 503)
+        ))
+
+        val stored = readConnectionProfiles()
+        assertEquals(2, stored.size)
+    }
+
+    // --- mergeSystemProfiles tests ---
+
+    @Test
+    fun `mergeSystemProfiles inserts into empty store`() = testScope.runTest {
+        val profile = SystemProfile(id = "SP1", name = "Production", connectionProfileName = "PLC1", layoutId = "L1")
+
+        repository.mergeSystemProfiles(listOf(profile))
+
+        val stored = readSystemProfiles()
+        assertEquals(1, stored.size)
+        assertEquals("Production", stored[0].name)
+    }
+
+    @Test
+    fun `mergeSystemProfiles upserts by id`() = testScope.runTest {
+        repository.mergeSystemProfiles(listOf(
+            SystemProfile(id = "SP1", name = "Original", connectionProfileName = "PLC1", layoutId = "L1")
+        ))
+
+        repository.mergeSystemProfiles(listOf(
+            SystemProfile(id = "SP1", name = "Updated", connectionProfileName = "PLC2", layoutId = "L2")
+        ))
+
+        val stored = readSystemProfiles()
+        assertEquals(1, stored.size)
+        assertEquals("Updated", stored[0].name)
+        assertEquals("PLC2", stored[0].connectionProfileName)
+    }
+
+    // --- deleteLayout with protection tests ---
+
+    @Test
+    fun `deleteLayout removes unbound layout`() = testScope.runTest {
+        repository.mergeLayouts(listOf(
+            DashboardLayout(id = "L1", name = "Layout One"),
+            DashboardLayout(id = "L2", name = "Layout Two")
+        ))
+
+        repository.deleteLayout("L1")
+
+        val stored = readLayouts()
+        assertEquals(1, stored.size)
+        assertEquals("L2", stored[0].id)
+    }
+
+    @Test
+    fun `deleteLayout protects layout bound to system profile`() = testScope.runTest {
+        repository.mergeLayouts(listOf(
+            DashboardLayout(id = "L1", name = "Protected Layout")
+        ))
+        repository.mergeSystemProfiles(listOf(
+            SystemProfile(id = "SP1", name = "Prod", connectionProfileName = "PLC1", layoutId = "L1")
+        ))
+
+        val deleted = repository.deleteLayout("L1")
+
+        // Layout should still exist because it's bound to SP1
+        assertFalse(deleted)
+        val stored = readLayouts()
+        assertEquals(1, stored.size)
+        assertEquals("L1", stored[0].id)
+    }
+
+    @Test
+    fun `deleteLayout refuses when system profiles JSON is corrupt`() = testScope.runTest {
+        repository.mergeLayouts(listOf(
+            DashboardLayout(id = "L1", name = "Layout One")
+        ))
+        dataStore.edit { it[SYSTEM_PROFILES_KEY] = "{not valid json" }
+
+        val deleted = repository.deleteLayout("L1")
+
+        // Bindings are unknowable, so the delete must fail closed
+        assertFalse(deleted)
+        assertEquals(1, readLayouts().size)
+    }
+
+    @Test
+    fun `deleteLayout allows deletion after system profile is removed`() = testScope.runTest {
+        repository.mergeLayouts(listOf(
+            DashboardLayout(id = "L1", name = "Previously Protected")
+        ))
+        repository.mergeSystemProfiles(listOf(
+            SystemProfile(id = "SP1", name = "Prod", connectionProfileName = "PLC1", layoutId = "L1")
+        ))
+
+        // Remove the binding
+        repository.deleteSystemProfile("SP1")
+
+        // Now deletion should succeed
+        repository.deleteLayout("L1")
+
+        val stored = readLayouts()
+        assertEquals(0, stored.size)
+    }
+
+    // --- deleteFromSavedProfiles with protection tests ---
+
+    @Test
+    fun `deleteFromSavedProfiles removes unbound connection`() = testScope.runTest {
+        repository.mergeProfiles(listOf(
+            PlcConnectionProfile(name = "PLC1", ipAddress = "10.0.0.1", port = 502),
+            PlcConnectionProfile(name = "PLC2", ipAddress = "10.0.0.2", port = 502)
+        ))
+
+        repository.deleteFromSavedProfiles("PLC1")
+
+        val stored = readConnectionProfiles()
+        assertEquals(1, stored.size)
+        assertEquals("PLC2", stored[0].name)
+    }
+
+    @Test
+    fun `deleteFromSavedProfiles protects connection bound to system profile`() = testScope.runTest {
+        repository.mergeProfiles(listOf(
+            PlcConnectionProfile(name = "PLC1", ipAddress = "10.0.0.1", port = 502)
+        ))
+        repository.mergeSystemProfiles(listOf(
+            SystemProfile(id = "SP1", name = "Prod", connectionProfileName = "PLC1", layoutId = "L1")
+        ))
+
+        val deleted = repository.deleteFromSavedProfiles("PLC1")
+
+        // Connection should still exist because it's bound to SP1
+        assertFalse(deleted)
+        val stored = readConnectionProfiles()
+        assertEquals(1, stored.size)
+        assertEquals("PLC1", stored[0].name)
+    }
+
+    @Test
+    fun `deleteFromSavedProfiles refuses when system profiles JSON is corrupt`() = testScope.runTest {
+        repository.mergeProfiles(listOf(
+            PlcConnectionProfile(name = "PLC1", ipAddress = "10.0.0.1", port = 502)
+        ))
+        dataStore.edit { it[SYSTEM_PROFILES_KEY] = "{not valid json" }
+
+        val deleted = repository.deleteFromSavedProfiles("PLC1")
+
+        assertFalse(deleted)
+        assertEquals(1, readConnectionProfiles().size)
+    }
+
+    // --- saveSystemProfile / deleteSystemProfile tests ---
+
+    @Test
+    fun `saveSystemProfile persists and can be read back`() = testScope.runTest {
+        val profile = SystemProfile(id = "SP1", name = "Test", connectionProfileName = "PLC1", layoutId = "L1")
+
+        repository.saveSystemProfile(profile)
+
+        val stored = readSystemProfiles()
+        assertEquals(1, stored.size)
+        assertEquals("SP1", stored[0].id)
+    }
+
+    @Test
+    fun `saveSystemProfile upserts existing profile`() = testScope.runTest {
+        repository.saveSystemProfile(
+            SystemProfile(id = "SP1", name = "Original", connectionProfileName = "PLC1", layoutId = "L1")
         )
-        classUnderTest.saveLayout(customLayout)
+        repository.saveSystemProfile(
+            SystemProfile(id = "SP1", name = "Updated", connectionProfileName = "PLC2", layoutId = "L2")
+        )
 
-        // When
-        val loadedLayout = classUnderTest.dashboardLayoutFlow.first()
+        val stored = readSystemProfiles()
+        assertEquals(1, stored.size)
+        assertEquals("Updated", stored[0].name)
+    }
 
-        // Then it should emit the custom layout, NOT the demo layout
-        assertEquals("My Custom Layout", loadedLayout.name)
-        assertEquals(1, loadedLayout.widgets.size)
-        assertEquals("Custom Button", loadedLayout.widgets[0].customLabel)
-        assertNotEquals("Demo Layout", loadedLayout.name)
+    @Test
+    fun `deleteSystemProfile removes profile and clears active id if matching`() = testScope.runTest {
+        repository.saveSystemProfile(
+            SystemProfile(id = "SP1", name = "ToDelete", connectionProfileName = "PLC1", layoutId = "L1")
+        )
+        repository.setActiveSystemProfileId("SP1")
+
+        repository.deleteSystemProfile("SP1")
+
+        val stored = readSystemProfiles()
+        assertEquals(0, stored.size)
+
+        val activeId = readActiveSystemProfileId()
+        assertNull(activeId)
+    }
+
+    @Test
+    fun `deleteSystemProfile preserves active id if non-matching`() = testScope.runTest {
+        repository.saveSystemProfile(
+            SystemProfile(id = "SP1", name = "Keep", connectionProfileName = "PLC1", layoutId = "L1")
+        )
+        repository.saveSystemProfile(
+            SystemProfile(id = "SP2", name = "Delete", connectionProfileName = "PLC2", layoutId = "L2")
+        )
+        repository.setActiveSystemProfileId("SP1")
+
+        repository.deleteSystemProfile("SP2")
+
+        val activeId = readActiveSystemProfileId()
+        assertEquals("SP1", activeId)
+    }
+
+    // --- systemProfilesFlow always includes demo profile ---
+
+    @Test
+    fun `systemProfilesFlow always includes demo system profile first`() = testScope.runTest {
+        // With no user profiles saved
+        val profiles = repository.systemProfilesFlow.first()
+
+        assertEquals(1, profiles.size)
+        assertEquals("demo-system", profiles[0].id)
+        assertEquals("Demo System", profiles[0].name)
+        assertTrue(profiles[0].isReadOnly)
+    }
+
+    @Test
+    fun `systemProfilesFlow prepends demo before user profiles`() = testScope.runTest {
+        repository.saveSystemProfile(
+            SystemProfile(id = "SP1", name = "User Profile", connectionProfileName = "PLC1", layoutId = "L1")
+        )
+
+        val profiles = repository.systemProfilesFlow.first()
+
+        assertEquals(2, profiles.size)
+        assertEquals("demo-system", profiles[0].id)
+        assertEquals("SP1", profiles[1].id)
+    }
+
+    // --- Helpers ---
+
+    private suspend fun readLayouts(): List<DashboardLayout> {
+        val prefs = dataStore.data.first()
+        val jsonStr = prefs[SAVED_LAYOUTS_KEY] ?: return emptyList()
+        return json.decodeFromString(jsonStr)
+    }
+
+    private suspend fun readConnectionProfiles(): List<PlcConnectionProfile> {
+        val prefs = dataStore.data.first()
+        val jsonStr = prefs[SAVED_PROFILES_KEY] ?: return emptyList()
+        return json.decodeFromString(jsonStr)
+    }
+
+    private suspend fun readSystemProfiles(): List<SystemProfile> {
+        val prefs = dataStore.data.first()
+        val jsonStr = prefs[SYSTEM_PROFILES_KEY] ?: return emptyList()
+        return json.decodeFromString(jsonStr)
+    }
+
+    private suspend fun readActiveSystemProfileId(): String? {
+        val prefs = dataStore.data.first()
+        return prefs[ACTIVE_SYSTEM_PROFILE_ID_KEY]
     }
 }

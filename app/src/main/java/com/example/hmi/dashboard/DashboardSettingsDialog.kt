@@ -3,6 +3,8 @@ package com.example.hmi.dashboard
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,13 +19,14 @@ import com.example.hmi.ui.theme.IndustrialShape
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardSettingsDialog(
+    layoutId: String,
     initialName: String,
     initialCanvasColor: Long?,
     initialHapticEnabled: Boolean,
     initialOrientationMode: com.example.hmi.data.OrientationMode,
-    viewModel: DashboardViewModel = hiltViewModel(),
     onDismiss: () -> Unit,
-    onConfirm: (String, Long?, Boolean, com.example.hmi.data.OrientationMode) -> Unit
+    onConfirm: (String, String, Long?, Boolean, com.example.hmi.data.OrientationMode) -> Unit,
+    onDelete: (() -> Unit)? = null
 ) {
     var name by remember { mutableStateOf(initialName) }
     var selectedColor by remember { mutableStateOf<Long?>(initialCanvasColor) }
@@ -33,9 +36,18 @@ fun DashboardSettingsDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(dismissOnClickOutside = false),
-        title = { Text("Layout Settings") },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Layout Settings", modifier = Modifier.weight(1f))
+                if (onDelete != null) {
+                    IconButton(onClick = onDelete) {
+                        Icon(Icons.Default.Delete, "Delete Layout", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        },
         modifier = Modifier.fillMaxWidth(0.95f),
-        shape = IndustrialShape.Standard, // US1: 8dp rounded corners
+        shape = IndustrialShape.Standard,
         text = {
             Column(
                 modifier = Modifier
@@ -94,7 +106,7 @@ fun DashboardSettingsDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onConfirm(name, selectedColor, hapticEnabled, orientationMode)
+                    onConfirm(layoutId, name, selectedColor, hapticEnabled, orientationMode)
                 }
             ) {
                 Text("Save Settings")

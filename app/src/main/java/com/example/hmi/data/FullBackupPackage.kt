@@ -7,5 +7,7 @@ import kotlinx.serialization.Serializable
 data class FullBackupPackage(
     val version: Int = 1,
     val layout: DashboardLayout? = null,
-    val profiles: List<PlcConnectionProfile>? = null
+    val profiles: List<PlcConnectionProfile>? = null,
+    val libraryLayouts: List<DashboardLayout>? = null,
+    val systemProfiles: List<SystemProfile>? = null
 )

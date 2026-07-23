@@ -76,10 +76,20 @@ class ConfigTransferManagerTest {
 
     @Test
     fun `validateJson returns false for invalid json`() = runTest {
-        val json = "{ \"invalid\": \"json\" }"
-        
-        val result = transferManager.validateJson(json)
-        
+        val invalidJson = "{ \"invalid\": \"json\" }"
+        val result = transferManager.validateJson(invalidJson)
         assertFalse(result)
+    }
+
+    @Test
+    fun `SystemProfileBundle serializes correctly`() {
+        val bundle = SystemProfileBundle(
+            profile = SystemProfile(name = "Test Profile", connectionProfileName = "PLC1", layoutId = "layout1"),
+            layout = DashboardLayout(id = "layout1", name = "Layout 1"),
+            connection = PlcConnectionProfile(name = "PLC1", ipAddress = "1.1.1.1", port = 502)
+        )
+        val jsonStr = json.encodeToString(bundle)
+        val decoded = json.decodeFromString<SystemProfileBundle>(jsonStr)
+        assertEquals(bundle, decoded)
     }
 }

@@ -64,6 +64,11 @@ class DashboardViewModelTest {
         repository = mock<DashboardRepository> {
             on { dashboardLayoutFlow } doReturn layoutFlow
             on { recentColorsFlow } doReturn MutableStateFlow(emptyList())
+            on { systemProfilesFlow } doReturn MutableStateFlow(emptyList())
+            on { activeSystemProfileIdFlow } doReturn MutableStateFlow(null)
+            on { savedProfilesFlow } doReturn MutableStateFlow(emptyList())
+            on { savedLayoutsFlow } doReturn MutableStateFlow(emptyList())
+            on { connectionProfileFlow } doReturn MutableStateFlow(null)
         }
 
         transferManager = mock()

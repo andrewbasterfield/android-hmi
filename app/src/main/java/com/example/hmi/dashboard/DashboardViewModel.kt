@@ -32,6 +32,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
 import com.example.hmi.core.ui.theme.HealthStatus
+import com.example.hmi.data.SystemProfile
+import com.example.hmi.protocol.PlcConnectionProfile
 import javax.inject.Inject
 
 @HiltViewModel
@@ -91,6 +93,53 @@ class DashboardViewModel @Inject constructor(
     val announcements: SharedFlow<String> = _announcements.asSharedFlow()
 
     val transferEvents: SharedFlow<TransferEvent> = transferManager.events
+
+    val systemProfiles = repository.systemProfilesFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    val activeSystemProfileId = repository.activeSystemProfileIdFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null
+    )
+
+    val savedProfiles = repository.savedProfilesFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    val savedLayouts = repository.savedLayoutsFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    val activeConnection = repository.connectionProfileFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null
+    )
+
+    val isModified: StateFlow<Boolean> = combine(
+        activeSystemProfileId,
+        systemProfiles,
+        activeConnection,
+        dashboardLayout
+    ) { activeId, profiles, conn, layout ->
+        if (activeId == null) return@combine false
+        val profile = profiles.find { it.id == activeId } ?: return@combine false
+        
+        // Check if current state differs from active preset
+        profile.connectionProfileName != conn?.name || profile.layoutId != layout.id
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = false
+    )
 
     // Track active tag observation jobs to prevent duplicates and enable cleanup
     // Key is Pair(tagAddress, jsonPath)
@@ -384,6 +433,24 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    fun importProfiles(uri: android.net.Uri) {
+        viewModelScope.launch(ioDispatcher) {
+            transferManager.importProfiles(uri)
+        }
+    }
+
+    fun importSystemProfiles(uri: android.net.Uri) {
+        viewModelScope.launch(ioDispatcher) {
+            transferManager.importSystemProfiles(uri)
+        }
+    }
+
+    fun importFullBackup(uri: android.net.Uri) {
+        viewModelScope.launch(ioDispatcher) {
+            transferManager.importFullBackup(uri)
+        }
+    }
+
     fun exportFullBackup(uri: android.net.Uri) {
         viewModelScope.launch(ioDispatcher) {
             transferManager.exportFullBackup(uri)
@@ -424,6 +491,125 @@ class DashboardViewModel @Inject constructor(
                 _importResult.emit(Result.success(Unit))
             } catch (e: Exception) {
                 _importResult.emit(Result.failure(Exception("Invalid JSON format: ${e.localizedMessage}")))
+            }
+        }
+    }
+
+    fun saveCurrentAsSystemProfile(name: String) {
+        viewModelScope.launch(ioDispatcher) {
+            val connection = repository.connectionProfileFlow.first()
+            val layout = _dashboardLayout.value
+
+            if (connection != null) {
+                // Ensure current layout is persisted to the library
+                repository.saveToSavedLayouts(layout)
+
+                val newProfile = com.example.hmi.data.SystemProfile(
+                    name = name,
+                    connectionProfileName = connection.name,
+                    layoutId = layout.id
+                )
+                repository.saveSystemProfile(newProfile)
+                repository.setActiveSystemProfileId(newProfile.id)
+                _announcements.emit("System Profile '$name' saved")
+            } else {
+                _announcements.emit("Cannot save profile: no active connection")
+            }
+        }
+    }
+
+    fun selectSystemProfile(profile: SystemProfile) {
+        viewModelScope.launch(ioDispatcher) {
+            repository.setActiveSystemProfileId(profile.id)
+            
+            // Resolve connection profile from library
+            val savedProfiles = repository.savedProfilesFlow.first()
+            val targetConnection = savedProfiles.find { it.name == profile.connectionProfileName }
+            
+            if (targetConnection != null) {
+                // Trigger reconnection
+                repository.saveConnectionProfile(targetConnection)
+                plcCommunicator.connect(targetConnection)
+                _announcements.emit("Switched to Profile: ${profile.name}")
+            } else {
+                _announcements.emit("Profile '${profile.name}' loaded but connection '${profile.connectionProfileName}' not found")
+            }
+        }
+    }
+
+    fun selectManualConnection(profile: PlcConnectionProfile) {
+        viewModelScope.launch(ioDispatcher) {
+            repository.setActiveSystemProfileId(null)
+            repository.saveConnectionProfile(profile)
+            plcCommunicator.connect(profile)
+            _announcements.emit("Manual Connection: ${profile.name}")
+        }
+    }
+
+    fun selectManualLayout(layout: DashboardLayout) {
+        viewModelScope.launch(ioDispatcher) {
+            repository.setActiveSystemProfileId(null)
+            repository.saveLayout(layout)
+            _announcements.emit("Manual Layout: ${layout.name}")
+        }
+    }
+
+    fun shareSystemProfile(profile: com.example.hmi.data.SystemProfile, context: android.content.Context) {
+        viewModelScope.launch(ioDispatcher) {
+            transferManager.exportSystemProfileBundle(profile, context)
+        }
+    }
+
+    fun createNewLayout(name: String) {
+        viewModelScope.launch(ioDispatcher) {
+            val newLayout = DashboardLayout(
+                id = java.util.UUID.randomUUID().toString(),
+                name = name
+            )
+            repository.saveToSavedLayouts(newLayout)
+            repository.setActiveSystemProfileId(null)
+            repository.saveLayout(newLayout)
+            _announcements.emit("Created new layout: $name")
+        }
+    }
+
+    fun deleteSystemProfile(id: String) {
+        viewModelScope.launch(ioDispatcher) {
+            repository.deleteSystemProfile(id)
+            _announcements.emit("Preset deleted")
+        }
+    }
+
+    fun deleteLayout(id: String) {
+        viewModelScope.launch(ioDispatcher) {
+            val success = repository.deleteLayout(id)
+            if (success) {
+                _announcements.emit("Layout deleted")
+            } else {
+                _announcements.emit("Cannot delete: layout is bound to a system profile")
+            }
+        }
+    }
+
+    fun updateAnyLayoutSettings(id: String, name: String, canvasColor: Long?, hapticFeedbackEnabled: Boolean, orientationMode: com.example.hmi.data.OrientationMode) {
+        viewModelScope.launch(ioDispatcher) {
+            // If it's the active layout, use existing update method to sync state
+            if (id == _dashboardLayout.value.id) {
+                updateDashboardSettings(name, canvasColor, hapticFeedbackEnabled, orientationMode)
+            } else {
+                // Otherwise update it in the library directly
+                val layouts = repository.savedLayoutsFlow.first()
+                val target = layouts.find { it.id == id }
+                if (target != null) {
+                    val updated = target.copy(
+                        name = name,
+                        canvasColor = canvasColor,
+                        hapticFeedbackEnabled = hapticFeedbackEnabled,
+                        orientationMode = orientationMode
+                    )
+                    repository.saveToSavedLayouts(updated)
+                    _announcements.emit("Layout '$name' updated")
+                }
             }
         }
     }

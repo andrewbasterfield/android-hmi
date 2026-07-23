@@ -37,11 +37,31 @@
         },
         "required": ["id", "name", "ipAddress", "port", "protocol"]
       }
+    },
+    "libraryLayouts": {
+      "type": ["array", "null"],
+      "items": { "type": "object" }
+    },
+    "systemProfiles": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "connectionProfileName": { "type": "string" },
+          "layoutId": { "type": "string" },
+          "isReadOnly": { "type": "boolean" }
+        },
+        "required": ["id", "name", "connectionProfileName", "layoutId"]
+      }
     }
   },
   "required": ["version"],
   "anyOf": [
     { "required": ["layout"] },
-    { "required": ["profiles"] }
+    { "required": ["profiles"] },
+    { "required": ["libraryLayouts"] },
+    { "required": ["systemProfiles"] }
   ]
 }
