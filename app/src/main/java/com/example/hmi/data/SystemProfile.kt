@@ -18,6 +18,8 @@ data class SystemProfile(
 
 /**
  * A standalone package for sharing a single System Profile with all its dependencies.
+ * Note: Exports use FullBackupPackage V2 as the wire format for schema reuse.
+ * This class is retained for serialization contracts and test validation.
  */
 @Serializable
 data class SystemProfileBundle(

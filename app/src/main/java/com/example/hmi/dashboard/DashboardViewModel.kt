@@ -512,6 +512,8 @@ class DashboardViewModel @Inject constructor(
                 repository.saveSystemProfile(newProfile)
                 repository.setActiveSystemProfileId(newProfile.id)
                 _announcements.emit("System Profile '$name' saved")
+            } else {
+                _announcements.emit("Cannot save profile: no active connection")
             }
         }
     }
@@ -528,9 +530,10 @@ class DashboardViewModel @Inject constructor(
                 // Trigger reconnection
                 repository.saveConnectionProfile(targetConnection)
                 plcCommunicator.connect(targetConnection)
+                _announcements.emit("Switched to Profile: ${profile.name}")
+            } else {
+                _announcements.emit("Profile '${profile.name}' loaded but connection '${profile.connectionProfileName}' not found")
             }
-            
-            _announcements.emit("Switched to Profile: ${profile.name}")
         }
     }
 
@@ -579,8 +582,12 @@ class DashboardViewModel @Inject constructor(
 
     fun deleteLayout(id: String) {
         viewModelScope.launch(ioDispatcher) {
-            repository.deleteLayout(id)
-            _announcements.emit("Layout deleted")
+            val success = repository.deleteLayout(id)
+            if (success) {
+                _announcements.emit("Layout deleted")
+            } else {
+                _announcements.emit("Cannot delete: layout is bound to a system profile")
+            }
         }
     }
 

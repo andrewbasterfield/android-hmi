@@ -29,19 +29,28 @@ class ManagementHubTest {
                 connectionState = ConnectionState.DISCONNECTED,
                 onProfileSelect = {},
                 onProfileShare = {},
+                onProfileDelete = {},
+                onAddProfile = {},
+                onImportSystemProfiles = {},
                 onConnectionSelect = {},
+                onAddConnection = {},
+                onImportConnections = {},
                 onLayoutSelect = {},
-                onSaveProfile = {}
+                onEditLayout = {},
+                onAddLayout = {},
+                onImportLayouts = {},
+                onFullBackup = {},
+                onFullRestore = {}
             )
         }
 
         // Verify sections
         composeTestRule.onNodeWithText("Management Hub").assertIsDisplayed()
         composeTestRule.onNodeWithText("Active Environment").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Systems (Presets)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("System Profiles").assertIsDisplayed()
         composeTestRule.onNodeWithText("Library: Connections").assertIsDisplayed()
         composeTestRule.onNodeWithText("Library: Layouts").assertIsDisplayed()
-        
+
         // Verify preset item
         composeTestRule.onNodeWithText("Test Profile").assertIsDisplayed()
     }

@@ -1,5 +1,6 @@
 package com.example.hmi.data
 
+import android.util.Log
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -8,7 +9,6 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.hmi.protocol.PlcConnectionProfile
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
@@ -19,8 +19,8 @@ import javax.inject.Singleton
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "dashboard_prefs")
 
 @Singleton
-open class DashboardRepository @Inject constructor(
-    @ApplicationContext private val context: Context,
+class DashboardRepository @Inject constructor(
+    private val dataStore: DataStore<Preferences>,
     private val json: Json
 ) {
     private val DASHBOARD_KEY = stringPreferencesKey("dashboard_layout")
@@ -34,7 +34,7 @@ open class DashboardRepository @Inject constructor(
     private val MANUAL_CONNECTION_PROFILE_KEY = stringPreferencesKey("manual_connection_profile")
     private val MANUAL_LAYOUT_KEY = stringPreferencesKey("manual_layout")
 
-    val systemProfilesFlow: Flow<List<SystemProfile>> = context.dataStore.data.map { preferences ->
+    val systemProfilesFlow: Flow<List<SystemProfile>> = dataStore.data.map { preferences ->
         val jsonStr = preferences[SYSTEM_PROFILES_KEY]
         val savedProfiles = if (jsonStr.isNullOrEmpty()) {
             emptyList()
@@ -57,12 +57,12 @@ open class DashboardRepository @Inject constructor(
         listOf(demoProfile) + savedProfiles.filter { it.id != "demo-system" }
     }
 
-    val activeSystemProfileIdFlow: Flow<String?> = context.dataStore.data.map { preferences ->
+    val activeSystemProfileIdFlow: Flow<String?> = dataStore.data.map { preferences ->
         preferences[ACTIVE_SYSTEM_PROFILE_ID_KEY]
     }
 
     suspend fun saveSystemProfile(profile: SystemProfile) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val currentJson = preferences[SYSTEM_PROFILES_KEY]
             val currentList: MutableList<SystemProfile> = if (currentJson.isNullOrEmpty()) {
                 mutableListOf()
@@ -81,7 +81,7 @@ open class DashboardRepository @Inject constructor(
     }
 
     suspend fun deleteSystemProfile(id: String) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val currentJson = preferences[SYSTEM_PROFILES_KEY]
             if (!currentJson.isNullOrEmpty()) {
                 try {
@@ -92,13 +92,13 @@ open class DashboardRepository @Inject constructor(
                     if (preferences[ACTIVE_SYSTEM_PROFILE_ID_KEY] == id) {
                         preferences.remove(ACTIVE_SYSTEM_PROFILE_ID_KEY)
                     }
-                } catch (e: Exception) {}
+                } catch (e: Exception) { Log.w("DashboardRepository", "Failed to parse stored data", e) }
             }
         }
     }
 
     suspend fun setActiveSystemProfileId(id: String?) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             if (id == null) {
                 preferences.remove(ACTIVE_SYSTEM_PROFILE_ID_KEY)
             } else {
@@ -107,7 +107,7 @@ open class DashboardRepository @Inject constructor(
         }
     }
 
-    val savedLayoutsFlow: Flow<List<DashboardLayout>> = context.dataStore.data.map { preferences ->
+    val savedLayoutsFlow: Flow<List<DashboardLayout>> = dataStore.data.map { preferences ->
         val jsonStr = preferences[SAVED_LAYOUTS_KEY]
         val saved = if (jsonStr.isNullOrEmpty()) {
             emptyList()
@@ -128,13 +128,13 @@ open class DashboardRepository @Inject constructor(
                 if (saved.any { it.id == active.id }) {
                     return@map saved.map { if (it.id == active.id) active else it }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { Log.w("DashboardRepository", "Failed to parse stored data", e) }
         }
         saved
     }
 
     suspend fun mergeLayouts(newLayouts: List<DashboardLayout>) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val currentJson = preferences[SAVED_LAYOUTS_KEY]
             val currentList: MutableList<DashboardLayout> = if (currentJson.isNullOrEmpty()) {
                 mutableListOf()
@@ -155,7 +155,7 @@ open class DashboardRepository @Inject constructor(
     }
 
     suspend fun mergeSystemProfiles(newProfiles: List<SystemProfile>) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val currentJson = preferences[SYSTEM_PROFILES_KEY]
             val currentList: MutableList<SystemProfile> = if (currentJson.isNullOrEmpty()) {
                 mutableListOf()
@@ -179,16 +179,22 @@ open class DashboardRepository @Inject constructor(
         mergeLayouts(listOf(layout))
     }
 
-    suspend fun deleteLayout(layoutId: String) {
-        context.dataStore.edit { preferences ->
+    suspend fun deleteLayout(layoutId: String): Boolean {
+        var deleted = true
+        dataStore.edit { preferences ->
             val systemProfilesJson = preferences[SYSTEM_PROFILES_KEY]
             if (!systemProfilesJson.isNullOrEmpty()) {
                 try {
                     val profiles = json.decodeFromString<List<SystemProfile>>(systemProfilesJson)
                     if (profiles.any { it.layoutId == layoutId }) {
+                        deleted = false
                         return@edit 
                     }
-                } catch (e: Exception) {}
+                } catch (e: Exception) {
+                    Log.w("DashboardRepository", "Failed to parse system profiles, refusing delete", e)
+                    deleted = false
+                    return@edit
+                }
             }
 
             val currentJson = preferences[SAVED_LAYOUTS_KEY]
@@ -198,12 +204,13 @@ open class DashboardRepository @Inject constructor(
                         json.decodeFromString<List<DashboardLayout>>(currentJson).toMutableList()
                     currentList.removeAll { it.id == layoutId }
                     preferences[SAVED_LAYOUTS_KEY] = json.encodeToString(currentList)
-                } catch (e: Exception) {}
+                } catch (e: Exception) { Log.w("DashboardRepository", "Failed to parse stored data", e) }
             }
         }
+        return deleted
     }
 
-    val recentColorsFlow: Flow<List<Long>> = context.dataStore.data.map { preferences ->
+    val recentColorsFlow: Flow<List<Long>> = dataStore.data.map { preferences ->
         val jsonStr = preferences[RECENT_COLORS_KEY]
         if (jsonStr.isNullOrEmpty()) {
             emptyList()
@@ -217,12 +224,12 @@ open class DashboardRepository @Inject constructor(
     }
 
     suspend fun saveRecentColors(colors: List<Long>) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[RECENT_COLORS_KEY] = json.encodeToString(colors)
         }
     }
 
-    val savedProfilesFlow: Flow<List<PlcConnectionProfile>> = context.dataStore.data.map { preferences ->
+    val savedProfilesFlow: Flow<List<PlcConnectionProfile>> = dataStore.data.map { preferences ->
         val jsonStr = preferences[SAVED_PROFILES_KEY]
         val saved = if (jsonStr.isNullOrEmpty()) {
             emptyList()
@@ -241,13 +248,13 @@ open class DashboardRepository @Inject constructor(
                 if (saved.any { it.name == active.name }) {
                     return@map saved.map { if (it.name == active.name) active else it }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { Log.w("DashboardRepository", "Failed to parse stored data", e) }
         }
         saved
     }
 
     suspend fun saveToSavedProfiles(profile: PlcConnectionProfile) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val currentJson = preferences[SAVED_PROFILES_KEY]
             val currentList: MutableList<PlcConnectionProfile> = if (currentJson.isNullOrEmpty()) {
                 mutableListOf()
@@ -267,7 +274,7 @@ open class DashboardRepository @Inject constructor(
     }
 
     suspend fun mergeProfiles(newProfiles: List<PlcConnectionProfile>) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             val currentJson = preferences[SAVED_PROFILES_KEY]
             val currentList: MutableList<PlcConnectionProfile> = if (currentJson.isNullOrEmpty()) {
                 mutableListOf()
@@ -288,16 +295,22 @@ open class DashboardRepository @Inject constructor(
         }
     }
 
-    suspend fun deleteFromSavedProfiles(profileName: String) {
-        context.dataStore.edit { preferences ->
+    suspend fun deleteFromSavedProfiles(profileName: String): Boolean {
+        var deleted = true
+        dataStore.edit { preferences ->
             val systemProfilesJson = preferences[SYSTEM_PROFILES_KEY]
             if (!systemProfilesJson.isNullOrEmpty()) {
                 try {
                     val profiles = json.decodeFromString<List<SystemProfile>>(systemProfilesJson)
                     if (profiles.any { it.connectionProfileName == profileName }) {
+                        deleted = false
                         return@edit 
                     }
-                } catch (e: Exception) {}
+                } catch (e: Exception) {
+                    Log.w("DashboardRepository", "Failed to parse system profiles, refusing delete", e)
+                    deleted = false
+                    return@edit
+                }
             }
 
             val currentJson = preferences[SAVED_PROFILES_KEY]
@@ -307,22 +320,23 @@ open class DashboardRepository @Inject constructor(
                         json.decodeFromString<List<PlcConnectionProfile>>(currentJson).toMutableList()
                     currentList.removeAll { it.name == profileName }
                     preferences[SAVED_PROFILES_KEY] = json.encodeToString(currentList)
-                } catch (e: Exception) {}
+                } catch (e: Exception) { Log.w("DashboardRepository", "Failed to parse stored data", e) }
             }
         }
+        return deleted
     }
 
-    val keepScreenOnFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+    val keepScreenOnFlow: Flow<Boolean> = dataStore.data.map { preferences ->
         preferences[KEEP_SCREEN_ON_KEY] ?: true
     }
 
     suspend fun saveKeepScreenOn(enabled: Boolean) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[KEEP_SCREEN_ON_KEY] = enabled
         }
     }
 
-    open val dashboardLayoutFlow: Flow<DashboardLayout> = context.dataStore.data.map { preferences ->
+    val dashboardLayoutFlow: Flow<DashboardLayout> = dataStore.data.map { preferences ->
         val activeProfileId = preferences[ACTIVE_SYSTEM_PROFILE_ID_KEY]
         val systemProfilesJson = preferences[SYSTEM_PROFILES_KEY]
         val savedLayoutsJson = preferences[SAVED_LAYOUTS_KEY]
@@ -336,7 +350,7 @@ open class DashboardRepository @Inject constructor(
                     val layout = layouts.find { it.id == profile.layoutId }
                     if (layout != null) return@map layout
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { Log.w("DashboardRepository", "Failed to parse stored data", e) }
         }
 
         val manualJson = preferences[MANUAL_LAYOUT_KEY]
@@ -350,20 +364,20 @@ open class DashboardRepository @Inject constructor(
         if (!legacyJson.isNullOrEmpty()) {
             try {
                 return@map json.decodeFromString<DashboardLayout>(legacyJson)
-            } catch (e: Exception) {}
+            } catch (e: Exception) { Log.w("DashboardRepository", "Failed to parse stored data", e) }
         }
 
         DashboardLayout.createDemoLayout()
     }
 
-    open suspend fun saveLayout(layout: DashboardLayout) {
-        context.dataStore.edit { preferences ->
+    suspend fun saveLayout(layout: DashboardLayout) {
+        dataStore.edit { preferences ->
             preferences[DASHBOARD_KEY] = json.encodeToString(layout)
             preferences[MANUAL_LAYOUT_KEY] = json.encodeToString(layout)
         }
     }
 
-    val connectionProfileFlow: Flow<PlcConnectionProfile?> = context.dataStore.data.map { preferences ->
+    val connectionProfileFlow: Flow<PlcConnectionProfile?> = dataStore.data.map { preferences ->
         val jsonStr = preferences[CONNECTION_PROFILE_KEY]
         if (jsonStr.isNullOrEmpty()) {
             val ipAddress = preferences[stringPreferencesKey("ip_address")]
@@ -388,7 +402,7 @@ open class DashboardRepository @Inject constructor(
     }
 
     suspend fun saveConnectionProfile(profile: PlcConnectionProfile) {
-        context.dataStore.edit { preferences ->
+        dataStore.edit { preferences ->
             preferences[CONNECTION_PROFILE_KEY] = json.encodeToString(profile)
             preferences[MANUAL_CONNECTION_PROFILE_KEY] = json.encodeToString(profile)
         }

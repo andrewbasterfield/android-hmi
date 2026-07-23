@@ -1,11 +1,245 @@
 package com.example.hmi.dashboard
 
+import com.example.hmi.data.DashboardLayout
+import com.example.hmi.data.DashboardRepository
+import com.example.hmi.data.WidgetConfiguration
+import com.example.hmi.data.WidgetType
+import com.example.hmi.protocol.ConnectionState
+import com.example.hmi.protocol.PlcCommunicator
+import com.example.hmi.protocol.PlcValue
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
+import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.stub
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DashboardViewModelTest {
+
+    private val testDispatcher = StandardTestDispatcher()
+    private val testScope = TestScope(testDispatcher)
+    private val json = Json { 
+        ignoreUnknownKeys = true 
+        encodeDefaults = true
+        prettyPrint = true
+    }
+
+    private val plcCommunicator = mock<PlcCommunicator> {
+        on { connectionState } doReturn MutableStateFlow(ConnectionState.DISCONNECTED)
+        on { attributeUpdates } doReturn emptyFlow()
+        on { observeTag(any(), anyOrNull()) } doReturn emptyFlow()
+    }
+
+    private lateinit var repository: DashboardRepository
+    private lateinit var transferManager: com.example.hmi.data.ConfigTransferManager
+    private lateinit var viewModel: DashboardViewModel
+    private val layoutFlow = MutableStateFlow(DashboardLayout(name = "Initial"))
+
+    @Before
+    fun setup() {
+        Dispatchers.setMain(testDispatcher)
+        
+        repository = mock<DashboardRepository> {
+            on { dashboardLayoutFlow } doReturn layoutFlow
+            on { recentColorsFlow } doReturn MutableStateFlow(emptyList())
+            on { systemProfilesFlow } doReturn MutableStateFlow(emptyList())
+            on { activeSystemProfileIdFlow } doReturn MutableStateFlow(null)
+            on { savedProfilesFlow } doReturn MutableStateFlow(emptyList())
+            on { savedLayoutsFlow } doReturn MutableStateFlow(emptyList())
+            on { connectionProfileFlow } doReturn MutableStateFlow(null)
+        }
+
+        transferManager = mock()
+        val migrationManager = com.example.hmi.data.LayoutMigrationManager()
+        
+        // Mock saveLayout to update our flow
+        repository.stub {
+            onBlocking { saveLayout(any()) } doAnswer { invocation ->
+                layoutFlow.value = invocation.getArgument(0)
+                Unit
+            }
+        }
+
+        viewModel = DashboardViewModel(plcCommunicator, repository, transferManager, migrationManager, json, testDispatcher)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test(timeout = 5000)
+    fun `exportLayoutToJson returns valid JSON string`() = testScope.runTest {
+        val layout = DashboardLayout(name = "Export Test", widgets = listOf(
+            WidgetConfiguration(type = WidgetType.BUTTON, tagAddress = "TEST_TAG")
+        ))
+        val layoutJson = json.encodeToString(layout)
+        viewModel.importLayoutFromJson(layoutJson)
+        
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val jsonResult = viewModel.exportLayoutToJson()
+        assertTrue(jsonResult.contains("Export Test"))
+        assertTrue(jsonResult.contains("TEST_TAG"))
+        assertTrue(jsonResult.contains("BUTTON"))
+    }
+
+    @Test(timeout = 5000)
+    fun `importLayoutFromJson updates layout on valid JSON`() = testScope.runTest {
+        val json = """
+            {
+              "id": "test-id",
+              "name": "Imported Layout",
+              "isKineticCockpitMigrated": true,
+              "isDarkThemeMigrated": true,
+              "hapticFeedbackEnabled": true,
+              "widgets": [
+                {
+                  "id": "w1",
+                  "type": "GAUGE",
+                  "tagAddress": "GAUGE_TAG",
+                  "column": 0,
+                  "row": 0,
+                  "colSpan": 1,
+                  "rowSpan": 1,
+                  "labelFontSizeMultiplier": 1.0,
+                  "metricFontSizeMultiplier": 1.0,
+                  "targetTicks": 6,
+                  "arcSweep": 180.0,
+                  "colorZones": [],
+                  "isNeedleDynamic": false,
+                  "alarmState": "Normal",
+                  "showOutline": false,
+                  "zOrder": 0
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val results = mutableListOf<Result<Unit>>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.importResult.collect { results.add(it) }
+        }
+
+        viewModel.importLayoutFromJson(json)
+        runCurrent()
+
+        assertTrue(results.isNotEmpty())
+        val result = results.first()
+        assertTrue(result.isSuccess)
+        assertEquals("Imported Layout", viewModel.dashboardLayout.value.name)
+        assertEquals(1, viewModel.dashboardLayout.value.widgets.size)
+        assertEquals(WidgetType.GAUGE, viewModel.dashboardLayout.value.widgets[0].type)
+    }
+
+    @Test(timeout = 5000)
+    fun `importLayoutFromJson returns error on invalid JSON`() = testScope.runTest {
+        val json = "invalid json"
+
+        val results = mutableListOf<Result<Unit>>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.importResult.collect { results.add(it) }
+        }
+
+        viewModel.importLayoutFromJson(json)
+        runCurrent()
+
+        assertTrue(results.isNotEmpty())
+        val result = results.first()
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("Invalid JSON") == true)
+    }
+
+    @Test(timeout = 5000)
+    fun `importLayoutFromJson returns error on empty name`() = testScope.runTest {
+        val json = """
+            {
+              "name": "",
+              "widgets": []
+            }
+        """.trimIndent()
+
+        val results = mutableListOf<Result<Unit>>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.importResult.collect { results.add(it) }
+        }
+
+        viewModel.importLayoutFromJson(json)
+        runCurrent()
+
+        assertTrue(results.isNotEmpty())
+        val result = results.first()
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message?.contains("name cannot be blank") == true)
+    }
+
     @Test
-    fun `placeholder test`() {
-        assertTrue(true)
+    fun `duplicateWidget creates copy with offset and new ID`() = testScope.runTest {
+        val sourceWidget = WidgetConfiguration(
+            id = "source-id",
+            type = WidgetType.BUTTON,
+            column = 2,
+            row = 3,
+            zOrder = 5,
+            tagAddress = "TAG_1"
+        )
+        layoutFlow.value = DashboardLayout(widgets = listOf(sourceWidget))
+        runCurrent() // Ensure ViewModel collects the initial layout
+        
+        viewModel.duplicateWidget("source-id")
+        runCurrent()
+
+        val widgets = viewModel.dashboardLayout.value.widgets
+        assertEquals(2, widgets.size)
+        
+        val duplicate = widgets.find { it.id != "source-id" }
+        assertTrue("Duplicate should exist", duplicate != null)
+        assertEquals(sourceWidget.type, duplicate?.type)
+        assertEquals(sourceWidget.tagAddress, duplicate?.tagAddress)
+        assertEquals(sourceWidget.column + 1, duplicate?.column)
+        assertEquals(sourceWidget.row + 1, duplicate?.row)
+        assertTrue("Duplicate should have higher zOrder", (duplicate?.zOrder ?: 0) > sourceWidget.zOrder)
+        assertTrue("Duplicate should have new UUID", duplicate?.id?.length ?: 0 > 0 && duplicate?.id != "source-id")
+    }
+
+    @Test
+    fun `addWidget sets zOrder to max plus 1`() = testScope.runTest {
+        val existingWidget = WidgetConfiguration(
+            id = "existing",
+            zOrder = 10
+        )
+        layoutFlow.value = DashboardLayout(widgets = listOf(existingWidget))
+        runCurrent()
+        
+        val newWidget = WidgetConfiguration(id = "new", type = WidgetType.GAUGE)
+        viewModel.addWidget(newWidget)
+        runCurrent()
+        
+        val widgets = viewModel.dashboardLayout.value.widgets
+        assertEquals(2, widgets.size)
+        val added = widgets.find { it.id == "new" }
+        assertEquals(11, added?.zOrder)
     }
 }

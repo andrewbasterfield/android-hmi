@@ -303,14 +303,20 @@ fun DashboardScreen(
                 activeLayout = dashboardLayout,
                 isModified = isModified,
                 connectionState = connectionState,
-                onProfileSelect = { profile -> viewModel.selectSystemProfile(profile) },
+                onProfileSelect = { profile ->
+                    viewModel.selectSystemProfile(profile)
+                    scope.launch { drawerState.close() }
+                },
                 onProfileShare = { profile -> viewModel.shareSystemProfile(profile, context) },
                 onProfileDelete = { profile -> viewModel.deleteSystemProfile(profile.id) },
                 onAddProfile = { showSaveProfileDialog = true },
                 onImportSystemProfiles = { 
                     pendingImportAction = "a System Profile Bundle" to { systemProfileImportLauncher.launch(arrayOf("application/json")) }
                 },
-                onConnectionSelect = { connection -> viewModel.selectManualConnection(connection) },
+                onConnectionSelect = { connection ->
+                    viewModel.selectManualConnection(connection)
+                    scope.launch { drawerState.close() }
+                },
                 onAddConnection = {
                     onNavigateBack()
                     scope.launch { drawerState.close() }
@@ -318,7 +324,10 @@ fun DashboardScreen(
                 onImportConnections = { 
                     pendingImportAction = "Connection Profiles" to { profileImportLauncher.launch(arrayOf("application/json")) }
                 },
-                onLayoutSelect = { layout -> viewModel.selectManualLayout(layout) },
+                onLayoutSelect = { layout ->
+                    viewModel.selectManualLayout(layout)
+                    scope.launch { drawerState.close() }
+                },
                 onEditLayout = { layout -> layoutToEdit = layout },
                 onAddLayout = { showCreateLayoutDialog = true },
                 onImportLayouts = { 
