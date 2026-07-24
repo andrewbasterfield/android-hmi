@@ -83,7 +83,6 @@ android {
 dependencies {
     implementation(project(":core:ui"))
     implementation(project(":core:protocol"))
-    implementation(project(":feature:diagnostics"))
 
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
