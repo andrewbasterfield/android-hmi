@@ -27,6 +27,17 @@ class DemoPlcServerTest {
     }
 
     @Test
+    fun `server binds to loopback only, not all interfaces`() = runBlocking {
+        withTimeoutOrNull(5000) {
+            while (server.boundAddressForTest() == null) {
+                delay(10)
+            }
+        } ?: throw AssertionError("Timeout waiting for server to bind")
+
+        assertTrue(server.boundAddressForTest()?.isLoopbackAddress == true)
+    }
+
+    @Test
     fun `server should send initial state to a new client`() = runBlocking {
         withTimeoutOrNull(5000) {
             val socket = Socket("127.0.0.1", testPort)

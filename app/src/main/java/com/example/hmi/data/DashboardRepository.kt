@@ -34,6 +34,21 @@ class DashboardRepository @Inject constructor(
     private val MANUAL_CONNECTION_PROFILE_KEY = stringPreferencesKey("manual_connection_profile")
     private val MANUAL_LAYOUT_KEY = stringPreferencesKey("manual_layout")
 
+    /**
+     * Decodes a stored JSON list, returning an empty list if [jsonStr] is null/blank.
+     * Returns null on a decode failure so callers can refuse to overwrite the stored
+     * value with data reconstructed from a partial parse.
+     */
+    private inline fun <reified T> decodeListOrNull(jsonStr: String?): MutableList<T>? {
+        if (jsonStr.isNullOrEmpty()) return mutableListOf()
+        return try {
+            json.decodeFromString<List<T>>(jsonStr).toMutableList()
+        } catch (e: Exception) {
+            Log.w("DashboardRepository", "Failed to parse stored data, refusing to overwrite", e)
+            null
+        }
+    }
+
     val systemProfilesFlow: Flow<List<SystemProfile>> = dataStore.data.map { preferences ->
         val jsonStr = preferences[SYSTEM_PROFILES_KEY]
         val savedProfiles = if (jsonStr.isNullOrEmpty()) {
@@ -63,16 +78,7 @@ class DashboardRepository @Inject constructor(
 
     suspend fun saveSystemProfile(profile: SystemProfile) {
         dataStore.edit { preferences ->
-            val currentJson = preferences[SYSTEM_PROFILES_KEY]
-            val currentList: MutableList<SystemProfile> = if (currentJson.isNullOrEmpty()) {
-                mutableListOf()
-            } else {
-                try {
-                    json.decodeFromString<List<SystemProfile>>(currentJson).toMutableList()
-                } catch (e: Exception) {
-                    mutableListOf()
-                }
-            }
+            val currentList = decodeListOrNull<SystemProfile>(preferences[SYSTEM_PROFILES_KEY]) ?: return@edit
 
             currentList.removeAll { it.id == profile.id }
             currentList.add(profile)
@@ -135,16 +141,7 @@ class DashboardRepository @Inject constructor(
 
     suspend fun mergeLayouts(newLayouts: List<DashboardLayout>) {
         dataStore.edit { preferences ->
-            val currentJson = preferences[SAVED_LAYOUTS_KEY]
-            val currentList: MutableList<DashboardLayout> = if (currentJson.isNullOrEmpty()) {
-                mutableListOf()
-            } else {
-                try {
-                    json.decodeFromString<List<DashboardLayout>>(currentJson).toMutableList()
-                } catch (e: Exception) {
-                    mutableListOf()
-                }
-            }
+            val currentList = decodeListOrNull<DashboardLayout>(preferences[SAVED_LAYOUTS_KEY]) ?: return@edit
 
             newLayouts.forEach { layout ->
                 currentList.removeAll { it.id == layout.id }
@@ -156,16 +153,7 @@ class DashboardRepository @Inject constructor(
 
     suspend fun mergeSystemProfiles(newProfiles: List<SystemProfile>) {
         dataStore.edit { preferences ->
-            val currentJson = preferences[SYSTEM_PROFILES_KEY]
-            val currentList: MutableList<SystemProfile> = if (currentJson.isNullOrEmpty()) {
-                mutableListOf()
-            } else {
-                try {
-                    json.decodeFromString<List<SystemProfile>>(currentJson).toMutableList()
-                } catch (e: Exception) {
-                    mutableListOf()
-                }
-            }
+            val currentList = decodeListOrNull<SystemProfile>(preferences[SYSTEM_PROFILES_KEY]) ?: return@edit
 
             newProfiles.forEach { profile ->
                 currentList.removeAll { it.id == profile.id }
@@ -255,16 +243,7 @@ class DashboardRepository @Inject constructor(
 
     suspend fun saveToSavedProfiles(profile: PlcConnectionProfile) {
         dataStore.edit { preferences ->
-            val currentJson = preferences[SAVED_PROFILES_KEY]
-            val currentList: MutableList<PlcConnectionProfile> = if (currentJson.isNullOrEmpty()) {
-                mutableListOf()
-            } else {
-                try {
-                    json.decodeFromString<List<PlcConnectionProfile>>(currentJson).toMutableList()
-                } catch (e: Exception) {
-                    mutableListOf()
-                }
-            }
+            val currentList = decodeListOrNull<PlcConnectionProfile>(preferences[SAVED_PROFILES_KEY]) ?: return@edit
 
             currentList.removeAll { it.name == profile.name }
             currentList.add(profile)
@@ -275,16 +254,7 @@ class DashboardRepository @Inject constructor(
 
     suspend fun mergeProfiles(newProfiles: List<PlcConnectionProfile>) {
         dataStore.edit { preferences ->
-            val currentJson = preferences[SAVED_PROFILES_KEY]
-            val currentList: MutableList<PlcConnectionProfile> = if (currentJson.isNullOrEmpty()) {
-                mutableListOf()
-            } else {
-                try {
-                    json.decodeFromString<List<PlcConnectionProfile>>(currentJson).toMutableList()
-                } catch (e: Exception) {
-                    mutableListOf()
-                }
-            }
+            val currentList = decodeListOrNull<PlcConnectionProfile>(preferences[SAVED_PROFILES_KEY]) ?: return@edit
 
             newProfiles.forEach { newProfile ->
                 currentList.removeAll { it.name == newProfile.name }
@@ -374,6 +344,16 @@ class DashboardRepository @Inject constructor(
         dataStore.edit { preferences ->
             preferences[DASHBOARD_KEY] = json.encodeToString(layout)
             preferences[MANUAL_LAYOUT_KEY] = json.encodeToString(layout)
+
+            // dashboardLayoutFlow reads from SAVED_LAYOUTS_KEY when a system profile is
+            // active, so the entry bound to that profile's layoutId must be kept in sync
+            // or edits made while a profile is active get reverted by the next flow emission.
+            val savedLayouts = decodeListOrNull<DashboardLayout>(preferences[SAVED_LAYOUTS_KEY])
+            if (savedLayouts != null && savedLayouts.any { it.id == layout.id }) {
+                preferences[SAVED_LAYOUTS_KEY] = json.encodeToString(
+                    savedLayouts.map { if (it.id == layout.id) layout else it }
+                )
+            }
         }
     }
 

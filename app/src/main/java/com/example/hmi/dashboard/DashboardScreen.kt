@@ -547,8 +547,8 @@ private fun WidgetRenderingNode(
     animatedPageOffsetY: Float,
     viewportCols: Int,
     viewportRows: Int,
-    tagValuesState: State<Map<String, Float>>,
-    tagStringValuesState: State<Map<String, String>>,
+    tagValuesState: State<Map<Pair<String, String?>, Float>>,
+    tagStringValuesState: State<Map<Pair<String, String?>, String>>,
     sessionOverridesState: State<Map<String, Map<String, String>>>,
     isEditMode: Boolean,
     hapticEnabled: Boolean,
@@ -565,17 +565,18 @@ private fun WidgetRenderingNode(
     // Use derivedStateOf to isolate recomposition - only recompose when THIS widget's tag value changes
     val tagAddress = widget.tagAddress.orEmpty()
     val jsonPath = widget.jsonPath
+    val tagKey = tagAddress to jsonPath
     val currentValue by remember(tagAddress, jsonPath) {
-        derivedStateOf { tagValuesState.value[tagAddress] ?: 0f }
+        derivedStateOf { tagValuesState.value[tagKey] ?: 0f }
     }
     val tagOverrides by remember(tagAddress, jsonPath) {
         derivedStateOf { sessionOverridesState.value[tagAddress] }
     }
     val resolvedLabel = tagOverrides?.get("label") ?: widget.customLabel ?: tagAddress
 
-    val resolvedColorLong by remember(widget.isColorDynamic, widget.backgroundColor, widget.colorZones, currentValue, tagStringValuesState.value[tagAddress]) {
+    val resolvedColorLong by remember(widget.isColorDynamic, widget.backgroundColor, widget.colorZones, currentValue, tagStringValuesState.value[tagKey]) {
         derivedStateOf {
-            val stringVal = tagStringValuesState.value[tagAddress]
+            val stringVal = tagStringValuesState.value[tagKey]
             val color = com.example.hmi.widgets.ColorUtils.resolveColor(
                 currentValueStr = stringVal,
                 currentValueFloat = currentValue,
@@ -822,7 +823,7 @@ private fun WidgetRenderingNode(
                         labelFontSizeMultiplier = widget.labelFontSizeMultiplier,
                         hapticFeedbackEnabled = hapticEnabled,
                         isChecked = if (widget.interactionType != com.example.hmi.data.InteractionType.MOMENTARY) {
-                            val raw = tagStringValuesState.value[tagAddress]
+                            val raw = tagStringValuesState.value[tagKey]
                             if (raw != null && (widget.trueValues.any { it.equals(raw, ignoreCase = true) } || widget.falseValues.any { it.equals(raw, ignoreCase = true) })) {
                                 widget.trueValues.any { it.equals(raw, ignoreCase = true) }
                             } else {
@@ -838,7 +839,7 @@ private fun WidgetRenderingNode(
                     SliderWidget(
                         label = resolvedLabel,
                         value = currentValue,
-                        onValueChange = { viewModel.onSliderChange(widget.tagAddress, widget.writeAddress, it, widget.writeTemplate) },
+                        onValueChange = { viewModel.onSliderChange(widget.tagAddress, widget.writeAddress, it, widget.writeTemplate, widget.jsonPath) },
                         valueRange = (widget.minValue ?: 0f)..(widget.maxValue ?: 100f),
                         backgroundColor = resolvedColorLong,
                         labelFontSizeMultiplier = widget.labelFontSizeMultiplier,

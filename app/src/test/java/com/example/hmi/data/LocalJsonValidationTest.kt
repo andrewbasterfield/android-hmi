@@ -16,7 +16,8 @@ class LocalJsonValidationTest {
         val schema = SchemaLoader.load(rawSchema)
         
         // Read the user payload
-        val payloadStr = File("../test_payload.json").readText()
+        val payloadStr = javaClass.classLoader!!.getResourceAsStream("test_payload.json")!!
+            .bufferedReader().readText()
         val jsonObject = JSONObject(payloadStr)
         
         // Validate - this will throw ValidationException if invalid

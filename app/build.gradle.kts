@@ -27,16 +27,12 @@ android {
         create("release") {
             val keystorePath = System.getenv("KEYSTORE_PATH")
             if (keystorePath != null) {
-                storeFile = file(keystorePath)
+                // KEYSTORE_PATH is relative to the repo root (that's where CI decodes it to),
+                // not this module's directory, so resolve against rootProject.
+                storeFile = rootProject.file(keystorePath)
                 storePassword = System.getenv("KEYSTORE_PASSWORD") ?: error("KEYSTORE_PASSWORD not set")
                 keyAlias = System.getenv("KEY_ALIAS") ?: error("KEY_ALIAS not set")
                 keyPassword = System.getenv("KEY_PASSWORD") ?: error("KEY_PASSWORD not set")
-            } else {
-                // Fallback to debug keystore if no release config provided
-                storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
             }
         }
     }
@@ -61,6 +57,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"
@@ -80,7 +77,6 @@ android {
 dependencies {
     implementation(project(":core:ui"))
     implementation(project(":core:protocol"))
-    implementation(project(":feature:diagnostics"))
 
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")

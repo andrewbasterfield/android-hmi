@@ -364,6 +364,52 @@ class DashboardRepositoryTest {
         assertEquals("SP1", activeId)
     }
 
+    // --- saveLayout tests ---
+
+    @Test
+    fun `saveLayout updates the saved layouts entry bound to the active system profile`() = testScope.runTest {
+        repository.mergeLayouts(listOf(DashboardLayout(id = "L1", name = "Original")))
+        repository.mergeSystemProfiles(listOf(
+            SystemProfile(id = "SP1", name = "Prod", connectionProfileName = "PLC1", layoutId = "L1")
+        ))
+        repository.setActiveSystemProfileId("SP1")
+
+        // Sanity check: with the profile active, the flow resolves the library copy.
+        assertEquals("Original", repository.dashboardLayoutFlow.first().name)
+
+        repository.saveLayout(DashboardLayout(id = "L1", name = "Edited"))
+
+        // The library entry itself must reflect the edit, or the next flow emission
+        // reverts it back to "Original" (the data-loss bug this test guards against).
+        val stored = readLayouts()
+        assertEquals(1, stored.size)
+        assertEquals("Edited", stored[0].name)
+        assertEquals("Edited", repository.dashboardLayoutFlow.first().name)
+    }
+
+    @Test
+    fun `saveLayout does not insert an unbound layout into the saved layouts list`() = testScope.runTest {
+        repository.mergeLayouts(listOf(DashboardLayout(id = "L1", name = "Library Layout")))
+
+        // A manual layout with no matching library entry should not be added to the library.
+        repository.saveLayout(DashboardLayout(id = "manual-1", name = "Manual Edit"))
+
+        val stored = readLayouts()
+        assertEquals(1, stored.size)
+        assertEquals("L1", stored[0].id)
+    }
+
+    @Test
+    fun `saveLayout leaves saved layouts untouched when that JSON is corrupt`() = testScope.runTest {
+        dataStore.edit { it[SAVED_LAYOUTS_KEY] = "{not valid json" }
+
+        // Must not throw and must not overwrite the corrupt value with an empty list.
+        repository.saveLayout(DashboardLayout(id = "L1", name = "Edited"))
+
+        val prefs = dataStore.data.first()
+        assertEquals("{not valid json", prefs[SAVED_LAYOUTS_KEY])
+    }
+
     // --- systemProfilesFlow always includes demo profile ---
 
     @Test
